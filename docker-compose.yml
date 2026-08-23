@@ -1,0 +1,27 @@
+services:
+  smarttrack-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:admin321@db:5432/smart_track
+      - JWT_SECRET=smarttrack-nexafreight-secret-key-2025-production
+      - AISSTREAM_API_KEY=${AISSTREAM_API_KEY}
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin321
+      - POSTGRES_DB=smart_track
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

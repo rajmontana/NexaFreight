@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartTrack™ | Multi-Modal Logistics Intelligence & Predictive AI</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Leaflet CSS for Interactive Global Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- Chart.js for Dynamic Visual Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dark-theme">
+
+    <!-- ======================================================== -->
+    <!-- 1. LOGIN MODAL OVERLAY (SCREEN 01) -->
+    <!-- ======================================================== -->
+    <div id="loginOverlay" class="login-modal-wrapper">
+        <div class="login-card glass-panel">
+            <div class="login-brand">
+                <div class="brand-badge"><i class="fa-solid fa-satellite-dish"></i></div>
+                <div class="brand-title">
+                    <h2>SmartTrack<span>™</span></h2>
+                    <p class="subtitle">Multi-Modal Freight Control Tower & AI Regressor</p>
+                </div>
+            </div>
+
+            <div class="login-divider"></div>
+
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="loginEmail"><i class="fa-solid fa-envelope"></i> Enterprise Email</label>
+                    <input type="email" id="loginEmail" value="manager@nexafreight.com" required autocomplete="username" placeholder="manager@nexafreight.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="loginPassword"><i class="fa-solid fa-lock"></i> Security Key</label>
+                    <input type="password" id="loginPassword" value="SmartTrack2025" required autocomplete="current-password" placeholder="••••••••••••">
+                </div>
+
+                <div class="login-credentials-helper">
+                    <span><i class="fa-solid fa-key"></i> Demo: <code>manager@nexafreight.com</code> / <code>SmartTrack2025</code></span>
+                </div>
+
+                <button type="submit" id="loginBtn" class="btn-primary login-btn">
+                    <span>Authenticate & Access Control Tower</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <div id="loginError" class="login-error-msg" style="display: none;"></div>
+            </form>
+
+            <div class="login-footer">
+                <div class="security-chip"><i class="fa-solid fa-shield-halved"></i> 256-Bit JWT HMAC-SHA256 Encrypted</div>
+                <div class="security-chip"><i class="fa-solid fa-database"></i> 172,765 Records Connected</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- 2. MAIN APPLICATION CONTAINER -->
+    <!-- ======================================================== -->
+    <div id="appContainer" class="app-layout" style="display: none;">
+        
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="sidebar glass-panel">
+            <div class="sidebar-header">
+                <div class="logo-box">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>SmartTrack<span>™</span></h1>
+                    <span class="badge-live"><span class="pulse-dot"></span> LIVE ENGINE</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">CONTROL TOWER</div>
+                <a href="#dashboard" class="nav-item active" data-view="dashboard">
+                    <i class="fa-solid fa-tower-observation"></i>
+                    <span>Dashboard Overview</span>
+                </a>
+                <a href="#shipments" class="nav-item" data-view="shipments">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span>Shipments Ledger</span>
+                    <span class="nav-pill" id="navTotalShipments">172k</span>
+                </a>
+
+                <div class="nav-section-title">AI & OPERATIONS RESEARCH</div>
+                <a href="#predictions" class="nav-item" data-view="predictions">
+                    <i class="fa-solid fa-brain"></i>
+                    <span>AI Delay Regressor</span>
+                    <span class="nav-pill pill-ai">XGBoost</span>
+                </a>
+                <a href="#demurrage" class="nav-item" data-view="demurrage">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Demurrage & Dwell</span>
+                    <span class="nav-pill pill-warn">$527k</span>
+                </a>
+                <a href="#compliance" class="nav-item" data-view="compliance">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Six Sigma Compliance</span>
+                    <span class="nav-pill">1.60σ</span>
+                </a>
+
+                <div class="nav-section-title">STRATEGY & ESG</div>
+                <a href="#market" class="nav-item" data-view="market">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Market & Segments</span>
+                </a>
+                <a href="#emissions" class="nav-item" data-view="emissions">
+                    <i class="fa-solid fa-leaf"></i>
+                    <span>Scope 3 Emissions</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+                    <div class="user-info">
+                        <span class="user-name" id="sessionUserName">Rajesh Kumar</span>
+                        <span class="user-role" id="sessionUserRole">Senior Logistics Manager</span>
+                    </div>
+                </div>
+                <button id="logoutBtn" class="btn-icon-danger" title="Sign Out"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            </div>
+        </aside>
+
+        <!-- MAIN VIEWPORT AREA -->
+        <main class="main-content">
+            
+            <!-- TOP BAR -->
+            <header class="top-navbar glass-panel">
+                <div class="navbar-left">
+                    <h2 id="pageTitle" class="page-title">Executive Control Tower</h2>
+                    <span class="data-sync-badge"><i class="fa-solid fa-rotate fa-spin"></i> PostgreSQL (172,765 Rows) Synced</span>
+                </div>
+
+                <div class="navbar-right">
+                    <!-- Live Multi-Modal Stream Status -->
+                    <div class="telemetry-bar">
+                        <div class="telemetry-chip chip-ocean" title="Live AISstream.io Ocean Satellite Stream">
+                            <i class="fa-solid fa-ship"></i> <span>AIS Ocean:</span> <strong id="chipAisVessels">4 Vessels</strong>
+                        </div>
+                        <div class="telemetry-chip chip-air" title="Live OpenSky Network Air Cargo Transponders">
+                            <i class="fa-solid fa-plane"></i> <span>OpenSky:</span> <strong id="chipOpenSkyFlights">109 Flights</strong>
+                        </div>
+                        <div class="telemetry-chip chip-road" title="OSRM Highway Freight Logistics Corridor">
+                            <i class="fa-solid fa-truck"></i> <span>Highway OSRM:</span> <strong>Active</strong>
+                        </div>
+                    </div>
+
+                    <button id="refreshDataBtn" class="btn-glass" title="Refresh Live Data"><i class="fa-solid fa-arrows-rotate"></i></button>
+                </div>
+            </header>
+
+            <!-- ======================================================== -->
+            <!-- VIEW 1: DASHBOARD OVERVIEW (SCREEN 02) -->
+            <!-- ======================================================== -->
+            <section id="viewDashboard" class="view-panel active">
+                
+                <!-- EXECUTIVE METRICS RIBBON -->
+                <div class="metrics-grid">
+                    <div class="metric-card glass-panel card-glow-blue">
+                        <div class="card-header">
+                            <span class="metric-label">LIVE IN-TRANSIT PIPELINE</span>
+                            <div class="metric-icon icon-blue"><i class="fa-solid fa-truck-fast"></i></div>
+                        </div>
+                        <div class="metric-value" id="kpiActiveShipments">4,821</div>
+                        <div class="metric-trend trend-up"><i class="fa-solid fa-boxes-stacked"></i> 172,765 Total Historical Records</div>
+                    </div>
+
+                    <div class="metric-card glass-panel card-glow-emerald">
+                        <div class="card-header">
+                            <span class="metric-label">ON-TIME DELIVERY SLA</span>
+                            <div class="metric-icon icon-emerald"><i class="fa-solid fa-circle-check"></i></div>
+                        </div>
+                        <div class="metric-value" id="kpiOnTimeRate">42.71%</div>
+                        <div class="metric-trend trend-down"><i class="fa-solid fa-triangle-exclamation"></i> 57.29% Delay Breach Rate</div>
+                    </div>
+
+                    <div class="metric-card glass-panel card-glow-purple">
+                        <div class="card-header">
+                            <span class="metric-label">GROSS FREIGHT REVENUE</span>
+                            <div class="metric-icon icon-purple"><i class="fa-solid fa-sack-dollar"></i></div>
+                        </div>
+                        <div class="metric-value" id="kpiGrossRevenue">$35.21M</div>
+                        <div class="metric-trend trend-up"><i class="fa-solid fa-arrow-trend-up"></i> Net Profit: $3.81M</div>
+                    </div>
+
+                    <div class="metric-card glass-panel card-glow-rose">
+                        <div class="card-header">
+                            <span class="metric-label">DEMURRAGE EXPOSURE</span>
+                            <div class="metric-icon icon-rose"><i class="fa-solid fa-hourglass-half"></i></div>
+                        </div>
+                        <div class="metric-value" id="kpiDemurrageRisk">$527,500</div>
+                        <div class="metric-trend trend-danger"><i class="fa-solid fa-fire"></i> 975 Containers Past Free-Time</div>
+                    </div>
+                </div>
+
+                <!-- GLOBAL FREIGHT RADAR MAP & HARBOR WEATHER -->
+                <div class="dashboard-grid-2">
+                    
+                    <!-- INTERACTIVE GLOBAL FREIGHT MAP -->
+                    <div class="map-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <i class="fa-solid fa-earth-americas"></i>
+                                <span>Multi-Modal Global Freight Radar (Live Telemetry)</span>
+                            </div>
+                            <div class="legend-badges">
+                                <span class="legend-chip chip-ocean"><i class="fa-solid fa-ship"></i> 🚢 Ocean (AIS)</span>
+                                <span class="legend-chip chip-air"><i class="fa-solid fa-plane"></i> ✈️ Air (OpenSky)</span>
+                                <span class="legend-chip chip-road"><i class="fa-solid fa-truck"></i> 🚛 Road (OSRM)</span>
+                            </div>
+                        </div>
+                        
+                        <!-- LEAFLET MAP CONTAINER -->
+                        <div id="freightMap" class="leaflet-map-box"></div>
+                    </div>
+
+                    <!-- LIVE HARBOR WEATHER & ANCHORAGE STATUS -->
+                    <div class="weather-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <i class="fa-solid fa-cloud-sun"></i>
+                                <span>Port Weather & Dwell Telemetry (Open-Meteo)</span>
+                            </div>
+                        </div>
+                        <div id="portWeatherList" class="weather-port-list">
+                            <!-- Injected via JS -->
+                        </div>
+
+                        <div class="disruption-feed-box">
+                            <div class="feed-header"><i class="fa-solid fa-bell"></i> Active Disruption Feed</div>
+                            <div id="disruptionFeedList" class="feed-items-list">
+                                <!-- Injected via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FREIGHT MODALITY PERFORMANCE METRICS -->
+                <div class="modality-summary-grid">
+                    <div class="modality-card glass-panel">
+                        <div class="modality-header">
+                            <span class="modality-pill pill-ocean">🚢 Ocean TEU Freight (Standard Class)</span>
+                            <span class="modality-count">103,153 Shipments (59.7%)</span>
+                        </div>
+                        <div class="modality-stats">
+                            <div class="stat-col"><span>Promised SLA:</span> <strong>4.0 Days</strong></div>
+                            <div class="stat-col"><span>Late Rate:</span> <strong class="text-emerald">39.77% (Best)</strong></div>
+                            <div class="stat-col"><span>Revenue:</span> <strong>$21.09M</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="modality-card glass-panel">
+                        <div class="modality-header">
+                            <span class="modality-pill pill-road">🚛 Highway FTL Van (Second Class)</span>
+                            <span class="modality-count">33,806 Shipments (19.6%)</span>
+                        </div>
+                        <div class="modality-stats">
+                            <div class="stat-col"><span>Promised SLA:</span> <strong>2.0 Days</strong></div>
+                            <div class="stat-col"><span>Late Rate:</span> <strong class="text-amber">79.83%</strong></div>
+                            <div class="stat-col"><span>Revenue:</span> <strong>$6.86M</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="modality-card glass-panel">
+                        <div class="modality-header">
+                            <span class="modality-pill pill-air">✈️ Express Air Cargo (First Class)</span>
+                            <span class="modality-count">26,513 Shipments (15.4%)</span>
+                        </div>
+                        <div class="modality-stats">
+                            <div class="stat-col"><span>Promised SLA:</span> <strong>1.0 Day</strong></div>
+                            <div class="stat-col"><span>Late Rate:</span> <strong class="text-danger">100.00% (Critical)</strong></div>
+                            <div class="stat-col"><span>Revenue:</span> <strong>$5.41M</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======================================================== -->
+            <!-- VIEW 2: SHIPMENTS LEDGER (SCREEN 03) -->
+            <!-- ======================================================== -->
+            <section id="viewShipments" class="view-panel">
+                <div class="table-card glass-panel">
+                    <div class="panel-header table-controls-header">
+                        <div class="panel-title">
+                            <i class="fa-solid fa-boxes-stacked"></i>
+                            <span>Global Shipments Ledger (172,765 PostgreSQL Database)</span>
+                        </div>
+                        
+                        <!-- PIPELINE COHORT TABS -->
+                        <div class="pipeline-cohort-tabs">
+                            <button class="cohort-tab active" data-status="all"><i class="fa-solid fa-database"></i> All 172k Records</button>
+                            <button class="cohort-tab" data-status="in_transit"><i class="fa-solid fa-truck-moving text-emerald"></i> 🟢 Active In-Transit (4,821)</button>
+                            <button class="cohort-tab" data-status="exceptions"><i class="fa-solid fa-triangle-exclamation text-rose"></i> 🚨 Critical SLA Breaches</button>
+                        </div>
+
+                        <div class="table-filter-bar">
+                            <div class="search-input-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="shipmentSearchInput" placeholder="Search product, category, city, or destination...">
+                            </div>
+
+                            <select id="marketFilterSelect" class="filter-select">
+                                <option value="all">All Markets</option>
+                                <option value="Europe">Europe</option>
+                                <option value="LATAM">LATAM</option>
+                                <option value="Pacific Asia">Pacific Asia</option>
+                                <option value="USCA">USCA</option>
+                                <option value="Africa">Africa</option>
+                            </select>
+
+                            <select id="modeFilterSelect" class="filter-select">
+                                <option value="all">All Transit Modes</option>
+                                <option value="Standard Class">🚢 Ocean (Standard)</option>
+                                <option value="First Class">✈️ Air (First Class)</option>
+                                <option value="Second Class">🚛 Road (Second Class)</option>
+                                <option value="Same Day">⚡ Priority (Same Day)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table" id="shipmentsTable">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Product & Category</th>
+                                    <th>Market & Destination</th>
+                                    <th>Transit Modality</th>
+                                    <th>SLA Target</th>
+                                    <th>Order Value</th>
+                                    <th>XGBoost Risk Score</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shipmentsTableBody">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TABLE PAGINATION -->
+                    <div class="table-pagination-footer">
+                        <span class="pagination-info" id="paginationInfo">Showing 1 to 25 of 172,765 records</span>
+                        <div class="pagination-buttons">
+                            <button id="prevPageBtn" class="btn-glass" disabled><i class="fa-solid fa-chevron-left"></i> Previous</button>
+                            <span class="current-page-badge" id="currentPageBadge">Page 1</span>
+                            <button id="nextPageBtn" class="btn-glass">Next <i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======================================================== -->
+            <!-- VIEW 3: AI PREDICTIONS & REGRESSOR (SCREEN 04) -->
+            <!-- ======================================================== -->
+            <section id="viewPredictions" class="view-panel">
+                <div class="prediction-grid">
+                    
+                    <!-- INPUT FORM / SIMULATOR -->
+                    <div class="simulator-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <i class="fa-solid fa-sliders"></i>
+                                <span>XGBoost Delay Risk & ETA Simulator</span>
+                            </div>
+                        </div>
+
+                        <form id="predictionSimulatorForm" class="sim-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Order Identifier</label>
+                                    <input type="text" id="simOrderId" value="ORD-94821" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Shipping Modality</label>
+                                    <select id="simShippingMode">
+                                        <option value="First Class" selected>✈️ First Class (Air Cargo ULD)</option>
+                                        <option value="Second Class">🚛 Second Class (Highway FTL)</option>
+                                        <option value="Standard Class">🚢 Standard Class (Ocean TEU)</option>
+                                        <option value="Same Day">⚡ Same Day (Courier)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Promised SLA (Days)</label>
+                                    <input type="number" id="simScheduledDays" value="1" min="0" max="10" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Order Value ($ USD)</label>
+                                    <input type="number" id="simSales" value="450.00" step="10" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Haversine Distance (km)</label>
+                                    <input type="number" id="simDistance" value="6850" step="50" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Simulated Port Dwell / Delay (Hrs)</label>
+                                    <input type="number" id="simDelayHrs" value="48" step="6" required>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-primary sim-submit-btn">
+                                <i class="fa-solid fa-microchip"></i>
+                                <span>Execute XGBoost Regressor Inference</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- AI RISK DIAL GAUGE & DECISION OUTPUT -->
+                    <div class="results-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <i class="fa-solid fa-gauge-high"></i>
+                                <span>Inference Output & Supervised Risk Probability</span>
+                            </div>
+                        </div>
+
+                        <div class="risk-gauge-container">
+                            <div class="gauge-dial-box">
+                                <svg viewBox="0 0 200 120" class="gauge-svg">
+                                    <path d="M20,100 A80,80 0 0,1 180,100" class="gauge-bg" />
+                                    <path id="gaugeProgressPath" d="M20,100 A80,80 0 0,1 180,100" class="gauge-fill" stroke-dasharray="251.2" stroke-dashoffset="31.6" />
+                                </svg>
+                                <div class="gauge-readout">
+                                    <span class="gauge-pct" id="aiRiskPct">87.4%</span>
+                                    <span class="gauge-label" id="aiRiskLabel">CRITICAL BREACH RISK</span>
+                                </div>
+                            </div>
+                            <div class="gauge-explanation">
+                                <p><strong>Model:</strong> XGBoost Regressor (1,000 Trees • GPU Trained)</p>
+                                <p><strong>Predicted Transit Time:</strong> <span id="aiPredictedDays" class="text-amber">2.13 Days</span> (vs 1.0 Day SLA Target)</p>
+                            </div>
+                        </div>
+
+                        <!-- PRESCRIPTIVE 1-CLICK ACTION CARD -->
+                        <div class="prescriptive-action-card">
+                            <div class="action-header">
+                                <i class="fa-solid fa-bolt text-amber"></i>
+                                <span>Prescriptive Operations Optimization</span>
+                            </div>
+                            <div class="action-body">
+                                <h4>✈️ 1-Click Modal Shift to Priority Air Cargo</h4>
+                                <p>Re-routing through Mumbai-Schiphol Air Corridor eliminates $-1,200 contractual OTIF penalty fine for a minor $+350 expedite cost.</p>
+                                <div class="action-math">
+                                    <div class="math-col"><span>Air Cost:</span> <strong>+$350</strong></div>
+                                    <div class="math-col"><span>Avoided Fine:</span> <strong>-$1,200</strong></div>
+                                    <div class="math-col"><span>Net Savings:</span> <strong class="text-emerald">+$850 USD</strong></div>
+                                </div>
+                            </div>
+                            <button id="approveRerouteBtn" class="btn-emerald action-btn">
+                                <i class="fa-solid fa-check"></i>
+                                <span>APPROVE AIR REROUTE (LOG DECISION TO MLOPS)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SHAP FEATURE ATTRIBUTION WATERFALL -->
+                <div class="shap-card glass-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="fa-solid fa-chart-column"></i>
+                            <span>SHAP Feature Attribution: Drivers Pushing Shipment Toward SLA Delay</span>
+                        </div>
+                    </div>
+                    <div class="shap-chart-box">
+                        <canvas id="shapChart" height="90"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======================================================== -->
+            <!-- VIEW 4: DEMURRAGE & DWELL (SCREEN 05) -->
+            <!-- ======================================================== -->
+            <section id="viewDemurrage" class="view-panel">
+                <div class="demurrage-overview-grid">
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">TOTAL TRACKED CONTAINERS</span>
+                        <div class="metric-value">975 TEU</div>
+                        <div class="metric-trend trend-neutral">In Port Terminal Storage</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">FREE-TIME ALLOWANCE (0-4d)</span>
+                        <div class="metric-value text-blue">330 TEU</div>
+                        <div class="metric-trend trend-up">$0 / Day Accrual</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">TIER 1 DEMURRAGE (5-7d)</span>
+                        <div class="metric-value text-purple">264 TEU</div>
+                        <div class="metric-trend trend-danger">$300 / Container / Day</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">TIER 3 ESCALATED (10+d)</span>
+                        <div class="metric-value text-rose">225 TEU</div>
+                        <div class="metric-trend trend-danger">$600 / Container / Day</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid-2">
+                    <div class="chart-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title"><i class="fa-solid fa-chart-simple"></i> 4-Tier Demurrage Cost Exposure Distribution</div>
+                        </div>
+                        <canvas id="demurrageTiersChart"></canvas>
+                    </div>
+
+                    <div class="port-dwell-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title"><i class="fa-solid fa-anchor"></i> Terminal Dwell & Ticking Demurrage Clocks</div>
+                        </div>
+                        <div class="dwell-clock-list">
+                            <div class="dwell-clock-item">
+                                <div class="dwell-top">
+                                    <strong>Port of Rotterdam, Netherlands</strong>
+                                    <span class="badge-danger">5d 08h Overdue</span>
+                                </div>
+                                <div class="dwell-details">
+                                    <span>Avg Dwell: 5.8 Days • 480 Containers At Risk</span>
+                                    <strong class="text-rose">$1,600 / Day Rate</strong>
+                                </div>
+                            </div>
+
+                            <div class="dwell-clock-item">
+                                <div class="dwell-top">
+                                    <strong>JNPT Navi Mumbai, India</strong>
+                                    <span class="badge-danger">3d 14h Overdue</span>
+                                </div>
+                                <div class="dwell-details">
+                                    <span>Avg Dwell: 5.2 Days • 320 Containers At Risk</span>
+                                    <strong class="text-rose">$1,050 / Day Rate</strong>
+                                </div>
+                            </div>
+
+                            <div class="dwell-clock-item">
+                                <div class="dwell-top">
+                                    <strong>Port of Singapore, Singapore</strong>
+                                    <span class="badge-amber">1d 02h Overdue</span>
+                                </div>
+                                <div class="dwell-details">
+                                    <span>Avg Dwell: 4.1 Days • 175 Containers At Risk</span>
+                                    <strong class="text-amber">$300 / Day Rate</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======================================================== -->
+            <!-- VIEW 5: SIX SIGMA COMPLIANCE (SCREEN 06) -->
+            <!-- ======================================================== -->
+            <section id="viewCompliance" class="view-panel">
+                <div class="compliance-summary-grid">
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">UPPER CONTROL LIMIT (UCL)</span>
+                        <div class="metric-value text-rose">6.21 Days</div>
+                        <div class="metric-trend">Shewhart 3σ Threshold</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">X-BAR PROCESS MEAN (μ)</span>
+                        <div class="metric-value text-blue">3.56 Days</div>
+                        <div class="metric-trend">Lead Time from Order to Delivery</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">LOWER CONTROL LIMIT (LCL)</span>
+                        <div class="metric-value text-emerald">0.91 Days</div>
+                        <div class="metric-trend">Lower Statistical Boundary</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">QUALITY CAPABILITY</span>
+                        <div class="metric-value text-amber">1.60σ</div>
+                        <div class="metric-trend trend-danger">572,900 DPMO (Defects / Million)</div>
+                    </div>
+                </div>
+
+                <div class="spc-chart-card glass-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <span>Statistical Process Control (SPC) X-bar Chart: Dispatch to Delivery Lead Time</span>
+                        </div>
+                        <div class="spc-legend">
+                            <span class="legend-ucl"><i class="fa-solid fa-minus"></i> UCL (6.21d)</span>
+                            <span class="legend-mean"><i class="fa-solid fa-minus"></i> Mean (3.56d)</span>
+                            <span class="legend-lcl"><i class="fa-solid fa-minus"></i> LCL (0.91d)</span>
+                        </div>
+                    </div>
+                    <canvas id="spcChart" height="90"></canvas>
+                </div>
+
+                <!-- REGULATORY STANDARDS BADGES -->
+                <div class="regulatory-grid">
+                    <div class="reg-badge glass-panel">
+                        <div class="reg-icon"><i class="fa-solid fa-ship"></i></div>
+                        <div class="reg-info">
+                            <strong>IMO 2023 CII Grade B</strong>
+                            <p>Vessel Carbon Intensity Indicator Compliant</p>
+                        </div>
+                        <span class="badge-emerald">VERIFIED</span>
+                    </div>
+
+                    <div class="reg-badge glass-panel">
+                        <div class="reg-icon"><i class="fa-solid fa-weight-hanging"></i></div>
+                        <div class="reg-info">
+                            <strong>SOLAS VGM (ISO 668)</strong>
+                            <p>Verified Gross Mass ≤ 28,200 kg TEU Limit</p>
+                        </div>
+                        <span class="badge-emerald">ENFORCED</span>
+                    </div>
+
+                    <div class="reg-badge glass-panel">
+                        <div class="reg-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                        <div class="reg-info">
+                            <strong>GST e-Way Bill Active</strong>
+                            <p>National Inter-State Freight Transit Approved</p>
+                        </div>
+                        <span class="badge-emerald">VALID</span>
+                    </div>
+
+                    <div class="reg-badge glass-panel">
+                        <div class="reg-icon"><i class="fa-solid fa-user-clock"></i></div>
+                        <div class="reg-info">
+                            <strong>FMCSA Hours of Service</strong>
+                            <p>11-Hour Maximum Driver Shift Enforced</p>
+                        </div>
+                        <span class="badge-emerald">COMPLIANT</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======================================================== -->
+            <!-- VIEW 6: MARKET & SEGMENTS (SCREEN 07) -->
+            <!-- ======================================================== -->
+            <section id="viewMarket" class="view-panel">
+                <div class="dashboard-grid-2">
+                    <div class="chart-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title"><i class="fa-solid fa-users-viewfinder"></i> Customer Segment Revenue Breakdown</div>
+                        </div>
+                        <canvas id="customerSegmentsChart"></canvas>
+                    </div>
+
+                    <div class="chart-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title"><i class="fa-solid fa-globe"></i> Regional Market Revenue & Late Breach Rates</div>
+                        </div>
+                        <canvas id="marketSalesChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======================================================== -->
+            <!-- VIEW 7: SCOPE 3 EMISSIONS (SCREEN 08) -->
+            <!-- ======================================================== -->
+            <section id="viewEmissions" class="view-panel">
+                <div class="emissions-overview-grid">
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">TOTAL SCOPE 3 CARBON OUTPUT</span>
+                        <div class="metric-value text-emerald">803,190 kg</div>
+                        <div class="metric-trend trend-up"><i class="fa-solid fa-arrow-trend-down"></i> -5.0% YoY Emission Reduction</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">OCEAN MARITIME SHARE</span>
+                        <div class="metric-value text-blue">341,354 kg</div>
+                        <div class="metric-trend">42.5% of Corporate Carbon Footprint</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">AIR CARGO SHARE</span>
+                        <div class="metric-value text-purple">164,653 kg</div>
+                        <div class="metric-trend">20.5% (High Carbon Intensity)</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <span class="metric-label">ROAD LOGISTICS SHARE</span>
+                        <div class="metric-value text-amber">168,670 kg</div>
+                        <div class="metric-trend">21.0% Heavy Trucking</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid-2">
+                    <div class="chart-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title"><i class="fa-solid fa-pie-chart"></i> Scope 3 GHG Protocol Breakdown by Transit Modality</div>
+                        </div>
+                        <canvas id="emissionsModalChart"></canvas>
+                    </div>
+
+                    <div class="table-card glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title"><i class="fa-solid fa-route"></i> Trade Corridor Carbon Intensity Benchmark</div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Corridor Route</th>
+                                        <th>Modality</th>
+                                        <th>Distance (km)</th>
+                                        <th>CO2 Output (kg)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>JNPT Mumbai → Port of Rotterdam</td>
+                                        <td><span class="modality-pill pill-ocean">🚢 Ocean TEU</span></td>
+                                        <td>10,242 km</td>
+                                        <td><strong>87,456 kg</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>JNPT Mumbai → Singapore PSA</td>
+                                        <td><span class="modality-pill pill-ocean">🚢 Ocean TEU</span></td>
+                                        <td>2,678 km</td>
+                                        <td><strong>22,876 kg</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Mundra Port → Los Angeles</td>
+                                        <td><span class="modality-pill pill-ocean">🚢 Ocean TEU</span></td>
+                                        <td>14,832 km</td>
+                                        <td><strong>131,423 kg</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Delhi → Mumbai Industrial Corridor</td>
+                                        <td><span class="modality-pill pill-road">🚛 Road FTL</span></td>
+                                        <td>1,420 km</td>
+                                        <td><strong>35,500 kg</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- FLOATING GENAI LOGISTICS COPILOT WIDGET -->
+    <!-- ======================================================== -->
+    <div id="aiCopilotBtn" class="ai-floating-btn" title="Open SmartTrack™ AI Dispatcher Copilot">
+        <div class="ai-btn-pulse"></div>
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>AI Dispatch Copilot</span>
+    </div>
+
+    <!-- AI COPILOT CHAT DRAWER -->
+    <div id="aiChatDrawer" class="ai-chat-drawer glass-panel" style="display: none;">
+        <div class="chat-header">
+            <div class="chat-title">
+                <i class="fa-solid fa-robot text-purple"></i>
+                <div>
+                    <h4>SmartTrack™ AI Dispatcher</h4>
+                    <span class="chat-model-tag">Groq Llama-3.3-70b • SOP Knowledge Base</span>
+                </div>
+            </div>
+            <button id="closeAiChatBtn" class="btn-icon"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- QUICK PROMPTS RIBBON -->
+        <div class="chat-quick-prompts">
+            <button class="quick-chip" data-prompt="Why is shipment ORD-94821 delayed and what is the SOP corrective action?">🚨 Analyze ORD-94821 Delay</button>
+            <button class="quick-chip" data-prompt="What are our demurrage fee tiers and how do we prevent Port of Rotterdam dwell penalties?">⏳ Demurrage Rules</button>
+            <button class="quick-chip" data-prompt="Explain our 1.60 Sigma (572,900 DPMO) score and how to improve lead-time quality.">📈 Six Sigma Quality</button>
+            <button class="quick-chip" data-prompt="How can we optimize Scope 3 carbon emissions across maritime and air cargo?">🌿 Scope 3 Carbon</button>
+        </div>
+
+        <div id="chatMessagesBox" class="chat-messages-box">
+            <div class="chat-msg msg-ai">
+                <div class="msg-avatar"><i class="fa-solid fa-brain"></i></div>
+                <div class="msg-content">
+                    <p><strong>Hello Rajesh!</strong> I am your <strong>SmartTrack™ AI Dispatcher Copilot</strong>, powered by Groq Llama-3 and grounded in your <strong>NexaFreight Business SOP Research Guide</strong>.</p>
+                    <p>Ask me to analyze delay risks, calculate modal shift savings, or review demurrage free-time rules!</p>
+                </div>
+            </div>
+        </div>
+
+        <form id="chatInputForm" class="chat-input-row">
+            <input type="text" id="chatUserInput" placeholder="Ask AI Dispatcher about SLA delays, demurrage, or SOP rules..." autocomplete="off" required>
+            <button type="submit" id="sendChatBtn" class="btn-primary-send"><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
+    </div>
+
+    <!-- MAIN APP SCRIPT -->
+    <script src="js/app.js"></script>
+</body>
+</html>

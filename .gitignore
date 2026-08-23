@@ -1,0 +1,17 @@
+# Python & Environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+.env
+
+# Large raw datasets (>50MB)
+port data/Daily_Port_Activity_Data_and_Trade_Estimates.csv
+md/DataCoSupplyChainDataset.csv
+
+# IDE and temp files
+.vscode/
+.idea/
+.DS_Store

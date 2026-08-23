@@ -1,0 +1,49 @@
+{
+  "total_rows": 172765,
+  "total_features": 42,
+  "total_sales_usd": 35214429.6534783,
+  "total_benefit_usd": 3806420.633869131,
+  "total_discounts_usd": 3569808.322443083,
+  "total_cargo_weight_kg": 1834331.8,
+  "overall_late_rate_pct": 57.28996035076549,
+  "shipping_mode_breakdown": {
+    "First Class": {
+      "count": 26513,
+      "late_rate_pct": 100.0
+    },
+    "Same Day": {
+      "count": 9293,
+      "late_rate_pct": 47.92854836974067
+    },
+    "Second Class": {
+      "count": 33806,
+      "late_rate_pct": 79.82902443353251
+    },
+    "Standard Class": {
+      "count": 103153,
+      "late_rate_pct": 39.76908087985807
+    }
+  },
+  "market_breakdown": {
+    "Africa": {
+      "count": 11154,
+      "late_rate_pct": 56.840595302133764
+    },
+    "Europe": {
+      "count": 48090,
+      "late_rate_pct": 57.689748388438346
+    },
+    "LATAM": {
+      "count": 49309,
+      "late_rate_pct": 56.87399866150196
+    },
+    "Pacific Asia": {
+      "count": 39585,
+      "late_rate_pct": 57.375268409751165
+    },
+    "USCA": {
+      "count": 24627,
+      "late_rate_pct": 57.40853534738295
+    }
+  }
+}
