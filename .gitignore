@@ -1,17 +1,31 @@
-# Python & Environments
+# Python & Virtual Environments
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 venv/
 env/
 .env
 
-# Large raw datasets (>50MB)
-port data/Daily_Port_Activity_Data_and_Trade_Estimates.csv
-md/DataCoSupplyChainDataset.csv
+# Raw and Processed Datasets
+*.csv
+*.xlsx
+*.parquet
+port data/
+processed_data/
 
-# IDE and temp files
+# Benchmark Images & UI Mockups
+project44 images/
+adjustments/
+ui/
+*.pdf
+
+# Research & Internal Handoff Notes
+md/
+.agents/
+
+# IDE & OS Artifacts
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
+*.log
