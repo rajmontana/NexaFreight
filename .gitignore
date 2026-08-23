@@ -19,9 +19,12 @@ adjustments/
 ui/
 *.pdf
 
-# Research & Internal Handoff Notes
+# Research, Reports & Intermediate Docs
 md/
 .agents/
+NexaFreight_Master_Project_Report.*
+~$*
+generate_report_docx.py
 
 # IDE & OS Artifacts
 .vscode/
