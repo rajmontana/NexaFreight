@@ -539,7 +539,8 @@ Also two *process* failure modes from your past two weeks, engineered out:
 - ✅ *Accept:* `docker-compose up` → clean boot, `/api/health` real, zero secrets in git history going forward (rotate any deployed creds), tests green.
 
 **Phase 1 — Domain core & real data ingestion (1 week)**
-- Schema of §5 (master data + operational + events); **DataCo ingestion pipeline** (order backbone: products, geography, margins → shipments via documented planning rules); calibrated execution layer (dwell/transit/disruption parameters from Port Disruption DB + IMF chokepoints, all source-cited); SOP rulebook seed; provenance stamps everywhere.
+- Schema of §5 (master data + operational + events); **DataCo ingestion pipeline** (order backbone: products, geography, margins → shipments via documented planning rules); calibrated execution layer (dwell/transit/disruption parameters from Port Disruption DB + IMF chokepoints + UNCTAD dwell priors, all source-cited); SOP rulebook seed; provenance stamps everywhere.
+- ⛔ **Hard blocker (owner directive: real data only, no mocks):** requires `data/raw/DataCoSupplyChainDataset.csv` pushed to the repo by the owner before ingestion work begins. No fixture fallback.
 - ✅ *Accept:* SQL produces believable KPIs; every shipment traceable to a real DataCo order line; every calibrated parameter shows its source; `--seed 42` reproduces identical execution history.
 
 **Phase 2 — Live telemetry & map (1 week)**

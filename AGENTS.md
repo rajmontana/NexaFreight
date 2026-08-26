@@ -2,7 +2,7 @@
 
 > **Binding for any AI coding agent working in this repository** (Arena.ai Agent Mode sessions, Claude Code, or human contributors). Read at the start of every session; follow without exception. The project owner edits this file at will — a change here changes agent behavior, no discussion required.
 >
-> **v0.2 — owner-supplied rule set adopted 2026-08-26**, integrated with project-specific standing rules. Phases refer to `docs/BLUEPRINT.md` §13.
+> **v0.3 — owner-supplied rule set adopted 2026-08-26** (§3 tightened by owner directive: no mock/fake/test values in the product — real data only), integrated with project-specific standing rules. Phases refer to `docs/BLUEPRINT.md` §13.
 
 ---
 
@@ -14,9 +14,14 @@ Work **only** on the current phase/task the owner defines. Do not start, prep, o
 
 Never replace a specified library, framework, dataset, API, or model with an alternative because it's "easier," "more modern," or "faster to implement." The blueprint's stack choices (FastAPI, PostgreSQL, Leaflet/Chart.js vanilla JS, LightGBM, PuLP/CBC, AISStream/OpenSky/Open-Meteo/OSRM, HF Spaces + Neon) are the spec. If I believe an alternative is better, **STOP and propose it** — don't implement it.
 
-## 3. No hardcoded/mock/dummy values without explicit flagging
+## 3. No fake data in the product — REAL or CALIBRATED only
 
-Any placeholder, mock data, sample value, or hardcoded constant must be labeled clearly in code (`# TODO: MOCK — replace with real <source>`) **and** reported to the owner in my response. Mock data never silently passes as "done." Product-level rule stays: every number carries provenance (`REAL` / `DERIVED` / `CALIBRATED` / `PROJECTED`).
+**Owner directive (2026-08-26): the product runs on real data only. No mock, fake, dummy, or placeholder values may ever appear in the running application.**
+
+- Every product value must be `REAL` (live feed or published dataset), `DERIVED` (computed from real), `CALIBRATED` (constructed with every parameter citing a published source — `docs/BLUEPRINT.md` §4.3), or `PROJECTED` (model output).
+- **Missing real data = stop and wait** (rule 4). Never substitute fake data to keep building.
+- `FEED_MODE=mock` does NOT mean "fake data": it means the feed returns an honest **empty/not-connected** state. No invented numbers.
+- The only permitted synthetic values are **unit-test fixtures** inside `backend/tests/` (testing "2+2=4" needs a known input — this is standard engineering hygiene and never ships in the product).
 
 ## 4. Missing requirement = stop and ask
 
