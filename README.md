@@ -1,131 +1,77 @@
-# 🚢 NexaFreight SmartTrack™ AI
-### Multi-Modal Predictive Logistics & Intelligent Autonomous Supply Chain Tower
+# NexaFreight Control Tower
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![XGBoost](https://img.shields.io/badge/XGBoost-EB5424?style=for-the-badge)](https://xgboost.readthedocs.io/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Neon](https://img.shields.io/badge/Neon_Postgres-00E599?style=for-the-badge&logo=neon&logoColor=black)](https://neon.tech/)
+**Multi-modal logistics control tower** — live shipment visibility (ocean / air / road),
+AI-assisted disruption decisions with human approval, operations-research routing,
+financial exposure tracking, forecasting, and ESG/carbon compliance.
 
----
-
-## 📌 Executive Overview
-
-**NexaFreight SmartTrack™** is an enterprise-grade logistics control tower designed for global freight forwarders, 3PLs, and supply chain operators. Built on **172,765 real-world multi-modal shipment records**, it integrates **gradient-boosted machine learning**, **explainable AI (TreeSHAP)**, **live satellite telemetry**, and **Six Sigma Statistical Process Control (SPC)** to predict delivery breaches, prevent demurrage fines, and optimize multi-modal routing in real time.
+> **Status: Phase 0 of 6 (foundation).** Full plan: [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) ·
+> Agent working rules: [`AGENTS.md`](AGENTS.md)
 
 ---
 
-## 🏛️ System Architecture
+## What this is (honest version)
 
-```mermaid
-flowchart TD
-    subgraph Data & Storage
-        DB[("PostgreSQL Database (Neon.tech)\n172,765 Shipments")]
-    end
+A control tower for a realistic freight operation built on a strict **data-honesty model**
+— every number on every screen carries its provenance:
 
-    subgraph Backend Engine (FastAPI)
-        AUTH["JWT Cryptographic Auth\n(SHA-256 HMAC)"]
-        ML["XGBoost ETA Regressor\n(47 Feature Vector)"]
-        SHAP["Native TreeSHAP Engine\n(Feature Attribution)"]
-        SPC["Shewhart SPC Engine\n(X-bar, UCL/LCL, DPMO)"]
-        DEM["Demurrage Accrual Calculator\n(Port Dwell Tiers)"]
-        ESG["Scope 3 Carbon Engine\n(GLEC Multi-Modal Factors)"]
-    end
+| Label | Meaning | Examples |
+|---|---|---|
+| `REAL` | From a live external feed or published dataset | AIS vessel positions, ADS-B flights, weather, 180K real order lines (DataCo, CC BY 4.0), IMF chokepoint transits, UNCTAD port dwell times, published port-disruption records |
+| `DERIVED` | Computed from real data | Port congestion index, great-circle distances, lane statistics |
+| `CALIBRATED` | Constructed, every parameter citing a published source | Execution events/dwell, rate cards, cargo-to-vessel bindings |
+| `PROJECTED` | Model output | ETA quantiles, delay risk, demand forecasts |
 
-    subgraph Frontend Control Tower (Vanilla Web)
-        UI["Glassmorphism Dashboard\n(Leaflet.js + Chart.js)"]
-    end
+The AI **recommends** (ranked options with full cost math, grounded in the SOP rulebook);
+humans **decide** (role-based approval limits, immutable audit trail).
 
-    DB --> AUTH
-    DB --> SPC
-    DB --> DEM
-    DB --> ESG
-    AUTH --> UI
-    ML --> UI
-    SHAP --> UI
-    SPC --> UI
-    DEM --> UI
-    ESG --> UI
-```
+## Roadmap (phases, acceptance criteria in the blueprint §13)
 
----
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Repo hygiene, package structure, CI, config/auth core, honest health | ✅ done |
+| 1 | Domain schema, DataCo ingestion, calibrated execution layer, SOP seed | ⬜ |
+| 2 | AIS/OpenSky ingestion, ghost binding, live map | ⬜ |
+| 3 | ETA quantile model, rule engine, alert inbox + approvals | ⬜ |
+| 4 | OR decision engine, financial dashboards | ⬜ |
+| 5 | Forecasting, ESG, free-tier cloud deploy (HF Spaces + Neon) | ⬜ |
 
-## 🌟 Key Capabilities
+## Quick start (local)
 
-### 1. 🤖 Predictive Lead-Time & Delay Risk (XGBoost + TreeSHAP)
-* Evaluates an **exact 47-feature vector** across order geography, shipping mode, cargo weight, and simulated weather/transit delays.
-* Dynamically computes **TreeSHAP feature contributions** ($\sum \phi_i + \phi_0 = f(x)$) to explain the root cause of every predicted delay.
-* Provides **prescriptive ROI recommendations** (e.g., $+ \$850$ net benefit by switching delayed First Class shipments to Air Cargo).
-
-### 2. ⏱️ Demurrage & Detention Ticking Clocks
-* Accrues tier-based container storage costs across major global ports:
-  * **Free Period (0–4 Days):** $\$0$
-  * **Tier 1 (5–7 Days):** $\$300/\text{day}$
-  * **Tier 2 (8–10 Days):** $\$450/\text{day}$
-  * **Tier 3 (10+ Days):** $\$600/\text{day}$
-* Evaluates active financial exposure ($> \$90\text{M}$ across historical demurrage risk clusters).
-
-### 3. 📈 Six Sigma Statistical Process Control (SPC)
-* Computes real **Shewhart $\bar{X}$-Bar control limits** ($\bar{X} = 3.79\text{d}$, $\text{UCL} = 7.63\text{d}$, $\text{LCL} = 0.0\text{d}$).
-* Benchmarks carrier performance using **Defects Per Million Opportunities ($\text{DPMO} = 572,899$)** and Six Sigma Quality metrics.
-
-### 4. 🌿 Scope 3 GHG Emissions Tracker (GLEC Framework)
-* Multi-modal carbon calculation across Air ($0.500\text{ kg CO}_2\text{e/t-km}$), Road ($0.062$), Rail ($0.022$), and Ocean ($0.015$).
-* Identifies green corridor opportunities to meet corporate ESG targets.
-
-### 5. 🔒 Zero-Trust JWT Authentication
-* All control tower analytics, shipment tables, and ML prediction endpoints are strictly protected by **Bearer JWT token verification**.
-
----
-
-## 🚀 Quick Start (Local Development)
-
-### 1. Clone & Configure Environment
 ```bash
-git clone https://github.com/rajmontana/NexaFreight.git
-cd NexaFreight
-copy .env.example .env
+cp .env.example .env            # set JWT_SECRET (openssl rand -base64 48)
+docker compose up --build       # API on http://localhost:8000, Postgres 16
 ```
 
-### 2. Run with Docker Compose
+Or without Docker:
+
 ```bash
-docker-compose up --build
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+uvicorn backend.app.main:app --reload
 ```
-* **Frontend Control Tower:** [http://localhost:8000](http://localhost:8000)
-* **Interactive API Docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### 3. Run with Python Virtual Environment
+## Development
+
 ```bash
-pip install -r backend/requirements.txt
-uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
+ruff check .     # lint (CI-enforced)
+pytest           # test suite (CI-enforced)
 ```
 
----
+CI runs on every push/PR (`.github/workflows/ci.yml`): lint → tests → secret scan.
 
-## 🔑 Demo Credentials
+## Stack (fixed by blueprint §4/AGENTS.md — no substitutions)
 
-| Role | Email | Password |
-|:---|:---|:---|
-| **Logistics Manager** | `manager@nexafreight.com` | `SmartTrack2025` |
-| **Supply Chain Director** | `director@nexafreight.com` | `SmartTrack2025` |
+FastAPI · PostgreSQL 16 (+SQLite for fast tests) · SQLAlchemy 2 · Alembic ·
+Leaflet/Chart.js vanilla-JS portal · LightGBM (Phase 3) · PuLP/CBC (Phase 4) ·
+AISStream.io + OpenSky + Open-Meteo + OSRM (Phase 2) · Hugging Face Spaces + Neon (Phase 5).
 
----
+## Data sources
 
-## ☁️ Cloud Deployment
+See `docs/BLUEPRINT.md` §4 (strategy, licenses) and §4.5 (dataset audit) and
+`data/raw/README.md`. Raw files are **not** committed; ingestion pipelines emit
+small documented derivatives.
 
-### 1. Database (Neon.tech PostgreSQL)
-Stream your local PostgreSQL database into Neon in seconds:
-```bash
-set DATABASE_URL="postgresql://user:pass@ep-cool-db.neon.tech/neondb?sslmode=require"
-python backend/migrate_to_cloud_db.py
-```
+## License
 
-### 2. Web Service (Render / Railway / Fly.io)
-1. Link this repository to **Render**.
-2. Select **Docker** environment.
-3. Configure `DATABASE_URL` and `JWT_SECRET` in environment variables.
-
----
-
-## 📄 License
-Distributed under the MIT License. See `LICENSE` for more information.
+MIT (code). Datasets keep their upstream licenses (DataCo CC BY 4.0; IMF/World Bank
+terms; UNCTAD terms; Verschuur et al. cited, not redistributed).

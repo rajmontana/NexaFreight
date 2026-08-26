@@ -1,34 +1,38 @@
-# Python & Virtual Environments
+# Secrets & env
+.env
+.env.*
+!.env.example
+
+# Data (raw datasets never committed — AGENTS.md §2.3)
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/README.md
+data/replay/*.jsonl
+
+# Model artifacts (versioned registry manifest IS committed; binaries are not)
+*.pkl
+*.joblib
+models/registry/binaries/
+
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-venv/
-env/
-.env
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
 
-# Raw and Processed Datasets
-*.csv
-*.xlsx
-*.parquet
-port data/
-processed_data/
+# Databases
+*.db
+*.sqlite3
 
-# Benchmark Images & UI Mockups
-project44 images/
-adjustments/
-ui/
-*.pdf
-
-# Research, Reports & Intermediate Docs
-md/
-.agents/
-NexaFreight_Master_Project_Report.*
-~$*
-generate_report_docx.py
-
-# IDE & OS Artifacts
-.vscode/
-.idea/
+# OS / editor
 .DS_Store
 Thumbs.db
-*.log
+.idea/
+.vscode/
+
+# Node (portal tooling, if added later)
+node_modules/

@@ -1,27 +1,34 @@
+# NexaFreight — local stack (Phase 0: API + PostgreSQL 16)
+# Usage: cp .env.example .env  →  docker compose up --build
 services:
-  smarttrack-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  api:
+    build: .
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:admin321@db:5432/smart_track
-      - JWT_SECRET=smarttrack-nexafreight-secret-key-2025-production
-      - AISSTREAM_API_KEY=${AISSTREAM_API_KEY}
+      APP_ENV: dev
+      DATABASE_URL: postgresql://nexa:nexa@db:5432/nexafreight
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -base64 48)}
+      FEED_MODE: ${FEED_MODE:-mock}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=admin321
-      - POSTGRES_DB=smart_track
+      POSTGRES_USER: nexa
+      POSTGRES_PASSWORD: nexa
+      POSTGRES_DB: nexafreight
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexa -d nexafreight"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   postgres_data:

@@ -1,0 +1,20 @@
+[project]
+name = "nexafreight-backend"
+version = "3.0.0"
+description = "NexaFreight multi-modal logistics control tower (see docs/BLUEPRINT.md)"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".git", "__pycache__", "data", "portal"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+# E501: formatter-adjacent long lines handled case-by-case
+# B008: function call in default arg — the canonical FastAPI dependency-injection idiom
+ignore = ["E501", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+addopts = "-q"
