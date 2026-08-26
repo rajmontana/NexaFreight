@@ -16,3 +16,11 @@ provenance.
 
 Owner: git-push from your machine → `git checkout main -- data/raw/` is NOT needed;
 just copy the files here and commit nothing (folder is ignored except this README).
+
+## Deploy note (documented exception to "raw out of git")
+
+The small source files above (~13 MB total: WPI ports, Our Airports, UNCTAD
+port performance, disruption DB, DataCo dictionary, SOP guide) ARE committed
+(deliberately force-added) so the deployed container can bootstrap its database
+without external storage. The DataCo CSV (91 MB) is in-repo from the owner's
+push. Everything else stays out of git.
