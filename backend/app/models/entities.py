@@ -232,3 +232,94 @@ class DisruptionRecord(Base):
                                         default="Verschuur et al. 2020, Port Disruption Database")
 
     __table_args__ = (UniqueConstraint("event", "port_name", name="uq_disruption"),)
+
+
+class Port(Base):
+    """Ports — REAL coordinates from NGA World Port Index (Pub 150)."""
+
+    __tablename__ = "ports"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    wpi_number: Mapped[int | None] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    country_code: Mapped[str | None] = mapped_column(String(10))
+    locode: Mapped[str | None] = mapped_column(String(10))
+    lat: Mapped[float] = mapped_column(Float)
+    lon: Mapped[float] = mapped_column(Float)
+    harbor_size: Mapped[str | None] = mapped_column(String(30))
+    source: Mapped[str] = mapped_column(String(80), default="NGA World Port Index (Pub 150)")
+
+
+class Airport(Base):
+    """Airports — REAL data from Our Airports (public domain)."""
+
+    __tablename__ = "airports"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    iata: Mapped[str] = mapped_column(String(5), unique=True)
+    icao: Mapped[str | None] = mapped_column(String(8))
+    name: Mapped[str] = mapped_column(String(160))
+    country: Mapped[str | None] = mapped_column(String(80))
+    lat: Mapped[float] = mapped_column(Float)
+    lon: Mapped[float] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(40), default="Our Airports (public domain)")
+
+
+class Lane(Base):
+    """Lanes with real geometry: ocean via searoute marnet, air via great-circle."""
+
+    __tablename__ = "lanes"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    lane_key: Mapped[str] = mapped_column(String(80), unique=True)
+    mode: Mapped[str] = mapped_column(String(10))  # OCEAN | AIR | ROAD
+    origin_name: Mapped[str] = mapped_column(String(120))
+    dest_name: Mapped[str] = mapped_column(String(120))
+    origin_lat: Mapped[float] = mapped_column(Float)
+    origin_lon: Mapped[float] = mapped_column(Float)
+    dest_lat: Mapped[float] = mapped_column(Float)
+    dest_lon: Mapped[float] = mapped_column(Float)
+    distance_km: Mapped[float] = mapped_column(Float)
+    geojson: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    provenance: Mapped[str] = mapped_column(String(40))
+    source_citation: Mapped[str] = mapped_column(String(200))
+
+
+class Vessel(Base):
+    """Live vessel cache from AIS (populated by the Phase-2 telemetry service)."""
+
+    __tablename__ = "vessels"
+    mmsi: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str | None] = mapped_column(String(120))
+    vessel_class: Mapped[str | None] = mapped_column(String(60))
+    lat: Mapped[float | None] = mapped_column(Float)
+    lon: Mapped[float | None] = mapped_column(Float)
+    speed_kn: Mapped[float | None] = mapped_column(Float)
+    heading: Mapped[float | None] = mapped_column(Float)
+    destination: Mapped[str | None] = mapped_column(String(120))
+    last_seen: Mapped[dt.datetime | None] = mapped_column(DateTime)
+    feed: Mapped[str] = mapped_column(String(20), default="AIS")
+
+
+class Aircraft(Base):
+    __tablename__ = "aircraft"
+    icao24: Mapped[str] = mapped_column(String(10), primary_key=True)
+    callsign: Mapped[str | None] = mapped_column(String(12))
+    lat: Mapped[float | None] = mapped_column(Float)
+    lon: Mapped[float | None] = mapped_column(Float)
+    alt_m: Mapped[float | None] = mapped_column(Float)
+    speed_ms: Mapped[float | None] = mapped_column(Float)
+    last_seen: Mapped[dt.datetime | None] = mapped_column(DateTime)
+    feed: Mapped[str] = mapped_column(String(20), default="ADS-B")
+
+
+class PositionReport(Base):
+    """Append-only position stream (REAL telemetry when FEED_MODE=live)."""
+
+    __tablename__ = "position_reports"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    entity_type: Mapped[str] = mapped_column(String(10))  # vessel | aircraft | truck
+    entity_id: Mapped[str] = mapped_column(String(20), index=True)
+    ts: Mapped[dt.datetime] = mapped_column(DateTime, default=UTC_NOW, index=True)
+    lat: Mapped[float] = mapped_column(Float)
+    lon: Mapped[float] = mapped_column(Float)
+    speed: Mapped[float | None] = mapped_column(Float)
+    heading: Mapped[float | None] = mapped_column(Float)
+    provenance: Mapped[str] = mapped_column(String(20), default="REAL:AIS")

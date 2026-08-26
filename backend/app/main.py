@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.auth import router as auth_router
 from backend.app.api.kpis import router as kpis_router
+from backend.app.api.lanes import router as lanes_router
 from backend.app.api.router import router as api_router
 from backend.app.api.shipments import router as shipments_router
 from backend.app.core.config import get_settings
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(kpis_router)
     app.include_router(auth_router)
     app.include_router(shipments_router)
+    app.include_router(lanes_router)
     return app
 
 
