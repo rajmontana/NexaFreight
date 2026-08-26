@@ -18,3 +18,4 @@ ignore = ["E501", "B008"]
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
 addopts = "-q"
+pythonpath = ["."]   # bare `pytest` (CI console script) needs repo root importable
