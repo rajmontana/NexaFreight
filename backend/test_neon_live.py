@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-os.environ['DATABASE_URL'] = 'postgresql://neondb_owner:npg_RU6ioMBtzsQ7@ep-falling-king-az0hcvab.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require'
+os.environ['DATABASE_URL'] = 'mock'
 
 from fastapi.testclient import TestClient
 from backend.app import app
