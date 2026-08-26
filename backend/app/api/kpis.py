@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from backend.app.api.deps import get_current_user
 from backend.app.core.db import get_db
 from backend.app.models.entities import (
     CalibratedParam,
@@ -30,7 +31,7 @@ def _mode_mix(db: Session) -> dict[str, int]:
 
 
 @router.get("/kpis")
-def kpis(db: Session = Depends(get_db)) -> dict[str, Any]:
+def kpis(_user: dict = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     total = db.query(func.count(Shipment.id)).scalar() or 0
     late = db.query(func.count(Shipment.id)).filter(Shipment.was_late.is_(True)).scalar() or 0
     value = db.query(func.coalesce(func.sum(Shipment.value_usd), 0.0)).scalar() or 0.0

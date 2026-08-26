@@ -24,7 +24,15 @@ from pathlib import Path
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from backend.app.models.entities import Customer, DatacoOrder, Leg, Shipment, ShipmentLine, Sku
+from backend.app.models.entities import (
+    Customer,
+    DatacoOrder,
+    EventLog,
+    Leg,
+    Shipment,
+    ShipmentLine,
+    Sku,
+)
 
 log = logging.getLogger(__name__)
 
@@ -176,9 +184,38 @@ def build_shipments(df: pd.DataFrame, db: Session, sku_map: dict, cust_map: dict
     return n
 
 
+def generate_events(db: Session, chunk: int = 10000) -> int:
+    """Milestone timelines (REAL timestamps from DataCo): booked → shipped → delivered,
+    plus the SLA-due marker. ~4 events per shipment, append-only event log."""
+    db.query(EventLog).filter(EventLog.entity_type == "shipment").delete()
+    ships = db.query(Shipment).order_by(Shipment.id).all()
+    rows = []
+    for s in ships:
+        base = {"entity_type": "shipment", "entity_id": s.id, "provenance": "REAL:DataCo"}
+        if s.order_date:
+            rows.append({**base, "event_type": "ORDER_PLACED", "ts": s.order_date,
+                         "payload": {"ref": s.ref}})
+        if s.sla_due_at:
+            rows.append({**base, "event_type": "SLA_DUE", "ts": s.sla_due_at,
+                         "payload": {"ref": s.ref, "committed": True}})
+        if s.planned_ship_date:
+            rows.append({**base, "event_type": "SHIPPED", "ts": s.planned_ship_date,
+                         "payload": {"ref": s.ref, "mode": s.freight_mode}})
+        if s.actual_delivery:
+            rows.append({**base, "event_type": "DELIVERED", "ts": s.actual_delivery,
+                         "payload": {"ref": s.ref, "on_time": not s.was_late}})
+    for i in range(0, len(rows), chunk):
+        db.bulk_insert_mappings(EventLog, rows[i:i + chunk])
+    db.commit()
+    log.info("generated %d shipment events", len(rows))
+    return len(rows)
+
+
 def run(csv_path: Path, db: Session) -> dict:
     df = load_dataframe(csv_path)
     staged = stage_orders(df, db)
     n_sku, n_cust, sku_map, cust_map = build_master_data(df, db)
     n_ship = build_shipments(df, db, sku_map, cust_map)
-    return {"lines_staged": staged, "skus": n_sku, "customers": n_cust, "shipments": n_ship}
+    n_events = generate_events(db)
+    return {"lines_staged": staged, "skus": n_sku, "customers": n_cust,
+            "shipments": n_ship, "events": n_events}

@@ -9,8 +9,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.api.auth import router as auth_router
 from backend.app.api.kpis import router as kpis_router
 from backend.app.api.router import router as api_router
+from backend.app.api.shipments import router as shipments_router
 from backend.app.core.config import get_settings
 
 log = logging.getLogger("nexafreight")
@@ -68,6 +70,8 @@ def create_app() -> FastAPI:
     )
     app.include_router(api_router)
     app.include_router(kpis_router)
+    app.include_router(auth_router)
+    app.include_router(shipments_router)
     return app
 
 

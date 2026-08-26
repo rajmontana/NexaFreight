@@ -1,15 +1,31 @@
-"""/api/kpis returns REAL provenance-labeled aggregates."""
+"""/api/kpis returns REAL provenance-labeled aggregates (auth-protected)."""
 
 from __future__ import annotations
 
-from backend.app.ingest import dataco, sop_seed
+import os
+
+import pytest
+
+from backend.app.ingest import dataco, seed_users, sop_seed
 from backend.tests.test_ingest import FIXTURE
 
+TEST_PASSWORD = "test-password-1234"
 
-def test_kpis_after_ingest(client, db_session):
+
+@pytest.fixture()
+def auth_headers(client, db_session):
+    os.environ["SEED_USER_PASSWORD"] = TEST_PASSWORD
+    seed_users.seed(db_session)
+    tok = client.post("/api/auth/login",
+                      json={"email": "manager@nexafreight.com", "password": TEST_PASSWORD}
+                      ).json()["access_token"]
+    return {"Authorization": f"Bearer {tok}"}
+
+
+def test_kpis_after_ingest(client, db_session, auth_headers):
     dataco.run(FIXTURE, db_session)
     sop_seed.seed(db_session)
-    r = client.get("/api/kpis")
+    r = client.get("/api/kpis", headers=auth_headers)
     assert r.status_code == 200
     body = r.json()
     assert body["shipments"]["count"] == 5
@@ -21,7 +37,7 @@ def test_kpis_after_ingest(client, db_session):
     assert body["calibration"]["sop_rules"] >= 6
 
 
-def test_kpis_empty_db_is_zero_not_fake(client):
-    body = client.get("/api/kpis").json()
+def test_kpis_empty_db_is_zero_not_fake(client, auth_headers):
+    body = client.get("/api/kpis", headers=auth_headers).json()
     assert body["shipments"]["count"] == 0
     assert body["shipments"]["on_time_pct"] is None  # honest: no fake 100%
