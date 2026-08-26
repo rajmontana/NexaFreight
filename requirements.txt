@@ -8,3 +8,6 @@ PyJWT==2.13.0
 passlib==1.7.4
 alembic==1.19.1
 psycopg2-binary==2.9.12
+pandas==3.0.5
+numpy==2.4.6
+openpyxl==3.1.5

@@ -1,0 +1,40 @@
+"""Phase-1 bootstrap runner: real-data ingestion + calibration + SOP seed.
+
+Usage (repo root):
+    python -m backend.app.ingest.run_all            # full run against DATABASE_URL
+Idempotent: each step clears and rebuilds its tables.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from pathlib import Path
+
+from backend.app.core.db import SessionLocal
+from backend.app.ingest import calibration, dataco, sop_seed
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("nexafreight.ingest")
+
+DATA = Path("data/raw")
+
+
+def main() -> None:
+    db = SessionLocal()
+    try:
+        results: dict = {}
+        csv = DATA / "DataCoSupplyChainDataset.csv"
+        if csv.exists():
+            results["dataco"] = dataco.run(csv, db)
+        else:
+            log.warning("DataCo CSV missing at %s — skipping (AGENTS.md §3: no substitutes)", csv)
+        results["calibration"] = calibration.run(DATA, db)
+        results["sop_rules"] = sop_seed.seed(db)
+        log.info("INGEST COMPLETE:\n%s", json.dumps(results, indent=2, default=str))
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    main()

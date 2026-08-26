@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.api.kpis import router as kpis_router
 from backend.app.api.router import router as api_router
 from backend.app.core.config import get_settings
 
@@ -66,6 +67,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(api_router)
+    app.include_router(kpis_router)
     return app
 
 
