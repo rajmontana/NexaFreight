@@ -74,14 +74,7 @@ def create_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-    app.include_router(api_router)
-    app.include_router(kpis_router)
-    app.include_router(auth_router)
-    app.include_router(shipments_router)
-    app.include_router(lanes_router)
-    app.include_router(telemetry_router)
-
-    # Serve the ops-dark portal (SPA) — same origin as the API.
+    # Portal (SPA) registered FIRST so it owns "/" (route order matters).
     portal_dir = Path(__file__).resolve().parents[2] / "portal"
     if portal_dir.exists():
         app.mount("/static", StaticFiles(directory=portal_dir), name="static")
@@ -89,6 +82,13 @@ def create_app() -> FastAPI:
         @app.get("/", include_in_schema=False)
         def portal_index():
             return FileResponse(portal_dir / "index.html")
+
+    app.include_router(api_router)
+    app.include_router(kpis_router)
+    app.include_router(auth_router)
+    app.include_router(shipments_router)
+    app.include_router(lanes_router)
+    app.include_router(telemetry_router)
     return app
 
 

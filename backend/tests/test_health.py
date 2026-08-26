@@ -19,9 +19,10 @@ def test_health_db_ok(client):
     assert r.json()["database"] == "reachable"
 
 
-def test_landing_is_honest_placeholder(client):
+def test_root_serves_ops_portal(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert "Phase 0" in r.text
-    # No fake telemetry claims on the landing page.
-    assert "AISstream" not in r.text and "109 Flights" not in r.text
+    assert "NexaFreight Control Tower" in r.text
+    assert "/static/js/app.js" in r.text  # ops-dark SPA, not the legacy portal
+    # No fake telemetry claims.
+    assert "109 Flights" not in r.text
