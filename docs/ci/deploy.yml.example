@@ -1,5 +1,5 @@
 # Deploy to Hugging Face Spaces (free CPU) — activates when moved to
-# .github/workflows/deploy.yml (same one-time step as ci.yml; see docs/ci/README.md)
+# .github/workflows/deploy.yml (one-time step; see docs/ci/README.md)
 name: Deploy
 
 on:
@@ -12,8 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Smoke tests before deploy (rule: staging-before-prod)
         run: |
@@ -24,10 +22,9 @@ jobs:
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}   # repo variable: your HF username
         run: |
           git config user.name "nexafreight-deploy"
           git config user.email "deploy@nexafreight.local"
-          git remote add space https://USER:$$HF_TOKEN@huggingface.co/spaces/$HF_SPACE/hf-space-name.git || true
-          # Replace $HF_SPACE with your HF username via repo variable, or hardcode below:
-          git remote add space "https://user:$HF_TOKEN@huggingface.co/spaces/${{ vars.HF_SPACE }}/nexafreight.git" || true
-          git push space main --force
+          git remote add space "https://deploy:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}/nexafreight.git"
+          git push space HEAD:main --force
