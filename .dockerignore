@@ -1,0 +1,15 @@
+.git
+.gitignore
+*.db
+*.sqlite3
+.venv
+.env
+.env.*
+node_modules
+data/processed
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+docs
+!docs/inputs

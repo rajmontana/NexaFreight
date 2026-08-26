@@ -595,7 +595,7 @@ Decisions to confirm (defaults in parentheses — silence = I proceed with defau
 
 ---
 
-## 16. Free Cloud Deployment Architecture ($0/month, verified 2026-08)
+## 16. Free Cloud Deployment — **Render (free) + Neon (free)** — owner decision 2026-08-26 (HF Spaces dropped: Docker gated on the owner's account)
 
 The constraint: we need one container running 24/7 (AIS WebSocket ingest + OpenSky poller + FastAPI + portal) and a Postgres that doesn't expire. Most "free" tiers fail one of those — Render free spins down after 15 min idle (~1 min cold start), caps free instances at 512 MB / 0.1 CPU, and its **free Postgres expires 30 days after creation** (deleted 14 days later) [1](https://livemy.app/blog/render-pricing), [2](https://unanswered.io/guide/render-free-tier-details). Railway is trial-credit only. So:
 

@@ -1,0 +1,27 @@
+# Render Blueprint — deploys the full stack from this repo.
+# Hosting decision (owner, 2026-08-26): Render free + Neon free Postgres ($0/month),
+# replacing Hugging Face Spaces (Docker gated on the owner's account).
+services:
+  - type: web
+    name: nexafreight
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true                     # deploys on every push to main
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: FEED_MODE
+        value: mock                      # staging-before-prod: flip to 'live' after validation
+      - key: DATABASE_URL
+        sync: false                      # paste your Neon connection string in the dashboard
+      - key: JWT_SECRET
+        generateValue: true              # Render generates & stores a strong secret
+      - key: SEED_USER_PASSWORD
+        sync: false                      # operator login password (min 8 chars)
+      - key: AISSTREAM_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false                      # e.g. https://nexafreight.onrender.com,http://localhost:8000

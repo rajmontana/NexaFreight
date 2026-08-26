@@ -12,6 +12,7 @@ import os
 
 from sqlalchemy.orm import Session
 
+from backend.app.core.db import SessionLocal
 from backend.app.core.security import hash_password
 from backend.app.models.entities import User
 
@@ -40,3 +41,11 @@ def seed(db: Session) -> int:
     n = db.query(User).count()
     log.info("users ready: %d accounts", n)
     return n
+
+
+if __name__ == "__main__":
+    db = SessionLocal()
+    try:
+        seed(db)
+    finally:
+        db.close()

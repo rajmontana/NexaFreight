@@ -23,6 +23,15 @@ DATA = Path("data/raw")
 def main() -> None:
     db = SessionLocal()
     try:
+        # Idempotent boot: skip heavy re-ingestion if data already loaded
+        # (set FORCE_INGEST=1 to rebuild from scratch).
+        import os
+
+        from backend.app.models.entities import Shipment as _Shipment
+        if db.query(_Shipment).count() and os.environ.get("FORCE_INGEST", "0") != "1":
+            log.info("data already loaded — skipping ingestion (FORCE_INGEST=1 to rebuild)")
+            sop_seed.seed(db)
+            return
         results: dict = {}
         csv = DATA / "DataCoSupplyChainDataset.csv"
         if csv.exists():
