@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     feed_mode: Literal["live", "replay", "mock"] = "mock"
 
     # --- CORS ---------------------------------------------------------------
-    # Same-origin in production; "*" only acceptable for local development.
-    cors_origins: str = "*"
+    # Empty/"*" = same-origin only (SPA is served by this app; CORS not needed).
+    cors_origins: str = ""
 
     # --- External feeds (live mode; keys only via environment, never in code) --
     aisstream_api_key: str = ""

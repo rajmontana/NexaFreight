@@ -42,8 +42,7 @@ def _validate_startup_config() -> None:
         log.warning("JWT_SECRET not set — generated an EPHEMERAL dev secret "
                     "(sessions reset on restart). Set JWT_SECRET in .env.")
 
-    if cfg.cors_origins == "*" and cfg.environment == "prod":
-        raise RuntimeError("CORS '*' not allowed in prod; set explicit origins")
+    # CORS only configured when explicit origins are set; same-origin SPA needs none.
 
     log.info("Startup ok — env=%s feed_mode=%s", cfg.environment, cfg.feed_mode)
 
@@ -66,13 +65,15 @@ def create_app() -> FastAPI:
         ),
         lifespan=lifespan,
     )
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[o.strip() for o in cfg.cors_origins.split(",") if o.strip()],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    origins = [o.strip() for o in cfg.cors_origins.split(",") if o.strip() and o.strip() != "*"]
+    if origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     app.include_router(api_router)
     app.include_router(kpis_router)
     app.include_router(auth_router)
