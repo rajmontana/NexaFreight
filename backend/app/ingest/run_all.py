@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 
 from backend.app.core.db import SessionLocal
-from backend.app.ingest import calibration, dataco, sop_seed
+from backend.app.ingest import calibration, dataco, geo, sop_seed
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("nexafreight.ingest")
@@ -38,6 +38,10 @@ def main() -> None:
             results["dataco"] = dataco.run(csv, db)
         else:
             log.warning("DataCo CSV missing at %s — skipping (AGENTS.md §3: no substitutes)", csv)
+        if (DATA / "UpdatedPub150.csv").exists():
+            results["geo"] = geo.run(DATA, db)
+        else:
+            log.warning("geo sources missing — ports/lanes skipped (no substitutes)")
         results["calibration"] = calibration.run(DATA, db)
         results["sop_rules"] = sop_seed.seed(db)
         log.info("INGEST COMPLETE:\n%s", json.dumps(results, indent=2, default=str))

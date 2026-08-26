@@ -5,9 +5,12 @@ from __future__ import annotations
 import logging
 import secrets
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.auth import router as auth_router
 from backend.app.api.kpis import router as kpis_router
@@ -76,6 +79,15 @@ def create_app() -> FastAPI:
     app.include_router(shipments_router)
     app.include_router(lanes_router)
     app.include_router(telemetry_router)
+
+    # Serve the ops-dark portal (SPA) — same origin as the API.
+    portal_dir = Path(__file__).resolve().parents[2] / "portal"
+    if portal_dir.exists():
+        app.mount("/static", StaticFiles(directory=portal_dir), name="static")
+
+        @app.get("/", include_in_schema=False)
+        def portal_index():
+            return FileResponse(portal_dir / "index.html")
     return app
 
 
