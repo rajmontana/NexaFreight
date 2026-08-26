@@ -11,3 +11,4 @@ psycopg2-binary==2.9.12
 pandas==3.0.5
 numpy==2.4.6
 openpyxl==3.1.5
+websockets==17.0.1

@@ -14,6 +14,7 @@ from backend.app.api.kpis import router as kpis_router
 from backend.app.api.lanes import router as lanes_router
 from backend.app.api.router import router as api_router
 from backend.app.api.shipments import router as shipments_router
+from backend.app.api.telemetry import router as telemetry_router
 from backend.app.core.config import get_settings
 
 log = logging.getLogger("nexafreight")
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(shipments_router)
     app.include_router(lanes_router)
+    app.include_router(telemetry_router)
     return app
 
 

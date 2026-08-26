@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     # Same-origin in production; "*" only acceptable for local development.
     cors_origins: str = "*"
 
+    # --- External feeds (live mode; keys only via environment, never in code) --
+    aisstream_api_key: str = ""
+    opensky_username: str = ""
+    opensky_password: str = ""
+    groq_api_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
