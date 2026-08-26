@@ -21,7 +21,9 @@ def list_lanes(_user: dict = Depends(get_current_user),
     return {"total": len(lanes), "provenance": "DERIVED:searoute|great-circle",
             "data": [{"lane_key": ln.lane_key, "mode": ln.mode,
                       "origin": ln.origin_name, "destination": ln.dest_name,
-                      "distance_km": ln.distance_km, "geojson": ln.geojson,
+                      "distance_km": ln.distance_km,
+                      "geojson": {"type": "Feature",
+                                  "geometry": (ln.geojson or {}).get("geometry", ln.geojson)},
                       "source": ln.source_citation} for ln in lanes]}
 
 

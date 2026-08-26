@@ -16,6 +16,7 @@ from backend.app.models.entities import (
     Alert,
     Decision,
     DecisionOption,
+    DisruptionRecord,
     EventLog,
     Port,
     Shipment,
@@ -128,6 +129,21 @@ def decide(alert_id: int, req: DecideRequest,
 @router.post("/generate")
 def generate(_u: dict = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     return alert_engine.generate_alerts(db)
+
+
+@router.get("/disruptions/library", tags=["analytics"])
+def disruptions_library(_u: dict = Depends(get_current_user),
+                        db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Top historical port disruptions (Verschuur et al., REAL records)."""
+    rows = (db.query(DisruptionRecord)
+            .filter(DisruptionRecord.total_affected_days.isnot(None))
+            .order_by(DisruptionRecord.total_affected_days.desc()).limit(12).all())
+    return {"total_records": db.query(DisruptionRecord).count(),
+            "provenance": "REAL:Verschuur-TRD",
+            "data": [{"event": r.event, "port": r.port_name, "country": r.country,
+                      "year": r.year, "total_affected_days": r.total_affected_days,
+                      "severity": r.severity, "source": r.source} for r in rows]}
+
 
 
 # ---- congestion (Phase 2 completion): derived from live AIS when connected ----

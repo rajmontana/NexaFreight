@@ -151,6 +151,22 @@ async function viewDashboard() {
       <div class="sub">${s}</div><div style="margin-top:6px"><span class="tag">${tag}</span></div></div>`).join('');
   }).catch(e => toast('KPIs failed: ' + e.message, true));
   renderMap();
+  api('/api/alerts/disruptions/library').then(d => {
+    $('#disruptions').innerHTML = d.data.slice(0, 8).map(r => `
+      <div class="list-row"><span class="sev ${r.severity >= 3 ? 'crit' : 'warn'}">${r.total_affected_days}d</span>
+        <div><div>${esc(r.event)} — ${esc(r.port)}</div>
+        <div style="color:var(--text-micro);font-size:11px">${esc(r.country || '')} ${r.year || ''} · severity class ${r.severity}</div></div></div>`).join('')
+      + `<div style="font-size:10px;color:var(--text-micro);margin-top:8px">${d.total_records} REAL records · Verschuur et al. (TR-D)</div>`;
+  }).catch(() => { $('#disruptions').innerHTML = '<div class="list-row">unavailable</div>'; });
+  api('/api/alerts/congestion/ports').then(d => {
+    if (!d.data.length) return;
+    const max = Math.max(...d.data.map(p => p.index), 1);
+    $('#congestion').innerHTML = d.data.map(p => `
+      <div class="bar-row"><span>${esc(p.port)}</span>
+        <div class="bar"><i style="width:${Math.round(100 * p.index / max)}%"></i></div>
+        <span>${p.vessels_anchored}</span></div>`).join('')
+      + `<div style="font-size:10px;color:var(--text-micro)">${d.note || 'vessels at anchor (DERIVED:AIS)'} · live when FEED_MODE=live</div>`;
+  }).catch(() => {});
 }
 function renderMap() {
   map = L.map('map', {zoomControl: true, attributionControl: false}).setView([15, 62], 3);
@@ -159,7 +175,8 @@ function renderMap() {
   api('/api/lanes').then(d => {
     $('#mapTag').textContent = d.total + ' lanes · DERIVED geometry';
     d.data.forEach(l => {
-      const coords = (l.geojson.geometry ? l.geojson.geometry.coordinates : []).map(c => [c[1], c[0]]);
+      const gj = l.geojson || {};
+      const coords = (gj.geometry ? gj.geometry.coordinates : gj.coordinates || []).map(c => [c[1], c[0]]);
       if (!coords.length) return;
       const color = l.mode === 'OCEAN' ? '#3B82F6' : '#8B5CF6';
       L.polyline(coords, {color, weight: l.mode === 'OCEAN' ? 2 : 1.5, opacity: .75,
