@@ -95,6 +95,10 @@ function renderApp() {
   </div>`;
   document.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', () => setView(el.dataset.view)));
   $('#logoutBtn').addEventListener('click', logout);
+  api('/api/alerts?status=PENDING_APPROVAL').then(a => {
+    const b = document.querySelector('[data-view="alerts"]');
+    if (b && a.total) b.insertAdjacentHTML('beforeend', `<span class="nav-badge">${a.total}</span>`);
+  }).catch(() => {});
   api('/api/telemetry/live').then(t => {
     const c = $('#feedChip');
     c.className = 'chip ' + (t.feed.connected ? 'live' : 'mock');
@@ -109,7 +113,7 @@ function setView(v) {
   $('#pageTitle').textContent = ({dashboard: 'Executive Control Tower', shipments: 'Shipments',
     alerts: 'Alert Inbox', analytics: 'Analytics', finance: 'Financial Exposure', esg: 'ESG & Carbon'})[v];
   map = null;
-  ({dashboard: viewDashboard, shipments: viewShipments}[v] || viewPlaceholder)(v);
+  ({dashboard: viewDashboard, shipments: viewShipments, alerts: viewAlerts}[v] || viewPlaceholder)(v);
 }
 function viewPlaceholder(v) {
   const plan = {alerts: 'Phase 3 — rule engine + approve/reject/modify flow (Split-Pane Triage layout)',
@@ -164,6 +168,10 @@ function renderMap() {
           <span style="opacity:.7">${esc(l.source)}</span>`).addTo(laneLayer);
     });
   }).catch(e => toast('Lanes failed: ' + e.message, true));
+  api('/api/alerts?status=PENDING_APPROVAL').then(a => {
+    const b = document.querySelector('[data-view="alerts"]');
+    if (b && a.total) b.insertAdjacentHTML('beforeend', `<span class="nav-badge">${a.total}</span>`);
+  }).catch(() => {});
   api('/api/telemetry/live').then(t => {
     t.vessels.slice(0, 300).forEach(v => {
       L.circleMarker([v.lat, v.lon], {radius: 4, color: '#60a5fa', fillOpacity: .9})
@@ -252,6 +260,111 @@ async function openDrawer(ref) {
     const close = () => { $('#drawerMount').innerHTML = ''; document.querySelectorAll('#tbody tr').forEach(tr => tr.classList.remove('sel')); };
     $('#veil').addEventListener('click', close);
     $('#drawerClose').addEventListener('click', close);
+  } catch (e) { toast('Detail failed: ' + e.message, true); }
+}
+
+/* ---------- ALERT INBOX (Split-Pane Triage) ---------- */
+let alertSel = null;
+async function viewAlerts() {
+  $('#main').innerHTML = `
+    <div class="replay-banner">Operational replay window: last 45 days of REAL order history (2015–17) —
+      alerts are DERIVED, every option priced from SOP-guide tariffs (v0.1-draft). <span class="tag">DERIVED:replay-window</span></div>
+    <div class="split">
+      <div class="split-list card" id="alertList" style="padding:0">loading…</div>
+      <div class="split-detail card" id="alertDetail"><div class="placeholder">Select an alert</div></div>
+    </div>`;
+  loadAlerts();
+}
+async function loadAlerts() {
+  try {
+    const d = await api('/api/alerts');
+    const el = $('#alertList');
+    if (!d.total) {
+      el.innerHTML = `<div style="padding:20px" class="list-row">No alerts yet — click generate:
+        <button class="btn-mini" id="genBtn">generate from replay window</button></div>`;
+      $('#genBtn').addEventListener('click', genAlerts);
+      return;
+    }
+    el.innerHTML = `<div style="padding:10px 14px;display:flex;gap:8px;align-items:center">
+        <b style="font-size:12px">${d.total} alerts</b><span class="tag">${d.provenance}</span>
+        <button class="btn-mini" id="genBtn" style="margin-left:auto">↻ re-evaluate</button></div>` +
+      d.data.map(a => `
+        <div class="alert-row ${alertSel === a.id ? 'sel' : ''}" data-id="${a.id}">
+          <span class="sev ${a.severity === 'CRITICAL' ? 'crit' : a.severity === 'WARN' ? 'warn' : 'info'}">${a.severity}</span>
+          <div style="flex:1">
+            <div><span class="mono">${esc(a.shipment_ref)}</span> · <span class="mchip ${a.mode}">${a.mode || ''}</span>
+              ${a.status === 'DECIDED' ? '<span class="tag" style="color:#86efac">DECIDED</span>' : ''}</div>
+            <div style="color:var(--text-micro);font-size:11px">${esc(a.rule_code)} v${esc(a.rule_version)} · ${fmtUsd(a.value_usd)} · ${esc(a.dest_country || '')}</div>
+          </div>
+          <div style="color:var(--text-micro);font-size:10px">${a.options} options</div>
+        </div>`).join('');
+    document.querySelectorAll('.alert-row').forEach(r => r.addEventListener('click', () => {
+      alertSel = +r.dataset.id; loadAlerts(); renderAlertDetail(alertSel);
+    }));
+    $('#genBtn').addEventListener('click', genAlerts);
+    if (alertSel) renderAlertDetail(alertSel);
+  } catch (e) { toast('Alerts failed: ' + e.message, true); }
+}
+async function genAlerts() {
+  try { const r = await api('/api/alerts/generate', {method: 'POST'}); toast(`Generated ${r.created} alerts (${r.skipped} already existed)`); loadAlerts(); }
+  catch (e) { toast(e.message, true); }
+}
+async function renderAlertDetail(id) {
+  try {
+    const a = await api('/api/alerts/' + id);
+    const s = a.shipment || {};
+    $('#alertDetail').innerHTML = `
+      <div class="head"><h3>${esc(a.rule_code)} <span style="opacity:.5">v${esc(a.rule_version)}</span></h3>
+        <span class="sev ${a.severity === 'CRITICAL' ? 'crit' : 'warn'}">${a.severity}</span></div>
+      <div class="facts" style="grid-template-columns:repeat(4,1fr)">
+        <div class="f"><div class="k">Shipment</div><div class="v mono" style="font-size:12px">${esc(s.ref)}</div></div>
+        <div class="f"><div class="k">Mode</div><div class="v"><span class="mchip ${s.mode}">${s.mode}</span></div></div>
+        <div class="f"><div class="k">Value</div><div class="v">${fmtUsd(s.value_usd)}</div></div>
+        <div class="f"><div class="k">SLA Due</div><div class="v">${fmtDate(s.sla_due_at)}</div></div>
+      </div>
+      <div class="list-row" style="border:0;padding:4px 0;color:var(--text-d)">Trigger: ${esc(a.context?.trigger || '')}</div>
+      <h4>AI-Recommended Options (cheapest expected cost first)</h4>
+      <table class="data"><thead><tr><th>Option</th><th>Cost</th><th>Days saved</th><th>P(on-time)</th><th>Expected total</th></tr></thead>
+        <tbody>${a.options.map((o, i) => `
+          <tr class="opt-row ${i === 0 ? 'sel' : ''}" data-oid="${o.id}">
+            <td>${esc(o.label)}</td><td>${fmtUsd(o.cost_usd)}</td>
+            <td>${o.days_saved ?? '—'}</td><td>${o.p_on_time != null ? (o.p_on_time * 100).toFixed(0) + '%' : '—'}</td>
+            <td><b>${fmtUsd(o.expected_total_cost_usd)}</b></td></tr>`).join('')}
+        </tbody></table>
+      <div style="font-size:10px;color:var(--text-micro);margin:6px 0 14px">
+        Costs: SOP-guide tariffs (REAL source) · probabilities: DERIVED:heuristic-v1 (Phase 4 replaces with ETA-model)</div>
+      ${a.status === 'DECIDED' ? `
+        <div class="card" style="border-color:var(--ok)"><b style="color:#86efac">DECIDED</b> —
+          ${a.decisions.map(d => `${d.action} by ${esc(d.by)} — “${esc(d.reason)}”`).join('; ')}</div>` : `
+        <h4>Your decision (mandatory reason — audit trail)</h4>
+        <textarea id="decReason" rows="2" style="width:100%;background:var(--input);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:8px" placeholder="Why this decision? (logged permanently)"></textarea>
+        <div class="btn-row">
+          <button class="btn-ok" id="btnApprove">✓ Approve selected</button>
+          <button class="btn-mod" id="btnModify">✎ Modify</button>
+          <button class="btn-no" id="btnReject">✕ Reject all</button>
+        </div>
+        <div style="font-size:10px;color:var(--text-micro);margin-top:8px">Authority check: your role limit is applied server-side (403 on exceed → escalate).</div>`)}
+    `;
+    let selectedOid = a.options[0]?.id || null;
+    document.querySelectorAll('.opt-row').forEach(r => r.addEventListener('click', () => {
+      document.querySelectorAll('.opt-row').forEach(x => x.classList.remove('sel'));
+      r.classList.add('sel'); selectedOid = +r.dataset.oid;
+    }));
+    if (a.status !== 'DECIDED') {
+      const decide = async (action, oid) => {
+        const reason = $('#decReason').value.trim();
+        if (reason.length < 3) { toast('A reason is mandatory (audit rule)', true); return; }
+        try {
+          const r = await api(`/api/alerts/${id}/decide`, {method: 'POST', body: JSON.stringify(
+            {action, option_id: oid ?? selectedOid, reason})});
+          toast(`${action} logged — ${r.decided_by}${r.option ? ' · ' + r.option : ''}`);
+          renderAlertDetail(id); loadAlerts();
+        } catch (e) { toast(e.message, true); }
+      };
+      $('#btnApprove').addEventListener('click', () => decide('APPROVED'));
+      $('#btnModify').addEventListener('click', () => decide('MODIFIED'));
+      $('#btnReject').addEventListener('click', () => decide('REJECTED', null));
+    }
   } catch (e) { toast('Detail failed: ' + e.message, true); }
 }
 

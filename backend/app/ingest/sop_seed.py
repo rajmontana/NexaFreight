@@ -34,6 +34,11 @@ RULES = [
          condition={"all_of": [{"p_on_time": {"<": 0.5}}, {"customer_tier": "A"}]},
          action_template="Tier-A contractual order at breach risk: evaluate modal shift; cost cap per matrix",
          authority_role="manager"),
+    dict(code="SOP-SLA-003", category="sla", severity="CRITICAL",
+         condition={"all_of": [{"delay_days": {">": 2}}, {"late_delivery_risk": True}]},
+         action_template=("Replay-scale SLA trigger (order-level): breach with >2d delay — evaluate "
+                          "expedite/reroute options; authority per escalation matrix"),
+         authority_role="manager"),
     dict(code="SOP-FIN-001", category="finance", severity="CRITICAL",
          condition={"all_of": [{"total_exposure_usd": {">": 25000}}]},
          action_template="Financial exposure above $25k requires Regional Director approval",

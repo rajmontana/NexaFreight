@@ -163,3 +163,21 @@ table.data tr.sel td { background: rgba(45,212,191,.06); box-shadow: inset 2px 0
   border-radius: var(--radius); font-family: var(--font); font-size: 12px; }
 .leaflet-popup-tip { background: var(--panel); }
 .leaflet-container { font-family: var(--font); }
+
+/* ---------- ALERT INBOX (split-pane triage) ---------- */
+.replay-banner { border:1px solid var(--border); border-left:3px solid var(--warn); background:rgba(245,158,11,.05);
+  border-radius:var(--radius); padding:10px 14px; font-size:12px; color:var(--text-dim); margin-bottom:14px; }
+.split { display:grid; grid-template-columns: 1.1fr 1.6fr; gap:12px; align-items:start; }
+@media (max-width:1000px){ .split{ grid-template-columns:1fr; } }
+.alert-row { display:flex; gap:10px; align-items:center; padding:12px 14px; border-bottom:1px solid var(--border-soft); cursor:pointer; }
+.alert-row:hover { background:rgba(255,255,255,.02); }
+.alert-row.sel { background:rgba(45,212,191,.06); box-shadow:inset 2px 0 0 var(--accent); }
+.btn-mini { background:var(--panel); color:var(--accent); border:1px solid var(--border); border-radius:4px;
+  padding:3px 10px; font-size:11px; cursor:pointer; }
+.btn-row { display:flex; gap:8px; margin-top:10px; }
+.btn-ok,.btn-no,.btn-mod { flex:1; border-radius:4px; padding:9px; font-weight:600; cursor:pointer; font-size:12px; border:1px solid; }
+.btn-ok { background:rgba(45,212,191,.12); color:var(--accent); border-color:rgba(45,212,191,.4); }
+.btn-mod { background:rgba(139,92,246,.12); color:#c4b5fd; border-color:rgba(139,92,246,.4); }
+.btn-no { background:rgba(239,68,68,.1); color:#fda4af; border-color:rgba(239,68,68,.4); }
+.opt-row.sel td { background:rgba(45,212,191,.06); box-shadow:inset 2px 0 0 var(--accent); }
+.split-detail .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }

@@ -44,6 +44,8 @@ def main() -> None:
             log.warning("geo sources missing — ports/lanes skipped (no substitutes)")
         results["calibration"] = calibration.run(DATA, db)
         results["sop_rules"] = sop_seed.seed(db)
+        from backend.app.services import alert_engine
+        results["alerts"] = alert_engine.generate_alerts(db)
         log.info("INGEST COMPLETE:\n%s", json.dumps(results, indent=2, default=str))
     finally:
         db.close()

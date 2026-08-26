@@ -323,3 +323,49 @@ class PositionReport(Base):
     speed: Mapped[float | None] = mapped_column(Float)
     heading: Mapped[float | None] = mapped_column(Float)
     provenance: Mapped[str] = mapped_column(String(20), default="REAL:AIS")
+
+
+class Alert(Base):
+    """SOP-rule violation / risk alert with full lifecycle (blueprint §9.2)."""
+
+    __tablename__ = "alerts"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    shipment_id: Mapped[int] = mapped_column(Integer, index=True)
+    rule_code: Mapped[str] = mapped_column(String(40))
+    rule_version: Mapped[str] = mapped_column(String(10), default="0.1-draft")
+    severity: Mapped[str] = mapped_column(String(10), default="WARN")  # INFO|WARN|CRITICAL
+    status: Mapped[str] = mapped_column(String(20), default="PENDING_APPROVAL")
+    detected_at: Mapped[dt.datetime] = mapped_column(DateTime, default=UTC_NOW)
+    context: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    provenance: Mapped[str] = mapped_column(String(40), default="DERIVED:replay-window")
+
+    __table_args__ = (UniqueConstraint("shipment_id", "rule_code", name="uq_alert_shipment_rule"),)
+
+
+class DecisionOption(Base):
+    """Ranked mitigation option priced from calibrated tariffs (Phase 4 refines)."""
+
+    __tablename__ = "decision_options"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    alert_id: Mapped[int] = mapped_column(Integer, index=True)
+    option_type: Mapped[str] = mapped_column(String(30))   # HOLD|REROUTE_PORT|PARTIAL_AIR
+    label: Mapped[str] = mapped_column(String(160))
+    cost_usd: Mapped[float] = mapped_column(Float)
+    days_saved: Mapped[float | None] = mapped_column(Float, nullable=True)
+    p_on_time: Mapped[float | None] = mapped_column(Float, nullable=True)
+    co2_delta_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    expected_total_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class Decision(Base):
+    """Immutable audit trail: who decided, what, why, under which SOP version."""
+
+    __tablename__ = "decisions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    alert_id: Mapped[int] = mapped_column(Integer, index=True)
+    option_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    action: Mapped[str] = mapped_column(String(10))  # APPROVED|REJECTED|MODIFIED
+    decided_by: Mapped[str] = mapped_column(String(120))
+    decided_at: Mapped[dt.datetime] = mapped_column(DateTime, default=UTC_NOW)
+    reason: Mapped[str] = mapped_column(String(400))
