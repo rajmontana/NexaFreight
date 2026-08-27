@@ -5,3 +5,4 @@ packaging==26.3
 pluggy==1.6.0
 httpx==0.28.1
 ruff==0.16.4
+esprima==4.0.1

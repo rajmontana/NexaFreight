@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "arena/**"]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies (exact pins)
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Tests (pytest)
+        env:
+          JWT_SECRET: ci-ephemeral-secret
+        run: pytest
+
+      # Fail-safe: no real secrets may ever appear in the repo.
+      - name: Secret scan (cheap heuristic)
+        run: |
+          ! grep -rInE "(gsk_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|AISSTREAM_API_KEY=[a-zA-Z0-9]{10})" \
+            --include="*.py" --include="*.yml" --include="*.md" --include="*.env*" . \
+            || { echo "::error::Potential real secret committed"; exit 1; }
