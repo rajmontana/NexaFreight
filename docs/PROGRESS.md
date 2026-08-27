@@ -1,5 +1,5 @@
 # NexaFreight — Progress Report & Audit
-**Generated:** 2026-08-26 · **Branch:** `arena/01a03c38-nexafreight` · **Live:** https://nexafreight-jfbc.onrender.com
+**Updated:** 2026-08-26 (v2 — after blank-screen incident & integrity guards) · **Branch:** `arena/01a03c38-nexafreight` · **Live:** https://nexafreight-jfbc.onrender.com
 
 ---
 
@@ -41,6 +41,21 @@
 1. **Air lanes invisible on map** — stored as raw `LineString`, UI expected `Feature` → silently skipped. Fixed: `/api/lanes` normalizes; verified all 10 lanes render inputs.
 2. **"Disruption Library" panel stuck on loading** — endpoint never existed. Fixed: `/api/alerts/disruptions/library` + UI wiring (top: TC Debbie, Port Hay Point, 45 days).
 3. **Congestion panel static** — wired to `/api/alerts/congestion/ports` with honest-empty in mock mode.
+
+## Incident log (2026-08-26, continued)
+
+- **Blank-screen incident:** platform snapshot corruption shipped stale/mismatched portal files inside commits (025c409); server 200s but SPA couldn't boot. **Fix:** canonical ES2017-safe portal rewrite (c1917ea) + `test_portal_integrity.py` in CI (esprima syntax + content markers) — corrupted portal files can never deploy again. Root cause documented; hash-verified pushes now standard.
+- **Render Blueprint pinning:** "Deploy latest commit" deploys the last SYNCED commit — fixes require Blueprint → "Manual sync" first (owner procedure).
+
+## Remaining roadmap & effort estimate
+
+| Work | Sessions |
+|---|---|
+| Phase 3 completion: LightGBM ETA quantile model (trained on real data, calibration page) + Groq LLM copilot | 2–3 |
+| Phase 4: OR decision engine (model-driven probabilities, MILP consolidation) + Financial dashboard (demurrage clocks, exposure, breakeven curves, expedite ROI) | 3–4 |
+| Phase 5: demand forecasting w/ backtests, ESG engine (GLEC/CII/carbon price), analytics (carrier scorecards, SPC), mobile polish, demo script + pitch pack | 3–4 |
+| Close-out: merge to main, deploy validation, README/docs final | 1 |
+| **Total: ~9–12 focused sessions ≈ 1–2 weeks at current pace** (overall completion ~60–65% now) | |
 
 ## Known issues & risks (honest list)
 
