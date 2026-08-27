@@ -201,6 +201,7 @@ def start_background_feeds(app) -> None:  # pragma: no cover - wiring
     loop = asyncio.get_event_loop()
     if cfg.aisstream_api_key:
         app.state.ais_task = loop.create_task(run_ais_stream(SessionLocal, cfg.aisstream_api_key))
+        log.info("AIS live stream task started")
     else:
         log.warning("FEED_MODE=live but AISSTREAM_API_KEY unset — AIS disabled (fail loud)")
     app.state.opensky_task = loop.create_task(

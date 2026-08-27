@@ -57,6 +57,9 @@ def _validate_startup_config() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _validate_startup_config()
+    if get_settings().feed_mode == "live":
+        from backend.app.services.telemetry import start_background_feeds
+        start_background_feeds(app)
     yield
     log.info("Shutdown.")
 

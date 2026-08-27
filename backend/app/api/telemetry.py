@@ -30,7 +30,9 @@ def live(_user: dict = Depends(get_current_user), db: Session = Depends(get_db))
         "feed": {
             "mode": cfg.feed_mode,
             "connected": cfg.feed_mode == "live",
-            "note": ("live AIS/ADS-B ingest" if cfg.feed_mode == "live"
+            "note": ("LIVE — AIS stream running" if cfg.feed_mode == "live" and cfg.aisstream_api_key
+                     else "FEED_MODE=live but AISSTREAM_API_KEY is NOT SET — add it in Render Environment"
+                     if cfg.feed_mode == "live"
                      else "replay mode — deterministic playback" if cfg.feed_mode == "replay"
                      else "no external feed connected — honest empty state"),
             "ais_key_present": bool(cfg.aisstream_api_key),
