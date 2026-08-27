@@ -14,7 +14,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.alerts import router as alerts_router
+from backend.app.api.analytics import router as analytics_router
 from backend.app.api.auth import router as auth_router
+from backend.app.api.esg import router as esg_router
 from backend.app.api.finance import router as finance_router
 from backend.app.api.kpis import router as kpis_router
 from backend.app.api.lanes import router as lanes_router
@@ -91,10 +93,12 @@ def create_app() -> FastAPI:
     app.include_router(api_router)
     app.include_router(kpis_router)
     app.include_router(auth_router)
+    app.include_router(analytics_router)
     app.include_router(shipments_router)
     app.include_router(lanes_router)
     app.include_router(models_router)
     app.include_router(finance_router)
+    app.include_router(esg_router)
     app.include_router(alerts_router)
     app.include_router(telemetry_router)
 
