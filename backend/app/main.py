@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -68,7 +69,8 @@ def create_app() -> FastAPI:
     )
     origins = [o.strip() for o in cfg.cors_origins.split(",") if o.strip() and o.strip() != "*"]
     if origins:
-        app.add_middleware(
+        app.add_middleware(GZipMiddleware, minimum_size=500)
+    app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
             allow_credentials=True,

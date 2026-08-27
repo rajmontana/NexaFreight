@@ -179,7 +179,10 @@ function viewDashboard() {
     '<div class="list-row">Live AIS anchorage analytics arrive with FEED_MODE=live.</div></div></div>' +
     '<div class="card panel" style="margin-top:12px"><div class="head"><h3>Disruption Library</h3>' +
     '<span class="tag">REAL records</span></div><div class="feed" id="disruptions">loading…</div></div></div></div>';
-  api('/api/kpis').then(function (k) {
+  api('/api/alerts/dashboard').then(function (D) {
+    var k = D.kpis;
+    renderDisruptions(D.disruptions);
+    renderCongestion(D.congestion);
     var rows = [
       ['Active Shipments', k.shipments.count.toLocaleString(),
         'mode mix: ' + Object.entries(k.shipments.mode_mix).map(function (e) {
@@ -203,26 +206,28 @@ function viewDashboard() {
     }).join('');
   }).catch(function (e) { toast('KPIs failed: ' + e.message, true); });
   renderMap();
-  api('/api/alerts/disruptions/library').then(function (d) {
-    $('#disruptions').innerHTML = d.data.slice(0, 8).map(function (r) {
-      return '<div class="list-row"><span class="sev ' + (r.severity >= 3 ? 'crit' : 'warn') + '">' +
-        r.total_affected_days + 'd</span><div><div>' + esc(r.event) + ' — ' + esc(r.port) +
-        '</div><div style="color:var(--text-micro);font-size:11px">' + esc(r.country || '') + ' ' +
-        (r.year || '') + ' · severity class ' + r.severity + '</div></div></div>';
-    }).join('') + '<div style="font-size:10px;color:var(--text-micro);margin-top:8px">' +
-      d.total_records + ' REAL records · Verschuur et al. (TR-D)</div>';
-  }).catch(function () {
-    $('#disruptions').innerHTML = '<div class="list-row">unavailable</div>';
-  });
-  api('/api/alerts/congestion/ports').then(function (d) {
-    if (!d.data.length) { return; }
-    var max = Math.max.apply(null, d.data.map(function (p) { return p.index; }).concat([1]));
-    $('#congestion').innerHTML = d.data.map(function (p) {
-      return '<div class="bar-row"><span>' + esc(p.port) + '</span><div class="bar"><i style="width:' +
-        Math.round(100 * p.index / max) + '%"></i></div><span>' + p.vessels_anchored + '</span></div>';
-    }).join('') + '<div style="font-size:10px;color:var(--text-micro)">' +
-      (d.note || 'vessels at anchor (DERIVED:AIS)') + ' · live when FEED_MODE=live</div>';
-  }).catch(function () {});
+  renderDisruptions(null);
+  renderCongestion(null);
+}
+
+function renderDisruptions(d) {
+  if (!d) { return; }
+  $('#disruptions').innerHTML = d.data.slice(0, 8).map(function (r) {
+    return '<div class="list-row"><span class="sev ' + (r.severity >= 3 ? 'crit' : 'warn') + '">' +
+      r.total_affected_days + 'd</span><div><div>' + esc(r.event) + ' — ' + esc(r.port) +
+      '</div><div style="color:var(--text-micro);font-size:11px">' + esc(r.country || '') + ' ' +
+      (r.year || '') + ' · severity class ' + r.severity + '</div></div></div>';
+  }).join('') + '<div style="font-size:10px;color:var(--text-micro);margin-top:8px">' +
+    d.total_records + ' REAL records · Verschuur et al. (TR-D)</div>';
+}
+function renderCongestion(d) {
+  if (!d || !d.data.length) { return; }
+  var max = Math.max.apply(null, d.data.map(function (p) { return p.index; }).concat([1]));
+  $('#congestion').innerHTML = d.data.map(function (p) {
+    return '<div class="bar-row"><span>' + esc(p.port) + '</span><div class="bar"><i style="width:' +
+      Math.round(100 * p.index / max) + '%"></i></div><span>' + p.vessels_anchored + '</span></div>';
+  }).join('') + '<div style="font-size:10px;color:var(--text-micro)">' +
+    (d.note || 'vessels at anchor (DERIVED:AIS)') + ' · live when FEED_MODE=live</div>';
 }
 function renderMap() {
   map = L.map('map', {zoomControl: true, attributionControl: false}).setView([15, 62], 3);

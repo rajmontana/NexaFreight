@@ -54,6 +54,17 @@ def list_alerts(status: str | None = None, severity: str | None = None,
             "provenance": "DERIVED:replay-window", "data": out}
 
 
+@router.get("/dashboard", tags=["dashboard"])
+def dashboard(_u: dict = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Single round-trip payload for the dashboard (5 calls -> 1)."""
+    from backend.app.api.alerts import disruptions_library, port_congestion
+    from backend.app.api.kpis import kpis as _kpis
+    from backend.app.api.lanes import list_lanes as _lanes
+    from backend.app.api.telemetry import live as _live
+    return {"kpis": _kpis(_u, db), "lanes": _lanes(_u, db), "telemetry": _live(_u, db),
+            "disruptions": disruptions_library(_u, db), "congestion": port_congestion(_u, db)}
+
+
 @router.get("/{alert_id}")
 def alert_detail(alert_id: int, _u: dict = Depends(get_current_user),
                  db: Session = Depends(get_db)) -> dict[str, Any]:
@@ -165,3 +176,5 @@ def port_congestion(_u: dict = Depends(get_current_user),
                      "source": "DERIVED:AIS-anchorage-count" if vessels else "EMPTY:no-feed"})
     return {"data": data,
             "note": "honest empty until FEED_MODE=live streams vessels" if not vessels else ""}
+
+
