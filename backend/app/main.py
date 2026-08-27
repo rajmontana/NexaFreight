@@ -91,6 +91,14 @@ def create_app() -> FastAPI:
     app.include_router(lanes_router)
     app.include_router(alerts_router)
     app.include_router(telemetry_router)
+
+    @app.middleware("http")
+    async def no_cache_dynamic(request, call_next):
+        resp = await call_next(request)
+        p = request.url.path
+        if p == "/" or p.startswith("/static/"):
+            resp.headers["Cache-Control"] = "no-cache"  # always revalidate (ETag 304 = fast)
+        return resp
     return app
 
 
