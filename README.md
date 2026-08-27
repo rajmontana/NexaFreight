@@ -80,24 +80,39 @@ flowchart TD
 
 ## 🚀 Quick Start (Local Development)
 
+The control tower boots **with zero infrastructure** — no database, no API keys required. If PostgreSQL is unreachable or the `shipments` table is empty, every screen automatically serves a deterministic 172,765-row synthetic replica so all charts, the live map, the ML regressor and the copilot work out of the box.
+
 ### 1. Clone & Configure Environment
 ```bash
 git clone https://github.com/rajmontana/NexaFreight.git
 cd NexaFreight
-copy .env.example .env
+cp .env.example .env   # optional — defaults work offline
 ```
 
-### 2. Run with Docker Compose
+### 2. Run with plain Python (recommended, fastest)
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r backend/requirements.txt
+cd backend && python -m uvicorn app:app --host 0.0.0.0 --port 8000
+```
+Then open:
+* **Frontend Control Tower:** [http://localhost:8000](http://localhost:8000)
+* **Investor Pitch Deck:** [http://localhost:8000/pitch/](http://localhost:8000/pitch/)
+* **Interactive API Docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 3. Run with Docker Compose (API + PostgreSQL)
 ```bash
 docker-compose up --build
 ```
-* **Frontend Control Tower:** [http://localhost:8000](http://localhost:8000)
-* **Interactive API Docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### 3. Run with Python Virtual Environment
+### 4. Optional: unlock the live feeds
+Add to `.env` (all free-tier keys) and restart:
 ```bash
-pip install -r backend/requirements.txt
-uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
+DATABASE_URL=postgresql://...      # live ledger instead of synthetic sandbox
+AISSTREAM_API_KEY=...              # real satellite AIS (aisstream.io) — badge flips SIM → LIVE
+GROQ_API_KEY=...                   # real Llama-3.3-70B copilot (console.groq.com)
+JWT_SECRET=...                     # session signing secret
 ```
 
 ---
