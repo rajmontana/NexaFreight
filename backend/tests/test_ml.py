@@ -29,7 +29,8 @@ def test_prepare_dataset_shapes(ml_env):
     assert {"y", "sla_days", "mode_idx"} <= set(df.columns)
 
 
-def test_models_endpoints(client, db_session, ml_env):
+def test_models_endpoints(client, db_session, ml_env, tmp_path, monkeypatch):
+    monkeypatch.setattr(eta_model, "CACHE", tmp_path)  # isolate from real artifacts
     h = {"Authorization": "Bearer " + client.post(
         "/api/auth/login", json={"email": "manager@nexafreight.com",
                                  "password": TEST_PASSWORD}).json()["access_token"]}
@@ -39,6 +40,7 @@ def test_models_endpoints(client, db_session, ml_env):
     assert body["total"] == 0 and body["data"] == []  # honest: untrained on fixture
     eta_r = client.get("/api/eta/NXF-40001", headers=h)
     assert eta_r.status_code == 200 and eta_r.json()["available"] is False
+    assert eta_r.json()["provenance"] == "EMPTY:HONEST"
 
 
 def test_options_fallback_labeled_heuristic(ml_env):
