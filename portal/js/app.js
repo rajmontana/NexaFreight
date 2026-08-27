@@ -52,6 +52,24 @@ let spcChartInstance = null;
 let segmentChartInstance = null;
 let marketChartInstance = null;
 let emissionsChartInstance = null;
+let delayByModeChartInstance = null;
+let revenueTrendChartInstance = null;
+let riskHistogramChartInstance = null;
+let modalityMixChartInstance = null;
+let categoryBreachChartInstance = null;
+let tcoChartInstance = null;
+let slaModeChartInstance = null;
+let marketTrendChartInstance = null;
+let emissionsTrendChartInstance = null;
+
+// Live telemetry polling
+let telemetryPoller = null;
+const TELEMETRY_POLL_MS = 20000;
+let aisSnapshotShown = false;
+
+const CHART_TICK = '#94a3b8';
+const CHART_GRID = 'rgba(255,255,255,0.06)';
+const CHART_LABEL = '#f8fafc';
 
 // ========================================================
 // 1. INITIALIZATION & AUTH LIFECYCLE
@@ -134,6 +152,26 @@ function showApp() {
     loadDashboardData();
     initSimulator();
     initShipmentsLedger();
+    refreshHealthBadge();
+    startTelemetryLoop();
+}
+
+async function refreshHealthBadge() {
+    try {
+        const res = await fetch(`${API_BASE}/api/health`);
+        if (res.ok) {
+            const h = await res.json();
+            const badge = document.getElementById('dataSyncBadge');
+            const aisMode = (h.ais_mode || 'simulated').toUpperCase();
+            if (badge) {
+                if (h.database_live) {
+                    badge.innerHTML = `<i class="fa-solid fa-database"></i> PostgreSQL (${Number(h.records).toLocaleString()} Rows) Synced • AIS ${aisMode}`;
+                } else {
+                    badge.innerHTML = `<i class="fa-solid fa-flask-vial"></i> Synthetic Sandbox (${Number(h.records).toLocaleString()}-Row Replica) • AIS ${aisMode}`;
+                }
+            }
+        }
+    } catch (e) { /* badge stays as-is */ }
 }
 
 // ========================================================
@@ -142,9 +180,10 @@ function showApp() {
 function initNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
+        const viewTarget = item.getAttribute('data-view');
+        if (!viewTarget) return; // external links (e.g. pitch deck) navigate normally
         item.addEventListener('click', (e) => {
             e.preventDefault();
-            const viewTarget = item.getAttribute('data-view');
             switchView(viewTarget);
         });
     });
@@ -190,16 +229,20 @@ function switchView(viewName) {
     // Lazy load specific view charts
     if (viewName === 'dashboard') {
         setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); }, 200);
+        renderDashboardCharts();
     } else if (viewName === 'demurrage') {
-        renderDemurrageChart();
+        renderDemurrageView();
     } else if (viewName === 'compliance') {
-        renderSpcChart();
+        renderComplianceView();
     } else if (viewName === 'market') {
         renderMarketCharts();
     } else if (viewName === 'emissions') {
-        renderEmissionsChart();
+        renderEmissionsView();
     } else if (viewName === 'predictions') {
         renderShapChart();
+        renderTcoChart();
+    } else if (viewName === 'shipments') {
+        renderShipmentsAnalytics();
     }
 }
 
@@ -237,7 +280,12 @@ async function loadDashboardData() {
         if (telRes.ok) {
             const telData = await telRes.json();
             initGlobalMap(telData);
+            updateFleetMarkers(telData);
+            updateTelemetryChips(telData.summary || {});
         }
+
+        // 5. Executive analytics strip (charts) + live modality cards
+        renderDashboardCharts();
     } catch (err) {
         console.error('Error loading dashboard data:', err);
     }
@@ -517,60 +565,302 @@ function initGlobalMap(telemetry) {
         });
     }
 
-    // Clear old moving vehicle markers
-    mapMarkers.forEach(m => leafletMap.removeLayer(m));
-    mapMarkers = [];
+    // Moving fleet is handled by updateFleetMarkers() below; ensure a first plot
+    updateFleetMarkers(telemetry);
+}
 
-    // 1. Plot AIS Ocean Ships
+// ------------------------------------------------------------
+// LIVE FLEET MARKER MANAGER (keyed markers => smooth motion)
+// ------------------------------------------------------------
+const fleetMarkers = new Map();
+
+function updateFleetMarkers(telemetry) {
+    if (!leafletMap) return;
+
+    const vesselSeen = new Set();
+    const flightSeen = new Set();
+    const truckSeen = new Set();
+
+    // 1. Plot / move AIS Ocean Ships
     (telemetry.vessels || []).forEach(v => {
+        const key = `v_${v.mmsi}`;
+        vesselSeen.add(key);
         const iconHtml = `<div class="map-marker-ship" title="${v.name}"><i class="fa-solid fa-ship"></i></div>`;
-        const customIcon = L.divIcon({ html: iconHtml, className: 'custom-map-icon', iconSize: [32, 32], iconAnchor: [16, 16] });
-        
-        const m = L.marker([v.latitude, v.longitude], { icon: customIcon }).addTo(leafletMap);
-        m.bindPopup(`
+        const popup = `
             <div style="font-family:var(--font-main); color:#0f172a; min-width:200px;">
                 <h4 style="margin:0 0 4px; color:#1d4ed8;">🚢 ${v.name}</h4>
                 <p style="margin:0 0 4px; font-size:12px;"><b>MMSI:</b> ${v.mmsi} | <b>Type:</b> ${v.vessel_type}</p>
                 <p style="margin:0 0 4px; font-size:12px;"><b>Speed:</b> ${v.speed_knots} kts • <b>Course:</b> ${v.heading_deg}°</p>
-                <p style="margin:0; font-size:11px; color:#475569;"><b>Dest:</b> ${v.destination} (ETA: ${v.eta || 'On Schedule'})</p>
-            </div>
-        `);
-        mapMarkers.push(m);
+                <p style="margin:0 0 4px; font-size:11px; color:#475569;"><b>Dest:</b> ${v.destination} (ETA: ${v.eta || 'On Schedule'})</p>
+                <span style="display:inline-block; padding:2px 8px; border-radius:4px; font-size:10.5px; font-weight:700; ${v.simulated ? 'background:#fef3c7; color:#92400e;' : 'background:#d1fae5; color:#065f46;'}">${v.simulated ? '⚙️ DEAD-RECKONING SIM' : '🛰️ SATELLITE LIVE'}</span>
+            </div>`;
+
+        const prev = fleetMarkers.get(key);
+        if (prev) {
+            prev.setLatLng([v.latitude, v.longitude]);
+            prev.setPopupContent(popup);
+            prev._icon.title = v.name;
+        } else {
+            const customIcon = L.divIcon({ html: iconHtml, className: 'custom-map-icon', iconSize: [32, 32], iconAnchor: [16, 16] });
+            const m = L.marker([v.latitude, v.longitude], { icon: customIcon }).addTo(leafletMap).bindPopup(popup);
+            fleetMarkers.set(key, m);
+        }
     });
 
-    // 2. Plot OpenSky Air Cargo Flights
+    // 2. Plot / move OpenSky Air Cargo Flights
     (telemetry.flights || []).forEach(f => {
-        const iconHtml = `<div class="map-marker-plane" title="Flight ${f.callsign}"><i class="fa-solid fa-plane"></i></div>`;
-        const customIcon = L.divIcon({ html: iconHtml, className: 'custom-map-icon', iconSize: [32, 32], iconAnchor: [16, 16] });
-        
-        const m = L.marker([f.latitude, f.longitude], { icon: customIcon }).addTo(leafletMap);
-        m.bindPopup(`
+        const key = `f_${f.icao24}`;
+        flightSeen.add(key);
+        const popup = `
             <div style="font-family:var(--font-main); color:#0f172a; min-width:200px;">
                 <h4 style="margin:0 0 4px; color:#7e22ce;">✈️ Flight ${f.callsign}</h4>
                 <p style="margin:0 0 4px; font-size:12px;"><b>ICAO:</b> ${f.icao24} | <b>Country:</b> ${f.country}</p>
-                <p style="margin:0 0 4px; font-size:12px;"><b>Altitude:</b> ${f.altitude_feet.toLocaleString()} ft • <b>Speed:</b> ${f.speed_kmh} km/h</p>
+                <p style="margin:0 0 4px; font-size:12px;"><b>Altitude:</b> ${(f.altitude_feet || 0).toLocaleString()} ft • <b>Speed:</b> ${f.speed_kmh} km/h</p>
                 <span style="display:inline-block; padding:2px 8px; background:#d8b4fe; border-radius:4px; font-size:11px; font-weight:700; color:#581c87;">Express Air Cargo</span>
-            </div>
-        `);
-        mapMarkers.push(m);
+            </div>`;
+
+        const iconHtml = `<div class="map-marker-plane" title="Flight ${f.callsign}"><i class="fa-solid fa-plane"></i></div>`;
+        const prev = fleetMarkers.get(key);
+        if (prev) {
+            prev.setLatLng([f.latitude, f.longitude]);
+            prev.setPopupContent(popup);
+        } else {
+            const customIcon = L.divIcon({ html: iconHtml, className: 'custom-map-icon', iconSize: [32, 32], iconAnchor: [16, 16] });
+            const m = L.marker([f.latitude, f.longitude], { icon: customIcon }).addTo(leafletMap).bindPopup(popup);
+            fleetMarkers.set(key, m);
+        }
     });
 
-    // 3. Plot Highway Fleet Trucks
+    // 3. Plot / move Highway Fleet Trucks
     (telemetry.trucks || []).forEach(t => {
-        const iconHtml = `<div class="map-marker-truck" title="Truck #${t.truck_id}"><i class="fa-solid fa-truck"></i></div>`;
-        const customIcon = L.divIcon({ html: iconHtml, className: 'custom-map-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
-        
-        const m = L.marker([t.latitude, t.longitude], { icon: customIcon }).addTo(leafletMap);
-        m.bindPopup(`
+        const key = `t_${t.truck_id}`;
+        truckSeen.add(key);
+        const popup = `
             <div style="font-family:var(--font-main); color:#0f172a; min-width:200px;">
                 <h4 style="margin:0 0 4px; color:#047857;">🚛 Fleet Truck #${t.truck_id}</h4>
                 <p style="margin:0 0 4px; font-size:12px;"><b>Corridor:</b> ${t.corridor}</p>
                 <p style="margin:0 0 4px; font-size:12px;"><b>Speed:</b> ${t.speed_kmh} km/h • <b>Status:</b> ${t.status}</p>
                 <span style="display:inline-block; padding:2px 8px; background:#a7f3d0; border-radius:4px; font-size:11px; font-weight:700; color:#065f46;">Highway FTL Van</span>
-            </div>
-        `);
-        mapMarkers.push(m);
+            </div>`;
+
+        const iconHtml = `<div class="map-marker-truck" title="Truck #${t.truck_id}"><i class="fa-solid fa-truck"></i></div>`;
+        const prev = fleetMarkers.get(key);
+        if (prev) {
+            prev.setLatLng([t.latitude, t.longitude]);
+            prev.setPopupContent(popup);
+        } else {
+            const customIcon = L.divIcon({ html: iconHtml, className: 'custom-map-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
+            const m = L.marker([t.latitude, t.longitude], { icon: customIcon }).addTo(leafletMap).bindPopup(popup);
+            fleetMarkers.set(key, m);
+        }
     });
+
+    // 4. Evict markers whose aircraft left coverage (ships/trucks persist)
+    fleetMarkers.forEach((m, key) => {
+        if (key.startsWith('f_') && !flightSeen.has(key)) {
+            leafletMap.removeLayer(m);
+            fleetMarkers.delete(key);
+        }
+    });
+}
+
+function updateTelemetryChips(summary) {
+    const shipChip = document.getElementById('chipAisVessels');
+    const airChip = document.getElementById('chipOpenSkyFlights');
+    const roadChip = document.getElementById('chipRoadTrucks');
+    const badge = document.getElementById('aisModeBadge');
+    if (shipChip && summary.active_vessels != null) shipChip.textContent = `${summary.active_vessels} Vessels`;
+    if (airChip && summary.active_flights != null) airChip.textContent = `${summary.active_flights} Flights`;
+    if (roadChip && summary.active_trucks != null) roadChip.textContent = `${summary.active_trucks} Trucks`;
+    if (badge) {
+        const live = summary.ais_simulated === false;
+        badge.textContent = live ? 'LIVE' : 'SIM';
+        badge.className = `ais-mode-badge ${live ? 'badge-live' : 'badge-sim'}`;
+        badge.title = live
+            ? 'AISstream.io satellite feed connected'
+            : 'Dead-reckoning simulator active — set AISSTREAM_API_KEY for the live satellite feed';
+    }
+}
+
+function startTelemetryLoop() {
+    if (telemetryPoller) clearInterval(telemetryPoller);
+    telemetryPoller = setInterval(async () => {
+        if (!authToken || document.getElementById('appContainer').style.display === 'none') return;
+        try {
+            const res = await authFetch(`${API_BASE}/api/telemetry/live`);
+            if (res.ok) {
+                const data = await res.json();
+                updateFleetMarkers(data);
+                updateTelemetryChips(data.summary || {});
+            }
+        } catch (e) {
+            console.warn('Telemetry poll failed:', e.message);
+        }
+    }, TELEMETRY_POLL_MS);
+}
+
+// ------------------------------------------------------------
+// EXECUTIVE DASHBOARD CHARTS + MODALITY CARDS
+// ------------------------------------------------------------
+async function renderDashboardCharts() {
+    try {
+        const [kpiRes, mktRes, anaRes] = await Promise.all([
+            authFetch(`${API_BASE}/api/kpis`),
+            authFetch(`${API_BASE}/api/market-stats`),
+            authFetch(`${API_BASE}/api/shipments-analytics`)
+        ]);
+        const kpis = kpiRes.ok ? await kpiRes.json() : null;
+        const mkt = mktRes.ok ? await mktRes.json() : null;
+        const analytics = anaRes.ok ? await anaRes.json() : null;
+
+        renderDelayByModeChart(kpis ? kpis.late_rate_by_mode : null);
+        renderRevenueTrendChart(mkt ? mkt.monthly_revenue : null);
+        renderModalityCards(analytics ? analytics.modality_mix : null, kpis ? kpis.late_rate_by_mode : null);
+    } catch (e) {
+        console.error('Dashboard charts error:', e);
+        renderDelayByModeChart(null);
+        renderRevenueTrendChart(null);
+        renderModalityCards(null, null);
+    }
+}
+
+function renderDelayByModeChart(lateRateByMode) {
+    const el = document.getElementById('delayByModeChart');
+    if (!el) return;
+    const ctx = el.getContext('2d');
+    if (delayByModeChartInstance) delayByModeChartInstance.destroy();
+
+    const order = ['Standard Class', 'Second Class', 'First Class', 'Same Day'];
+    const fallback = { 'Standard Class': 39.77, 'Second Class': 79.83, 'First Class': 100.0, 'Same Day': 47.97 };
+    const src = lateRateByMode || fallback;
+    const labels = order.filter(m => src[m] !== undefined);
+    const values = labels.map(m => src[m]);
+    const display = labels.map(m => ({ 'Standard Class': '🚢 Ocean', 'Second Class': '🚛 Road FTL', 'First Class': '✈️ Air', 'Same Day': '⚡ Same Day' }[m] || m));
+    const colors = values.map(v => v >= 80 ? '#ef4444' : v >= 60 ? '#f59e0b' : '#10b981');
+
+    delayByModeChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: display,
+            datasets: [{
+                label: 'Late-Delivery Breach Rate (%)',
+                data: values,
+                backgroundColor: colors,
+                borderRadius: 8,
+                maxBarThickness: 46
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => ` ${c.parsed.y}% of cohort breaches SLA` } }
+            },
+            scales: {
+                y: { min: 0, max: 100, grid: { color: CHART_GRID }, ticks: { color: CHART_TICK, callback: v => `${v}%` } },
+                x: { grid: { display: false }, ticks: { color: CHART_LABEL } }
+            }
+        }
+    });
+}
+
+function renderRevenueTrendChart(monthlyRevenue) {
+    const el = document.getElementById('revenueTrendChart');
+    if (!el) return;
+    const ctx = el.getContext('2d');
+    if (revenueTrendChartInstance) revenueTrendChartInstance.destroy();
+
+    const fallbackMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    const months = monthlyRevenue && monthlyRevenue.length ? monthlyRevenue.map(m => m.month) : fallbackMonths;
+    const revenue = monthlyRevenue && monthlyRevenue.length ? monthlyRevenue.map(m => m.revenue) : [2920000, 2880000, 3010000, 2650000, 3240000, 2890000];
+    const otif = monthlyRevenue && monthlyRevenue.length ? monthlyRevenue.map(m => m.otif_penalties) : [82000, 79000, 83000, 74000, 91000, 81000];
+
+    revenueTrendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [
+                {
+                    label: 'Gross Revenue',
+                    data: revenue,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.16)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 3,
+                    borderWidth: 2.5,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'OTIF Penalty Leakage',
+                    data: otif,
+                    borderColor: '#f43f5e',
+                    backgroundColor: 'rgba(244, 63, 94, 0.14)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 3,
+                    borderWidth: 2,
+                    borderDash: [5, 4],
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: CHART_LABEL, font: { size: 11 } } },
+                tooltip: { callbacks: { label: c => ` ${c.dataset.label}: $${(c.parsed.y / 1000000).toFixed(2)}M` } }
+            },
+            scales: {
+                y: { grid: { color: CHART_GRID }, ticks: { color: CHART_TICK, callback: v => `$${(v / 1000000).toFixed(1)}M` } },
+                y1: { position: 'right', grid: { display: false }, ticks: { color: '#fb7185', callback: v => `$${(v / 1000).toFixed(0)}k` } },
+                x: { grid: { display: false }, ticks: { color: CHART_LABEL } }
+            }
+        }
+    });
+}
+
+function renderModalityCards(modalityMix, lateRateByMode) {
+    const grid = document.getElementById('modalitySummaryGrid');
+    if (!grid) return;
+
+    const meta = {
+        'Standard Class': { pill: 'pill-ocean', icon: '🚢', name: 'Ocean TEU Freight (Standard Class)', sla: '4.0 Days' },
+        'Second Class': { pill: 'pill-road', icon: '🚛', name: 'Highway FTL Van (Second Class)', sla: '2.0 Days' },
+        'First Class': { pill: 'pill-air', icon: '✈️', name: 'Express Air Cargo (First Class)', sla: '1.0 Day' },
+        'Same Day': { pill: 'pill-road', icon: '⚡', name: 'Priority Courier (Same Day)', sla: 'Same Day' }
+    };
+    const order = ['Standard Class', 'Second Class', 'First Class', 'Same Day'];
+
+    const mixByMode = {};
+    (modalityMix || []).forEach(m => { mixByMode[m.mode] = m; });
+    const rates = lateRateByMode || { 'Standard Class': 39.77, 'Second Class': 79.83, 'First Class': 100.0, 'Same Day': 47.97 };
+    const fallbackCounts = { 'Standard Class': [103153, 59.7], 'Second Class': [33806, 19.6], 'First Class': [26513, 15.4], 'Same Day': [9093, 5.3] };
+
+    grid.innerHTML = order.filter(m => rates[m] !== undefined || mixByMode[m]).map(mode => {
+        const info = meta[mode];
+        const mix = mixByMode[mode];
+        const count = mix ? mix.count : fallbackCounts[mode][0];
+        const share = mix ? mix.share_pct : fallbackCounts[mode][1];
+        const revenue = mix ? mix.revenue_usd : 0;
+        const late = rates[mode] !== undefined ? rates[mode] : (mix ? mix.late_rate_pct : 40);
+        const tone = late >= 80 ? 'text-danger' : late >= 60 ? 'text-amber' : 'text-emerald';
+        const tag = late >= 80 ? '(Critical)' : late >= 60 ? '' : '(Best)';
+        return `
+            <div class="modality-card glass-panel">
+                <div class="modality-header">
+                    <span class="modality-pill ${info.pill}">${info.icon} ${info.name}</span>
+                    <span class="modality-count">${Number(count).toLocaleString()} Shipments (${share}%)</span>
+                </div>
+                <div class="modality-stats">
+                    <div class="stat-col"><span>Promised SLA:</span> <strong>${info.sla}</strong></div>
+                    <div class="stat-col"><span>Late Rate:</span> <strong class="${tone}">${late}% ${tag}</strong></div>
+                    <div class="stat-col"><span>Revenue:</span> <strong>$${(revenue / 1000000).toFixed(2)}M</strong></div>
+                </div>
+            </div>`;
+    }).join('');
 }
 
 // ========================================================
@@ -628,6 +918,115 @@ function initShipmentsLedger() {
     });
 
     fetchShipmentsData();
+    renderShipmentsAnalytics();
+}
+
+// ------------------------------------------------------------
+// SHIPMENTS LEDGER ANALYTICS STRIP (CHARTS + COHORT COUNTS)
+// ------------------------------------------------------------
+async function renderShipmentsAnalytics() {
+    try {
+        const res = await authFetch(`${API_BASE}/api/shipments-analytics`);
+        const d = res.ok ? await res.json() : null;
+        if (!d) return;
+
+        // Cohort tab counts
+        const ccAll = document.getElementById('cohortCountAll');
+        const ccT = document.getElementById('cohortCountTransit');
+        const ccE = document.getElementById('cohortCountExceptions');
+        if (ccAll) ccAll.textContent = Number(d.total).toLocaleString();
+        if (ccT) ccT.textContent = Number(d.active_in_transit).toLocaleString();
+        if (ccE) ccE.textContent = Number(d.critical_exceptions).toLocaleString();
+
+        // 1. Risk histogram
+        const rhEl = document.getElementById('riskHistogramChart');
+        if (rhEl) {
+            const ctx = rhEl.getContext('2d');
+            if (riskHistogramChartInstance) riskHistogramChartInstance.destroy();
+            riskHistogramChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: d.risk_histogram.map(b => b.bucket),
+                    datasets: [{
+                        data: d.risk_histogram.map(b => b.count),
+                        backgroundColor: ['#10b981', '#f59e0b', '#f97316', '#ef4444'],
+                        borderRadius: 8,
+                        maxBarThickness: 42
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: c => ` ${Number(c.parsed.y).toLocaleString()} shipments` } }
+                    },
+                    scales: {
+                        y: { grid: { color: CHART_GRID }, ticks: { color: CHART_TICK, callback: v => `${(v / 1000).toFixed(0)}k` } },
+                        x: { grid: { display: false }, ticks: { color: CHART_LABEL, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // 2. Fleet modality mix doughnut
+        const mmEl = document.getElementById('modalityMixChart');
+        if (mmEl) {
+            const ctx = mmEl.getContext('2d');
+            if (modalityMixChartInstance) modalityMixChartInstance.destroy();
+            modalityMixChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: d.modality_mix.map(m => `${m.mode} (${m.share_pct}%)`),
+                    datasets: [{
+                        data: d.modality_mix.map(m => m.count),
+                        backgroundColor: ['#2563eb', '#9333ea', '#ea580c', '#db2777'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: CHART_LABEL, font: { size: 10.5 }, boxWidth: 12 } },
+                        tooltip: { callbacks: { label: c => ` ${Number(c.parsed).toLocaleString()} shipments` } }
+                    }
+                }
+            });
+        }
+
+        // 3. Top cargo categories by breach rate (dual axis)
+        const cbEl = document.getElementById('categoryBreachChart');
+        if (cbEl) {
+            const ctx = cbEl.getContext('2d');
+            if (categoryBreachChartInstance) categoryBreachChartInstance.destroy();
+            categoryBreachChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: d.top_categories.map(c => c.category),
+                    datasets: [
+                        { label: 'Order Lines', data: d.top_categories.map(c => c.count), backgroundColor: 'rgba(59, 130, 246, 0.75)', borderRadius: 6, yAxisID: 'y', maxBarThickness: 26 },
+                        { label: 'Late Breach %', type: 'line', data: d.top_categories.map(c => c.late_rate_pct), borderColor: '#f43f5e', backgroundColor: '#f43f5e', yAxisID: 'y1', pointRadius: 4, borderWidth: 2.5, tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: CHART_LABEL, font: { size: 10.5 } } }
+                    },
+                    scales: {
+                        y: { grid: { color: CHART_GRID }, ticks: { color: CHART_TICK, callback: v => `${(v / 1000).toFixed(0)}k` } },
+                        y1: { position: 'right', min: 0, max: 100, grid: { display: false }, ticks: { color: '#fb7185', callback: v => `${v}%` } },
+                        x: { grid: { display: false }, ticks: { color: CHART_LABEL, font: { size: 9.5 }, maxRotation: 42, minRotation: 30 } }
+                    }
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Shipments analytics fetch error:', e);
+    }
 }
 
 async function fetchShipmentsData() {
@@ -788,8 +1187,65 @@ function updatePredictionUI(data) {
     path.style.strokeDashoffset = Math.max(0, Math.min(251.2, offset));
     path.style.stroke = data.is_at_risk ? 'var(--rose)' : 'var(--emerald)';
 
-    // Update SHAP Chart
+    // Prescriptive action card, live from inference payload
+    if (data.prescriptive) {
+        const p = data.prescriptive;
+        const air = Number(p.air_reroute_cost_usd), fine = Number(p.otif_fine_usd), net = Number(p.net_benefit_reroute_usd);
+        document.getElementById('preAirCost').textContent = `+$${air.toFixed(0)}`;
+        document.getElementById('preOtifFine').textContent = `-$${fine.toFixed(0)}`;
+        document.getElementById('preNetSavings').textContent = `${net >= 0 ? '+' : '-'}$${Math.abs(net).toFixed(0)} USD`;
+        document.getElementById('preNetSavings').className = net >= 0 ? 'text-emerald' : 'text-rose';
+        document.getElementById('preRerouteDesc').textContent =
+            `Re-routing ${data.order_id} through the Mumbai-Schiphol Air Corridor at ${riskPct}% breach risk eliminates the $${fine.toFixed(0)} contractual OTIF penalty for a minor $${air.toFixed(0)} expedite cost.`;
+    }
+
+    // Update SHAP Chart + TCO composition
     renderShapChart(data.shap_drivers || []);
+    renderTcoChart(data.tco || null);
+}
+
+// ------------------------------------------------------------
+// TCO COMPOSITION CHART (LANDED COST STACK)
+// ------------------------------------------------------------
+function renderTcoChart(tco) {
+    const el = document.getElementById('tcoChart');
+    if (!el) return;
+    const ctx = el.getContext('2d');
+    if (tcoChartInstance) tcoChartInstance.destroy();
+
+    const t = tco || { base_freight_usd: 450.0, demurrage_usd: 600.0, otif_penalty_usd: 135.0, holding_cost_usd: 45.0, total_tco_usd: 1230.0, net_profit_after_tco_usd: -780.0 };
+    const profit = document.getElementById('tcoNetProfit');
+    if (profit) {
+        const net = Number(t.net_profit_after_tco_usd);
+        profit.textContent = `Net Profit After TCO: ${net >= 0 ? '+' : '-'}$${Math.abs(net).toLocaleString()}`;
+        profit.classList.toggle('negative', net < 0);
+    }
+
+    tcoChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Landed TCO Stack'],
+            datasets: [
+                { label: 'Base Freight', data: [t.base_freight_usd], backgroundColor: 'rgba(59, 130, 246, 0.85)' },
+                { label: 'Demurrage Accrual', data: [t.demurrage_usd], backgroundColor: 'rgba(139, 92, 246, 0.85)' },
+                { label: 'OTIF Penalty', data: [t.otif_penalty_usd], backgroundColor: 'rgba(244, 63, 94, 0.85)' },
+                { label: 'Inventory Holding', data: [t.holding_cost_usd], backgroundColor: 'rgba(245, 158, 11, 0.85)' }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: CHART_LABEL, font: { size: 11 } } },
+                tooltip: { callbacks: { label: c => ` ${c.dataset.label}: $${Number(c.parsed.x).toLocaleString()}` } }
+            },
+            scales: {
+                x: { stacked: true, grid: { color: CHART_GRID }, ticks: { color: CHART_TICK, callback: v => `$${v.toLocaleString()}` } },
+                y: { stacked: true, grid: { display: false }, ticks: { color: CHART_LABEL } }
+            }
+        }
+    });
 }
 
 function renderShapChart(drivers = []) {
@@ -838,16 +1294,49 @@ function renderShapChart(drivers = []) {
 }
 
 // ========================================================
-// 6. DEMURRAGE & FINANCIALS CHARTS (LIVE SQL)
+// 6. DEMURRAGE & FINANCIALS VIEW (LIVE SQL / SANDBOX)
 // ========================================================
-async function renderDemurrageChart() {
-    const ctx = document.getElementById('demurrageTiersChart').getContext('2d');
-    if (demurrageChartInstance) demurrageChartInstance.destroy();
-
+async function renderDemurrageView() {
     try {
         const res = await authFetch(`${API_BASE}/api/demurrage`);
         const data = res.ok ? await res.json() : null;
-        
+
+        // --- Metric cards ---
+        if (data && data.summary) {
+            const s = data.summary;
+            document.getElementById('demTotalTeu').textContent = `${Number(s.total_containers).toLocaleString()} TEU`;
+            document.getElementById('demTotalExposure').textContent = `$${Number(s.current_total_cost_usd).toLocaleString()}`;
+            document.getElementById('demFreeCount').textContent = `${Number(s.free_period_count).toLocaleString()} TEU`;
+            document.getElementById('demT1Count').textContent = `${Number(s.first_period_count).toLocaleString()} TEU`;
+            document.getElementById('demT3Count').textContent = `${Number(s.third_period_count).toLocaleString()} TEU`;
+        }
+
+        // --- Ticking dwell clocks ---
+        if (data && data.by_port) {
+            const list = document.getElementById('dwellClockList');
+            list.innerHTML = data.by_port.map(p => {
+                const overdueDays = Math.max(0, p.avg_dwell_days - 4);
+                const badgeCls = overdueDays >= 3 ? 'badge-danger' : overdueDays >= 1 ? 'badge-amber' : 'badge-emerald';
+                const rateCls = p.daily_rate_usd >= 1000 ? 'text-rose' : (p.daily_rate_usd >= 400 ? 'text-rose' : 'text-amber');
+                const oDays = Math.floor(overdueDays), oHours = Math.round((overdueDays % 1) * 24);
+                return `
+                    <div class="dwell-clock-item">
+                        <div class="dwell-top">
+                            <strong>${p.port_name}, ${p.country}</strong>
+                            <span class="${badgeCls}">${oDays}d ${String(oHours).padStart(2, '0')}h Overdue</span>
+                        </div>
+                        <div class="dwell-details">
+                            <span>Avg Dwell: ${p.avg_dwell_days} Days • ${Number(p.containers_at_risk).toLocaleString()} Containers At Risk</span>
+                            <strong class="${rateCls}">$${Number(p.daily_rate_usd).toLocaleString()} / Day Rate</strong>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        // --- Tiers chart ---
+        const ctx = document.getElementById('demurrageTiersChart').getContext('2d');
+        if (demurrageChartInstance) demurrageChartInstance.destroy();
+
         const labels = data && data.tiers ? data.tiers.map(t => t.period) : ['Free Period (0-4d)', 'Tier 1 (5-7d)', 'Tier 2 (8-10d)', 'Tier 3 (10+d)'];
         const values = data && data.tiers ? data.tiers.map(t => t.total_cost_usd) : [0, 160000, 97500, 270000];
         const colors = data && data.tiers ? data.tiers.map(t => t.color) : ['#3b82f6', '#8b5cf6', '#ec4899', '#ef4444'];
@@ -877,20 +1366,20 @@ async function renderDemurrageChart() {
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#f8fafc' }
+                        ticks: { color: '#f8fafc', font: { size: 10.5 } }
                     }
                 }
             }
         });
     } catch (e) {
-        console.error('Demurrage chart fetch error:', e);
+        console.error('Demurrage view fetch error:', e);
     }
 }
 
 // ========================================================
-// 7. SIX SIGMA SPC COMPLIANCE CHART (LIVE SQL)
+// 7. SIX SIGMA SPC COMPLIANCE VIEW (LIVE SQL / SANDBOX)
 // ========================================================
-async function renderSpcChart() {
+async function renderComplianceView() {
     const ctx = document.getElementById('spcChart').getContext('2d');
     if (spcChartInstance) spcChartInstance.destroy();
 
@@ -903,6 +1392,22 @@ async function renderSpcChart() {
         const ucl = data ? data.ucl : 6.21;
         const xBar = data ? data.x_bar : 3.56;
         const lcl = data ? data.lcl : 0.91;
+
+        // --- metric cards + legend ---
+        if (data) {
+            document.getElementById('spcUcl').textContent = `${data.ucl} Days`;
+            document.getElementById('spcMean').textContent = `${data.x_bar} Days`;
+            document.getElementById('spcLcl').textContent = `${data.lcl} Days`;
+            document.getElementById('spcSigma').textContent = `${data.sigma_level}σ`;
+            document.getElementById('spcDpmo').textContent = `${Number(data.dpmo).toLocaleString()} DPMO (Defects / Million)`;
+            document.getElementById('legUcl').textContent = `${data.ucl}d`;
+            document.getElementById('legMean').textContent = `${data.x_bar}d`;
+            document.getElementById('legLcl').textContent = `${data.lcl}d`;
+        }
+
+        // --- SLA compliance grid + late-by-modality chart ---
+        renderSlaGrid(data ? data.sla_grid : null);
+        renderSlaModeChart(data ? data.sla_grid : null);
 
         spcChartInstance = new Chart(ctx, {
             type: 'line',
@@ -956,7 +1461,7 @@ async function renderSpcChart() {
                         grid: { color: 'rgba(255,255,255,0.06)' },
                         ticks: { color: '#94a3b8', callback: v => `${v}d` },
                         min: 0,
-                        max: 8
+                        max: Math.ceil(ucl + 2)
                     },
                     x: {
                         grid: { display: false },
@@ -968,6 +1473,69 @@ async function renderSpcChart() {
     } catch (e) {
         console.error('SPC chart fetch error:', e);
     }
+}
+
+function renderSlaGrid(slaGrid) {
+    const box = document.getElementById('slaGridList');
+    if (!box) return;
+    const fallback = [
+        { mode: 'Standard Class', promised_days: 4.0, actual_avg_days: 4.58, late_rate_pct: 39.77, status: 'NORMAL' },
+        { mode: 'Second Class', promised_days: 2.0, actual_avg_days: 3.14, late_rate_pct: 79.83, status: 'HIGH' },
+        { mode: 'First Class', promised_days: 1.0, actual_avg_days: 2.50, late_rate_pct: 100.0, status: 'CRITICAL' },
+        { mode: 'Same Day', promised_days: 0.0, actual_avg_days: 0.72, late_rate_pct: 47.97, status: 'MODERATE' }
+    ];
+    const rows = (slaGrid && slaGrid.length ? slaGrid : fallback);
+    const icon = { 'Standard Class': '🚢', 'Second Class': '🚛', 'First Class': '✈️', 'Same Day': '⚡' };
+    box.innerHTML = rows.map(r => `
+        <div class="sla-row">
+            <div class="sla-mode">${icon[r.mode] || '📦'} ${r.mode}</div>
+            <div class="sla-metric"><strong>${r.promised_days}d</strong>Promised SLA</div>
+            <div class="sla-metric"><strong>${r.actual_avg_days}d</strong>Actual Avg</div>
+            <div class="sla-metric"><strong>${r.late_rate_pct}%</strong>Late Breach Rate</div>
+            <span class="sla-status-pill sla-status-${r.status}">${r.status}</span>
+        </div>
+    `).join('');
+}
+
+function renderSlaModeChart(slaGrid) {
+    const el = document.getElementById('slaModeChart');
+    if (!el) return;
+    const ctx = el.getContext('2d');
+    if (slaModeChartInstance) slaModeChartInstance.destroy();
+
+    const fallback = [
+        { mode: 'Standard Class', late_rate_pct: 39.77 },
+        { mode: 'Second Class', late_rate_pct: 79.83 },
+        { mode: 'First Class', late_rate_pct: 100.0 },
+        { mode: 'Same Day', late_rate_pct: 47.97 }
+    ];
+    const rows = (slaGrid && slaGrid.length ? slaGrid : fallback).slice().sort((a, b) => b.late_rate_pct - a.late_rate_pct);
+    slaModeChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: rows.map(r => r.mode),
+            datasets: [{
+                label: 'Late Breach Rate (%)',
+                data: rows.map(r => r.late_rate_pct),
+                backgroundColor: rows.map(r => r.late_rate_pct >= 80 ? '#ef4444' : r.late_rate_pct >= 50 ? '#f59e0b' : '#10b981'),
+                borderRadius: 7,
+                maxBarThickness: 34
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => ` ${c.parsed.x}% of ${rows[c.dataIndex].mode} cohort breaches` } }
+            },
+            scales: {
+                x: { min: 0, max: 100, grid: { color: CHART_GRID }, ticks: { color: CHART_TICK, callback: v => `${v}%` } },
+                y: { grid: { display: false }, ticks: { color: CHART_LABEL, font: { size: 11.5 } } }
+            }
+        }
+    });
 }
 
 // ========================================================
@@ -1037,15 +1605,62 @@ async function renderMarketCharts() {
                 }
             }
         });
+
+        // 3. Monthly revenue / margin / OTIF trend (Live SQL)
+        renderMarketTrendChart(data ? data.monthly_revenue : null);
     } catch (e) {
         console.error('Market chart fetch error:', e);
+        renderMarketTrendChart(null);
     }
 }
 
+function renderMarketTrendChart(monthlyRevenue) {
+    const el = document.getElementById('marketTrendChart');
+    if (!el) return;
+    const ctx = el.getContext('2d');
+    if (marketTrendChartInstance) marketTrendChartInstance.destroy();
+
+    const months = monthlyRevenue && monthlyRevenue.length ? monthlyRevenue.map(m => m.month) : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    const revenue = monthlyRevenue && monthlyRevenue.length ? monthlyRevenue.map(m => m.revenue) : [2920000, 2880000, 3010000, 2650000, 3240000, 2890000];
+    const profit = monthlyRevenue && monthlyRevenue.length ? monthlyRevenue.map(m => m.profit) : [315000, 311000, 325000, 286000, 349000, 312000];
+    const otif = monthlyRevenue && monthlyRevenue.length ? monthlyRevenue.map(m => m.otif_penalties) : [82000, 79000, 83000, 74000, 91000, 81000];
+
+    marketTrendChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [
+                { label: 'Gross Revenue', data: revenue, backgroundColor: 'rgba(59, 130, 246, 0.75)', borderRadius: 6, yAxisID: 'y' },
+                { label: 'Net Profit', data: profit, backgroundColor: 'rgba(16, 185, 129, 0.75)', borderRadius: 6, yAxisID: 'y' },
+                { label: 'OTIF Penalties', type: 'line', data: otif, borderColor: '#f43f5e', backgroundColor: '#f43f5e', pointRadius: 4, borderWidth: 2.5, tension: 0.3, yAxisID: 'y1' }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: CHART_LABEL, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: c => c.parsed.y > 100000
+                            ? ` ${c.dataset.label}: $${(c.parsed.y / 1000000).toFixed(2)}M`
+                            : ` ${c.dataset.label}: $${(c.parsed.y / 1000).toFixed(1)}k`
+                    }
+                }
+            },
+            scales: {
+                y: { grid: { color: CHART_GRID }, ticks: { color: CHART_TICK, callback: v => `$${(v / 1000000).toFixed(1)}M` } },
+                y1: { position: 'right', grid: { display: false }, ticks: { color: '#fb7185', callback: v => `$${(v / 1000).toFixed(0)}k` } },
+                x: { grid: { display: false }, ticks: { color: CHART_LABEL } }
+            }
+        }
+    });
+}
+
 // ========================================================
-// 9. SCOPE 3 EMISSIONS CHART (LIVE SQL)
+// 9. SCOPE 3 EMISSIONS VIEW (LIVE SQL / SANDBOX)
 // ========================================================
-async function renderEmissionsChart() {
+async function renderEmissionsView() {
     const ctx = document.getElementById('emissionsModalChart').getContext('2d');
     if (emissionsChartInstance) emissionsChartInstance.destroy();
 
@@ -1054,29 +1669,107 @@ async function renderEmissionsChart() {
         const data = res.ok ? await res.json() : null;
 
         const labels = data && data.by_mode ? data.by_mode.map(b => `${b.mode} (${b.share_pct}%)`) : ['Ocean Vessel (42.5%)', 'Road Truckload (21.0%)', 'Air Cargo (20.5%)', 'Rail Intermodal (16.0%)'];
-        const values = data && data.by_mode ? data.by_mode.map(b => b.co2e_kg) : [341354, 168670, 164653, 128511];
+        const values = data && data.by_mode ? data.by_mode.map(b => b.co2_kg ?? b.co2e_kg) : [341354, 168670, 164653, 128511];
+        const colors = data && data.by_mode ? data.by_mode.map(b => b.color || '#3b82f6') : ['#2563eb', '#ea580c', '#9333ea', '#db2777'];
 
+        // --- Top-line metric cards ---
+        if (data) {
+            const find = m => (data.by_mode || []).find(b => b.mode === m);
+            const ocean = find('Standard Class'), air = find('First Class'), road = find('Second Class');
+            document.getElementById('emTotal').textContent = `${Math.round(data.total_co2_kg).toLocaleString()} kg`;
+            document.getElementById('emYoy').textContent = `${data.yoy_change_pct}% YoY Emission Reduction`;
+            if (ocean) {
+                document.getElementById('emOcean').textContent = `${Math.round(ocean.co2_kg).toLocaleString()} kg`;
+                document.getElementById('emOceanShare').textContent = `${ocean.share_pct}% of Corporate Carbon Footprint`;
+            }
+            if (air) {
+                document.getElementById('emAir').textContent = `${Math.round(air.co2_kg).toLocaleString()} kg`;
+                document.getElementById('emAirShare').textContent = `${air.share_pct}% (High Carbon Intensity)`;
+            }
+            if (road) {
+                document.getElementById('emRoad').textContent = `${Math.round(road.co2_kg).toLocaleString()} kg`;
+                document.getElementById('emRoadShare').textContent = `${road.share_pct}% Heavy Trucking`;
+            }
+        }
+
+        // --- Corridor intensity table ---
+        if (data && data.by_route) {
+            const tbody = document.getElementById('corridorTableBody');
+            tbody.innerHTML = data.by_route.map(r => {
+                const pill = r.mode === 'First Class' ? '<span class="modality-pill pill-air">✈️ Air Cargo</span>'
+                    : r.mode === 'Second Class' ? '<span class="modality-pill pill-road">🚛 Road FTL</span>'
+                    : r.mode === 'Same Day' ? '<span class="modality-pill pill-road">⚡ Same Day</span>'
+                    : '<span class="modality-pill pill-ocean">🚢 Ocean TEU</span>';
+                return `<tr>
+                    <td>${r.route}</td>
+                    <td>${pill}</td>
+                    <td>${Number(r.distance_km).toLocaleString()} km</td>
+                    <td><strong>${Number(r.co2_output_kg).toLocaleString()} kg</strong></td>
+                </tr>`;
+            }).join('');
+        }
+
+        // --- Modality doughnut ---
         emissionsChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: labels,
                 datasets: [{
                     data: values,
-                    backgroundColor: ['#2563eb', '#ea580c', '#9333ea', '#db2777'],
+                    backgroundColor: colors,
                     borderWidth: 0
                 }]
             },
             options: {
                 responsive: true,
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#f8fafc', padding: 16 } }
+                    legend: { position: 'bottom', labels: { color: '#f8fafc', padding: 16 } },
+                    tooltip: { callbacks: { label: c => ` ${c.label}: ${Number(c.parsed).toLocaleString()} kg CO₂e` } }
                 },
                 cutout: '60%'
             }
         });
+
+        // --- Monthly stacked trend ---
+        renderEmissionsTrendChart(data ? data.monthly_trend : null);
     } catch (e) {
         console.error('Emissions chart fetch error:', e);
     }
+}
+
+function renderEmissionsTrendChart(monthlyTrend) {
+    const el = document.getElementById('emissionsTrendChart');
+    if (!el) return;
+    const ctx = el.getContext('2d');
+    if (emissionsTrendChartInstance) emissionsTrendChartInstance.destroy();
+
+    const months = monthlyTrend && monthlyTrend.length ? monthlyTrend.map(m => m.month) : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    const pick = k => monthlyTrend && monthlyTrend.length ? monthlyTrend.map(m => m[k]) : [52000, 51000, 53000, 49000, 56000, 50000];
+
+    emissionsTrendChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [
+                { label: '🚢 Ocean TEU', data: pick('ocean'), backgroundColor: '#2563eb', borderRadius: 4 },
+                { label: '✈️ Air Cargo', data: pick('air'), backgroundColor: '#9333ea', borderRadius: 4 },
+                { label: '🚛 Road FTL', data: pick('road'), backgroundColor: '#ea580c', borderRadius: 4 },
+                { label: '🚂 Rail/Same-Day', data: pick('rail'), backgroundColor: '#db2777', borderRadius: 4 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: CHART_LABEL, font: { size: 11 } } },
+                tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${Number(c.parsed.y).toLocaleString()} kg CO₂e` } }
+            },
+            scales: {
+                y: { stacked: true, grid: { color: CHART_GRID }, ticks: { color: CHART_TICK, callback: v => `${(v / 1000).toFixed(0)}t` } },
+                x: { stacked: true, grid: { display: false }, ticks: { color: CHART_LABEL } }
+            }
+        }
+    });
 }
 
 // ========================================================
@@ -1093,10 +1786,29 @@ function initAiCopilot() {
 
     let chatHistory = [];
 
-    copilotBtn.addEventListener('click', () => {
+    copilotBtn.addEventListener('click', async () => {
         chatDrawer.style.display = chatDrawer.style.display === 'none' ? 'flex' : 'none';
         if (chatDrawer.style.display === 'flex') {
             chatInput.focus();
+            if (!aisSnapshotShown && authToken) {
+                aisSnapshotShown = true;
+                try {
+                    const [kRes, tRes] = await Promise.all([
+                        authFetch(`${API_BASE}/api/kpis`),
+                        authFetch(`${API_BASE}/api/telemetry/live`)
+                    ]);
+                    if (kRes.ok && tRes.ok) {
+                        const k = await kRes.json();
+                        const t = await tRes.json();
+                        const s = t.summary || {};
+                        appendChatMessage('ai',
+                            `🛰️ **Live Ops Snapshot:** ${Number(s.active_vessels || 0)} ocean vessels (${(s.ais_mode || 'simulated').toUpperCase()} AIS), ` +
+                            `${s.active_flights || 0} air-cargo transponders, ${s.active_trucks || 0} highway fleets. ` +
+                            `On-time SLA: **${k.on_time_percentage}%** • Critical exceptions: **${Number(k.critical_exceptions).toLocaleString()}** • ` +
+                            `Demurrage exposure: **$${Number(k.total_demurrage_risk).toLocaleString()}**. Ask away!`);
+                    }
+                } catch (e) { /* snapshot is best-effort */ }
+            }
         }
     });
 
@@ -1139,6 +1851,10 @@ function initAiCopilot() {
             if (res.ok) {
                 const data = await res.json();
                 appendChatMessage('ai', data.reply);
+                if (data.provider) {
+                    const tag = document.getElementById('copilotProviderTag');
+                    if (tag) tag.textContent = `${data.provider} • SOP Knowledge Base`;
+                }
                 chatHistory.push({ role: 'user', content: userMsg });
                 chatHistory.push({ role: 'assistant', content: data.reply });
             } else {
@@ -1153,13 +1869,18 @@ function initAiCopilot() {
     function appendChatMessage(role, text) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `chat-msg ${role === 'user' ? 'msg-user' : 'msg-ai'}`;
-        
-        // Convert simple markdown bullet points to HTML
+
+        // Convert the copilot's lightweight markdown to safe-ish HTML
         let formattedText = text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/•\s*(.*?)(?=\n|$)/g, '<li>$1</li>')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^\s*[•-]\s+(.+)$/gm, '<li>$1</li>')
+            .replace(/^\s*(\d+)\.\s+(.+)$/gm, '<li>$2</li>')
+            .replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g, '<ul>$1</ul>')
+            .replace(/<\/ul>\s*<ul>/g, '')
             .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/\n\n/g, '<br><br>');
+            .replace(/\n\n/g, '<br><br>')
+            .replace(/\n/g, ' ');
 
         const icon = role === 'user' ? '<i class="fa-solid fa-user"></i>' : '<i class="fa-solid fa-brain"></i>';
 

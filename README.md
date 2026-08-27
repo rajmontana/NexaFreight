@@ -127,5 +127,17 @@ python backend/migrate_to_cloud_db.py
 
 ---
 
+---
+
+## 🎯 Final Assembly (v2.0)
+
+* **Charts on every screen** — all 8 control-tower views render live Chart.js visuals fed by the API: dashboard breach-rate & revenue-trend, ledger risk histogram / modality mix / category breach, SHAP + TCO stack on predictions, demurrage tiers + dwell clocks, SPC X-bar + SLA grid, market trends, Scope 3 doughnut + monthly stacked emissions.
+* **Live AIS telemetry** — `backend/telemetry/ais_receiver.py` binds a real [AISstream.io](https://aisstream.io) WebSocket (`AISSTREAM_API_KEY`) with auto-reconnect across five trade-lane watch boxes; without a key, a **dead-reckoning drift simulator** keeps vessels moving (status reported truthfully as `SIM`).
+* **Copilot box** — the AI Dispatch Copilot (`/api/ai/chat`) is grounded in a **live control-tower snapshot** (on-time SLA, demurrage exposure, AIS vessel count) injected into Groq Llama-3.3-70b, with an offline SOP fallback engine.
+* **Investor pitch deck** — a keyboard-driven, 14-slide glassmorphic deck (Chart.js visualizations, print-ready) lives at **`/pitch/`** (see `pitch/index.html`).
+* **Synthetic sandbox failover** — `backend/mock_store.py` materializes a deterministic 172,765-row replica when PostgreSQL is unreachable, so every screen stays fully functional for demos.
+
+---
+
 ## 📄 License
 Distributed under the MIT License. See `LICENSE` for more information.

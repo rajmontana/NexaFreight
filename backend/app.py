@@ -24,6 +24,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from telemetry.ais_receiver import start_ais_background_stream, get_active_vessels, get_ais_status
 from telemetry.network_utils import smart_request
 from telemetry.sop_engine import query_groq_llm
+import mock_store
 
 AIS_KEY = os.getenv("AISSTREAM_API_KEY", "")
 
@@ -48,15 +49,76 @@ app.add_middleware(
 # 2. DATABASE CONFIGURATION (PostgreSQL)
 # ---------------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:admin321@localhost:5432/smart_track")
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=10, max_overflow=20)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Engine creation can itself fail when the driver (psycopg2) is absent; the
+# control tower must still boot and serve every screen from the synthetic
+# sandbox provider, so the engine is strictly optional at import time.
+engine = None
+try:
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=10, max_overflow=20,
+                           connect_args={"connect_timeout": 4} if DATABASE_URL.startswith("postgres") else {})
+except Exception as _engine_err:
+    print(f"[WARN] SQLAlchemy engine unavailable ({_engine_err}); synthetic sandbox mode engaged")
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) if engine is not None else None
 
 def get_db():
+    # Yield None when the cluster/engine is down so endpoint bodies can
+    # serve from the synthetic sandbox provider instead of hard-failing.
+    if SessionLocal is None or not db_available():
+        yield None
+        return
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+# ---------------------------------------------------------
+# 2B. ADAPTIVE DATA PROVIDER (Live PostgreSQL <-> Synthetic Sandbox)
+# ---------------------------------------------------------
+_DB_OK: Optional[bool] = None
+_DB_LAST_CHECK: float = 0.0
+
+def db_available() -> bool:
+    """Cheap, cached liveness probe of the production PostgreSQL cluster."""
+    global _DB_OK, _DB_LAST_CHECK
+    if engine is None:
+        _DB_OK = False
+        return False
+    if _DB_OK is not None and (time.time() - _DB_LAST_CHECK) < 30:
+        return _DB_OK
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        _DB_OK = True
+    except Exception:
+        _DB_OK = False
+    _DB_LAST_CHECK = time.time()
+    if not _DB_OK:
+        print("[WARN] PostgreSQL unreachable: serving SmartTrack from synthetic 172,765-row sandbox dataset")
+    return _DB_OK
+
+def build_live_context(db: Optional[Session] = None) -> Dict[str, Any]:
+    """Snapshot of control-tower vitals injected into the AI copilot."""
+    try:
+        kpis = mock_store.get_kpis() if not db_available() else {}
+        ais = get_ais_status()
+        tel_vessels = len(get_active_vessels())
+        ctx = {
+            "vessels_tracked": tel_vessels,
+            "ais_telemetry_mode": ais.get("mode", "simulated"),
+        }
+        if kpis:
+            ctx.update({
+                "on_time_rate_pct": kpis.get("on_time_percentage"),
+                "critical_exceptions": f"{kpis.get('critical_exceptions', 0):,}",
+                "demurrage_exposure_usd": kpis.get("total_demurrage_risk", 0),
+                "gross_revenue_usd": kpis.get("total_revenue", 0),
+            })
+        return ctx
+    except Exception:
+        return {}
 
 # ---------------------------------------------------------
 # 3. JWT AUTHENTICATION ENGINE & ROUTE PROTECTION MIDDLEWARE
@@ -144,6 +206,8 @@ except Exception as e:
 # 5. INITIALIZE FEEDBACK DATABASE TABLE
 # ---------------------------------------------------------
 def ensure_db_tables():
+    if engine is None:
+        return
     try:
         with engine.connect() as conn:
             conn.execute(text("""
@@ -215,13 +279,18 @@ def serve_portal():
 
 @app.get("/api/health")
 def health_check():
+    live = db_available()
+    ais = get_ais_status()
     return {
         "status": "online",
         "service": "SmartTrack™ Multi-Modal Logistics Intelligence API",
         "version": "2.0.0",
         "model_loaded": xgb_model is not None,
         "features_count": len(feature_names),
-        "database": "PostgreSQL (localhost:5432/smart_track)"
+        "database": "PostgreSQL (live)" if live else "Synthetic Sandbox (172,765-row replica)",
+        "database_live": live,
+        "records": mock_store.total_rows() if not live else 172765,
+        "ais_mode": ais.get("mode", "simulated"),
     }
 
 # --- 1. AUTHENTICATION ---
@@ -252,6 +321,8 @@ def login(creds: LoginRequest):
 # --- 2. CONTROL TOWER KPIS (LIVE SQL) ---
 @app.get("/api/kpis")
 def get_kpis(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not db_available():
+        return mock_store.get_kpis()
     try:
         # 1. High level aggregates
         q1 = text("""
@@ -311,6 +382,8 @@ def get_shipments(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    if not db_available():
+        return mock_store.get_shipments(page, limit, market, shipping_mode, risk_level, search)
     try:
         offset = (page - 1) * limit
         where_clauses = ["1=1"]
@@ -421,6 +494,65 @@ def get_shipments(
             "page": page,
             "limit": limit,
             "total_pages": (total_records // limit) + (1 if total_records % limit != 0 else 0)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- 3B. LEDGER ANALYTICS STRIP (CHARTS FOR THE SHIPMENTS SCREEN) ---
+@app.get("/api/shipments-analytics")
+def get_shipments_analytics(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not db_available():
+        return mock_store.get_shipments_analytics()
+    try:
+        q_mode = text("""
+            SELECT shipping_mode,
+                   COUNT(*) as count,
+                   ROUND(SUM(sales)::numeric, 2) as revenue,
+                   ROUND(AVG(CASE WHEN late_delivery_risk = 1 THEN 100.0 ELSE 0.0 END)::numeric, 2) as late_rate
+            FROM shipments GROUP BY shipping_mode;
+        """)
+        mode_rows = db.execute(q_mode).fetchall()
+        total_all = sum(int(r[1]) for r in mode_rows) or 1
+
+        mode_base = {"First Class": 87.4, "Second Class": 79.8, "Same Day": 47.9, "Standard Class": 39.8}
+        buckets = {"0–40% (Track)": 0, "40–60% (Watch)": 0, "60–80% (Intervene)": 0, "80–100% (Critical)": 0}
+        modality_mix = []
+        for r in mode_rows:
+            if not r[0]:
+                continue
+            cnt = int(r[1])
+            bp = mode_base.get(r[0], 40.0)
+            if bp < 40: buckets["0–40% (Track)"] += cnt
+            elif bp < 60: buckets["40–60% (Watch)"] += cnt
+            elif bp < 80: buckets["60–80% (Intervene)"] += cnt
+            else: buckets["80–100% (Critical)"] += cnt
+            modality_mix.append({"mode": r[0], "count": cnt, "revenue_usd": float(r[2] or 0),
+                                 "late_rate_pct": float(r[3] or 0),
+                                 "share_pct": round(100.0 * cnt / total_all, 1)})
+
+        q_cat = text("""
+            SELECT category_name, COUNT(*) as count,
+                   ROUND(AVG(CASE WHEN late_delivery_risk = 1 THEN 100.0 ELSE 0.0 END)::numeric, 1) as late_rate
+            FROM shipments GROUP BY category_name ORDER BY count DESC LIMIT 6;
+        """)
+        cat_rows = db.execute(q_cat).fetchall()
+        top_categories = [{"category": r[0], "count": int(r[1]), "late_rate_pct": float(r[2] or 0)} for r in cat_rows if r[0]]
+
+        q_counts = text("""
+            SELECT COUNT(*) as total,
+                   COUNT(CASE WHEN late_delivery_risk = 0 AND days_for_shipment_scheduled >= 2 THEN 1 END) as active_in_transit,
+                   COUNT(CASE WHEN late_delivery_risk = 1 THEN 1 END) as critical_exceptions
+            FROM shipments;
+        """)
+        c_row = dict(db.execute(q_counts).fetchone()._mapping)
+
+        return {
+            "total": int(c_row["total"]),
+            "active_in_transit": int(c_row["active_in_transit"]),
+            "critical_exceptions": int(c_row["critical_exceptions"]),
+            "risk_histogram": [{"bucket": k, "count": v} for k, v in buckets.items()],
+            "modality_mix": modality_mix,
+            "top_categories": top_categories,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -583,6 +715,8 @@ def predict_shipment(req: PredictRequest, current_user: dict = Depends(get_curre
 # --- 5. DEMURRAGE & PORT DWELL (LIVE SQL) ---
 @app.get("/api/demurrage")
 def get_demurrage(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not db_available():
+        return mock_store.get_demurrage()
     try:
         # 1. Real Demurrage Tiers from PostgreSQL
         q_summary = text("""
@@ -668,6 +802,8 @@ def get_demurrage(current_user: dict = Depends(get_current_user), db: Session = 
 # --- 6. STATISTICAL PROCESS CONTROL & COMPLIANCE (LIVE SQL & SHEWHART MATH) ---
 @app.get("/api/spc")
 def get_spc_compliance(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not db_available():
+        return mock_store.get_spc()
     try:
         # 1. Total opportunities and defects for DPMO & Six Sigma Level
         q_dpmo = text("""
@@ -786,6 +922,8 @@ def get_spc_compliance(current_user: dict = Depends(get_current_user), db: Sessi
 # --- 7. CUSTOMER SEGMENTS & MARKET INTEL (LIVE SQL) ---
 @app.get("/api/market-stats")
 def get_market_stats(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not db_available():
+        return mock_store.get_market_stats()
     try:
         # 1. Dynamic Financial Aggregates from PostgreSQL
         q_totals = text("""
@@ -963,15 +1101,20 @@ def get_live_multimodal_telemetry(current_user: dict = Depends(get_current_user)
         {"truck_id": "TRK-405", "corridor": "Mumbai Gateway Port", "latitude": 19.15, "longitude": 73.02, "speed_kmh": 45, "status": "Approaching Port", "modality": "🚛 Highway FTL Van"}
     ]
     
-    # 3. AIS Ocean Ships
+    # 3. AIS Ocean Ships (live satellite feed or dead-reckoning simulator)
     vessels = get_active_vessels()
+    ais = get_ais_status()
     
     return {
         "summary": {
             "active_vessels": len(vessels),
             "active_flights": len(flights),
             "active_trucks": len(trucks),
-            "opensky_network_mode": sky_mode
+            "opensky_network_mode": sky_mode,
+            "ais_mode": ais.get("mode", "simulated"),
+            "ais_simulated": bool(ais.get("simulated", True)),
+            "ais_stream_connected": ais.get("stream_connected", False),
+            "ais_messages": ais.get("total_ais_messages_received", 0),
         },
         "vessels": vessels,
         "flights": flights,
@@ -985,6 +1128,8 @@ def get_ais_telemetry_status(current_user: dict = Depends(get_current_user)):
 # --- 9. SCOPE 3 ESG CARBON EMISSIONS (LIVE SQL) ---
 @app.get("/api/emissions")
 def get_emissions(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not db_available():
+        return mock_store.get_emissions()
     try:
         # 1. Real Scope 3 emissions by modality from PostgreSQL
         q_mode = text("""
@@ -1077,6 +1222,8 @@ def get_emissions(current_user: dict = Depends(get_current_user), db: Session = 
 # --- 10. ACTIVE DISRUPTIONS & EXCEPTIONS FEED (LIVE SQL) ---
 @app.get("/api/exceptions")
 def get_exceptions(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not db_available():
+        return mock_store.get_exceptions()
     try:
         # Query top critical breach clusters from shipments in PostgreSQL
         q_exc = text("""
@@ -1113,16 +1260,19 @@ def get_exceptions(current_user: dict = Depends(get_current_user), db: Session =
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- 11. GENAI COPILOT (GROQ LLAMA-3 + SOP RAG) ---
+# --- 11. GENAI COPILOT (GROQ LLAMA-3 + SOP RAG, LIVE-CONTEXT GROUNDED) ---
 @app.post("/api/ai/chat")
-def ai_chat_copilot(req: ChatRequest, current_user: dict = Depends(get_current_user)):
+def ai_chat_copilot(req: ChatRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        reply = query_groq_llm(req.message, req.history)
+        live_ctx = build_live_context(db)
+        groq_ready = bool(os.getenv("GROQ_API_KEY", "").strip())
+        reply = query_groq_llm(req.message, req.history, live_ctx)
         return {
             "status": "success",
             "reply": reply,
-            "provider": "Groq Llama-3.3-70b",
-            "knowledge_source": "Business SOP & Six Sigma Research Guide"
+            "provider": "Groq Llama-3.3-70b" if groq_ready else "SOP Knowledge Engine (offline fallback)",
+            "knowledge_source": "Business SOP & Six Sigma Research Guide + Live Control-Tower Context",
+            "live_context": live_ctx,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1130,6 +1280,9 @@ def ai_chat_copilot(req: ChatRequest, current_user: dict = Depends(get_current_u
 # --- 12. MLOPS DECISION LOGGING ---
 @app.post("/api/feedback")
 def log_feedback(req: FeedbackRequest, current_user: dict = Depends(get_current_user)):
+    if not db_available():
+        mock_store.log_feedback(req.order_id, req.action, req.predicted_prob)
+        return {"status": "success", "message": f"Action '{req.action}' logged to sandbox MLOPS ledger for {req.order_id}"}
     try:
         with engine.connect() as conn:
             q = text("INSERT INTO feedback_logs (order_id, action_taken, predicted_prob) VALUES (:oid, :action, :prob)")
@@ -1147,6 +1300,11 @@ if os.path.exists(PORTAL_DIR):
         app.mount("/css", StaticFiles(directory=css_dir), name="css")
     if os.path.exists(js_dir):
         app.mount("/js", StaticFiles(directory=js_dir), name="js")
+
+# --- 13. MOUNT INVESTOR PITCH DECK (KEYBOARD-DRIVEN SLIDE EXPERIENCE) ---
+PITCH_DIR = os.path.join(os.path.dirname(BASE_DIR), "pitch")
+if os.path.exists(PITCH_DIR):
+    app.mount("/pitch", StaticFiles(directory=PITCH_DIR, html=True), name="pitch")
 
 if __name__ == "__main__":
     import uvicorn

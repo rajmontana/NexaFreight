@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexaFreight SmartTrack™ — Investor Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+    --bg-base: #0a0f1d;
+    --bg-card: rgba(17, 24, 39, 0.78);
+    --border: rgba(255, 255, 255, 0.09);
+    --border-hi: rgba(255, 255, 255, 0.2);
+    --primary: #3b82f6;
+    --emerald: #10b981;
+    --purple: #8b5cf6;
+    --rose: #f43f5e;
+    --amber: #f59e0b;
+    --cyan: #06b6d4;
+    --txt: #f8fafc;
+    --txt-dim: #94a3b8;
+    --txt-faint: #64748b;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; background: var(--bg-base); }
+body {
+    font-family: 'Inter', sans-serif;
+    color: var(--txt);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- progress + chrome ---------- */
+#progressBar {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+    background: linear-gradient(90deg, var(--primary), var(--purple), var(--rose));
+    z-index: 100; transition: width 0.4s cubic-bezier(.22,1,.36,1);
+}
+#deckChrome {
+    position: fixed; top: 14px; right: 20px; z-index: 100;
+    display: flex; align-items: center; gap: 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--txt-dim);
+}
+#deckChrome .brand { font-family: 'Outfit', sans-serif; font-weight: 800; color: var(--txt); letter-spacing: 0.04em; font-size: 13px; }
+#deckChrome .brand b { color: var(--primary); }
+#slideCounter { background: var(--bg-card); border: 1px solid var(--border); padding: 4px 12px; border-radius: 999px; }
+#deckDots {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 100;
+}
+#deckDots .dot {
+    width: 8px; height: 8px; border-radius: 50%; cursor: pointer;
+    background: rgba(255,255,255,0.18); transition: all 0.25s;
+}
+#deckDots .dot.active { background: var(--primary); transform: scale(1.35); box-shadow: 0 0 12px rgba(59,130,246,.7); }
+#deckDots .dot:hover { background: var(--cyan); }
+#navHint {
+    position: fixed; bottom: 18px; right: 22px; z-index: 100; font-size: 11px; color: var(--txt-faint);
+    font-family: 'JetBrains Mono', monospace;
+}
+#navHint kbd {
+    background: var(--bg-card); border: 1px solid var(--border-hi); border-radius: 4px;
+    padding: 1px 6px; font-size: 10px;
+}
+
+/* ---------- slides ---------- */
+.slide {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden; transform: translateY(24px);
+    transition: opacity 0.45s ease, transform 0.45s ease, visibility 0.45s;
+    padding: 56px 7vw 64px;
+}
+.slide.active { opacity: 1; visibility: visible; transform: translateY(0); }
+.slide::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+        radial-gradient(900px 500px at 12% -10%, rgba(59,130,246,0.13), transparent 60%),
+        radial-gradient(800px 460px at 92% 110%, rgba(139,92,246,0.12), transparent 60%);
+}
+.slide-inner { position: relative; width: 100%; max-width: 1240px; z-index: 2; }
+
+.kicker {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--cyan); background: rgba(6,182,212,.1); border: 1px solid rgba(6,182,212,.3);
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 22px;
+}
+.kicker.purple { color: #c4b5fd; background: rgba(139,92,246,.1); border-color: rgba(139,92,246,.3); }
+.kicker.rose { color: #fda4af; background: rgba(244,63,94,.1); border-color: rgba(244,63,94,.3); }
+.kicker.emerald { color: #6ee7b7; background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.3); }
+.kicker.amber { color: #fcd34d; background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.3); }
+
+h1.slide-title, h2.slide-title {
+    font-family: 'Outfit', sans-serif; font-weight: 800; line-height: 1.06;
+}
+h2.slide-title { font-size: clamp(30px, 3.6vw, 46px); margin-bottom: 12px; }
+.slide-sub { font-size: clamp(14px, 1.3vw, 17px); color: var(--txt-dim); max-width: 760px; margin-bottom: 34px; }
+.slide-sub b { color: var(--txt); }
+
+.grad-text {
+    background: linear-gradient(90deg, #60a5fa, #a78bfa, #f472b6);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* ---------- cards / grids ---------- */
+.grid { display: grid; gap: 18px; }
+.g2 { grid-template-columns: repeat(2, 1fr); }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g4 { grid-template-columns: repeat(4, 1fr); }
+
+.card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px; backdrop-filter: blur(12px);
+    transition: transform 0.25s ease, border-color 0.25s ease;
+}
+.card:hover { transform: translateY(-4px); border-color: var(--border-hi); }
+.card .ic {
+    width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; margin-bottom: 14px;
+}
+.card h3 { font-family: 'Outfit', sans-serif; font-size: 17px; margin-bottom: 8px; }
+.card p { font-size: 13px; color: var(--txt-dim); line-height: 1.55; }
+.card .big {
+    font-family: 'Outfit', sans-serif; font-weight: 800; font-size: clamp(28px, 2.8vw, 40px);
+    letter-spacing: -0.01em;
+}
+.card .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--txt-faint); font-weight: 600; margin-top: 6px; }
+.card em { font-style: normal; font-size: 11.5px; color: var(--txt-faint); display: block; margin-top: 8px; }
+
+.c-blue { color: #60a5fa; } .c-green { color: #34d399; } .c-purple { color: #a78bfa; }
+.c-rose { color: #fb7185; } .c-amber { color: #fbbf24; } .c-cyan { color: #22d3ee; }
+.b-blue { background: rgba(59,130,246,.14); color:#60a5fa; } .b-green { background: rgba(16,185,129,.14); color:#34d399; }
+.b-purple { background: rgba(139,92,246,.14); color:#a78bfa; } .b-rose { background: rgba(244,63,94,.14); color:#fb7185; }
+.b-amber { background: rgba(245,158,11,.14); color:#fbbf24; } .b-cyan { background: rgba(6,182,212,.14); color:#22d3ee; }
+
+/* chart box */
+.chartbox {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px 22px 26px; height: 340px; position: relative;
+}
+.chartbox.sm { height: 300px; }
+.chartbox h4 { font-family: 'Outfit', sans-serif; font-size: 14px; margin-bottom: 10px; color: var(--txt-dim); font-weight: 600; }
+.chartbox canvas { width: 100% !important; height: calc(100% - 28px) !important; }
+
+.split { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; align-items: stretch; }
+
+ul.pts { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+ul.pts li { display: flex; gap: 12px; font-size: 14.5px; color: #cbd5e1; line-height: 1.5; }
+ul.pts li i { color: var(--emerald); margin-top: 3px; }
+ul.pts b { color: var(--txt); }
+
+/* cover */
+#slide-cover { text-align: left; }
+#slide-cover .cover-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background: url('assets/cover.png') center/cover no-repeat;
+    opacity: 0.5;
+    mask-image: linear-gradient(180deg, rgba(0,0,0,.9), rgba(0,0,0,.65));
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.9), rgba(0,0,0,.65));
+}
+#slide-cover::after {
+    content: ""; position: absolute; inset: 0; z-index: 1;
+    background: linear-gradient(180deg, rgba(10,15,29,.35), rgba(10,15,29,.86));
+}
+#slide-cover h1 {
+    font-size: clamp(44px, 6vw, 84px); letter-spacing: -0.02em; margin: 18px 0 10px;
+}
+#slide-cover .tag { font-size: clamp(16px, 1.7vw, 22px); color: var(--txt-dim); max-width: 720px; }
+#slide-cover .badges { display: flex; gap: 10px; margin-top: 30px; flex-wrap: wrap; }
+#slide-cover .badge {
+    font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 999px;
+    background: rgba(17,24,39,.7); border: 1px solid var(--border-hi); color: #cbd5e1;
+    display: inline-flex; gap: 8px; align-items: center; backdrop-filter: blur(8px);
+}
+#slide-cover .presenter { margin-top: 40px; font-size: 13px; color: var(--txt-faint); font-family: 'JetBrains Mono', monospace; }
+
+/* table */
+.moat-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.moat-table th, .moat-table td { padding: 13px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+.moat-table th { font-family: 'Outfit', sans-serif; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--txt-faint); }
+.moat-table td:first-child { color: var(--txt-dim); }
+.moat-table .yes { color: var(--emerald); font-weight: 700; }
+.moat-table .no { color: var(--rose); }
+.moat-table .part { color: var(--amber); }
+
+/* roadmap timeline */
+.timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 6px; }
+.tl-item { position: relative; padding: 18px; }
+.tl-item::before { content: ""; position: absolute; left: 22px; top: 0; bottom: 0; width: 2px; background: linear-gradient(180deg, var(--primary), transparent); opacity: .4; }
+.tl-q { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--cyan); font-weight: 700; margin-bottom: 8px; }
+
+/* ask footer band */
+.ask-band {
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    background: linear-gradient(90deg, rgba(59,130,246,.16), rgba(139,92,246,.16));
+    border: 1px solid var(--border-hi); padding: 22px 26px; border-radius: 16px; margin-top: 28px;
+}
+.ask-band .amt { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 34px; }
+.pill-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill-tags span {
+    font-size: 11.5px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+    background: rgba(255,255,255,.06); border: 1px solid var(--border);
+}
+
+@media (max-width: 980px) {
+    .g4 { grid-template-columns: repeat(2, 1fr); }
+    .g3 { grid-template-columns: repeat(2, 1fr); }
+    .split { grid-template-columns: 1fr; }
+    .timeline { grid-template-columns: repeat(2, 1fr); }
+}
+@media print {
+    html, body { overflow: visible; height: auto; }
+    .slide { position: relative; opacity: 1 !important; visibility: visible !important; transform: none !important; page-break-after: always; min-height: 100vh; }
+    #progressBar, #deckChrome, #deckDots, #navHint { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="progressBar"></div>
+<div id="deckChrome">
+    <span class="brand">NEXA<b>FREIGHT</b> · SMARTTRACK™</span>
+    <span id="slideCounter">1 / 14</span>
+</div>
+<div id="deckDots"></div>
+<div id="navHint"><kbd>←</kbd> <kbd>→</kbd> navigate · <kbd>P</kbd> print</div>
+
+<!-- ============ 01 · COVER ============ -->
+<section class="slide active" id="slide-cover">
+    <div class="cover-bg"></div>
+    <div class="slide-inner">
+        <span class="kicker"><i class="fa-solid fa-satellite-dish"></i> SEED ROUND · 2026</span>
+        <h1>NexaFreight <span class="grad-text">SmartTrack™</span></h1>
+        <p class="tag">The AI control tower that predicts freight delays <b style="color:var(--txt)">before</b> they cost you — XGBoost ETA regression, live multi-modal satellite telemetry, and Six Sigma process control in one pane of glass.</p>
+        <div class="badges">
+            <span class="badge"><i class="fa-solid fa-database c-cyan"></i> 172,765 order lines trained</span>
+            <span class="badge"><i class="fa-solid fa-brain c-purple"></i> 47-feature XGBoost regressor</span>
+            <span class="badge"><i class="fa-solid fa-ship c-blue"></i> Live AIS · OpenSky · OSRM telemetry</span>
+            <span class="badge"><i class="fa-solid fa-chart-line c-rose"></i> Shewhart SPC · 572k DPMO audited</span>
+        </div>
+        <div class="presenter">Rajesh Kumar — Senior Logistics Manager, Global Freight Control Tower &nbsp;|&nbsp; manager@nexafreight.com</div>
+    </div>
+</section>
+
+<!-- ============ 02 · PROBLEM ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker rose"><i class="fa-solid fa-fire"></i> THE PROBLEM</span>
+        <h2 class="slide-title">Freight is a <span class="grad-text">black box</span> that bleeds money daily</h2>
+        <p class="slide-sub">Forwarders discover breaches <b>after</b> the customer does. Our audit of a 172,765-shipment ledger shows the cost of operating blind.</p>
+        <div class="grid g3">
+            <div class="card">
+                <div class="ic b-rose"><i class="fa-solid fa-hourglass-half"></i></div>
+                <div class="big c-rose">57.29%</div>
+                <div class="lbl">of shipments breach promised SLA</div>
+                <em>On-time performance is a coin flip. First Class "1-day" promises breach 100% of the time — the SLA itself is physically infeasible.</em>
+            </div>
+            <div class="card">
+                <div class="ic b-amber"><i class="fa-solid fa-ruler-combined"></i></div>
+                <div class="big c-amber">$527.5k</div>
+                <div class="lbl">demurrage exposure per network cycle</div>
+                <em>Containers drift past the 4-day free window unnoticed; Tier-3 docks then bill $600/TEU/day — pure margin leakage.</em>
+            </div>
+            <div class="card">
+                <div class="ic b-purple"><i class="fa-solid fa-eye-slash"></i></div>
+                <div class="big c-purple">0</div>
+                <div class="lbl">minutes of actionable pre-breach warning</div>
+                <em>TMS dashboards report the past. Nothing tells a dispatcher <b>which</b> container goes late tomorrow — or what to do about it.</em>
+            </div>
+        </div>
+        <div class="ask-band" style="margin-top:34px;">
+            <div>
+                <div class="lbl" style="margin-bottom:6px;">COMPOUNDING COST</div>
+                <div style="font-size:15px; color:#cbd5e1;">Teams re-route with gut feel, miss the OTIF fine math, and eat customer churn — <b style="color:var(--txt)">every single day, at fleet scale.</b></div>
+            </div>
+            <div class="amt grad-text">It's a decision problem.</div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 03 · SOLUTION ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker emerald"><i class="fa-solid fa-tower-broadcast"></i> THE SOLUTION</span>
+        <h2 class="slide-title">One control tower. <span class="grad-text">Predict. Prescribe. Profit.</span></h2>
+        <p class="slide-sub">SmartTrack™ turns the shipment ledger into a <b>forward-looking operating system</b> — each order gets an ETA regression, a TreeSHAP root-cause, and a one-click money-saving action.</p>
+        <div class="grid g4">
+            <div class="card">
+                <div class="ic b-blue"><i class="fa-solid fa-brain"></i></div>
+                <h3>Predictive ETA Regressor</h3>
+                <p>XGBoost over a 47-feature vector — geography, mode, weather, dwell, financial exposure — predicting transit days per order.</p>
+            </div>
+            <div class="card">
+                <div class="ic b-green"><i class="fa-solid fa-bolt"></i></div>
+                <h3>Prescriptive Actions</h3>
+                <p>1-Click modal shift to air when a breach looms: +$350 expedite beats −$1,200 OTIF fine. Net +$850, logged to our MLOps ledger.</p>
+            </div>
+            <div class="card">
+                <div class="ic b-purple"><i class="fa-solid fa-chart-line"></i></div>
+                <h3>Six Sigma SPC Guardrail</h3>
+                <p>Shewhart X-bar control charts flag lead-time drift in May &amp; November congestion regimes before they sink a quarter.</p>
+            </div>
+            <div class="card">
+                <div class="ic b-cyan"><i class="fa-solid fa-leaf"></i></div>
+                <h3>Scope 3 Carbon Ledger</h3>
+                <p>GLEC-factored CO₂e per tonne-km per mode, corridor benchmarks, and IMO CII / SOLAS compliance baked into every route.</p>
+            </div>
+        </div>
+        <p class="slide-sub" style="margin:26px 0 0;">Delivered as a <b>JWT-authenticated web tower</b>: FastAPI + PostgreSQL core, live global radar (AIS · OpenSky · OSRM), GenAI SOP copilot, and an 8-screen executive console.</p>
+    </div>
+</section>
+
+<!-- ============ 04 · LIVE NETWORK ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker"><i class="fa-solid fa-satellite"></i> LIVE TELEMETRY MOAT</span>
+        <h2 class="slide-title">A live nervous system on every ship, plane &amp; truck</h2>
+        <p class="slide-sub">Three independent telemetry fabrics fused onto one radar — with graceful dead-reckoning if any feed drops.</p>
+        <div class="grid g3">
+            <div class="card">
+                <div class="ic b-blue"><i class="fa-solid fa-ship"></i></div>
+                <h3>AISstream.io Satellite AIS</h3>
+                <p>WebSocket stream of PositionReport + ShipStaticData over five trade-lane watch boxes (Indian Ocean, Suez, Malacca, N-Europe, US West). Dead-reckoning simulator keeps the radar alive offline.</p>
+            </div>
+            <div class="card">
+                <div class="ic b-purple"><i class="fa-solid fa-plane"></i></div>
+                <h3>OpenSky Air Transponders</h3>
+                <p>Live air-cargo states across the subcontinent corridor; altitude, speed and callsign mapped to express ULD capacity.</p>
+            </div>
+            <div class="card">
+                <div class="ic b-green"><i class="fa-solid fa-truck"></i></div>
+                <h3>OSRM Highway Corridors</h3>
+                <p>Waypoint-verified NH48 Delhi→Mumbai (1,350 km) and Mumbai→Bengaluru (980 km) FTL lanes with live fleet ping positions.</p>
+            </div>
+        </div>
+        <div class="ask-band">
+            <span style="font-size:15px; color:#cbd5e1;"><b style="color:var(--txt)">IMO-verified maritime lanes</b> — Suez transits, Malacca entries, Cape Finisterre turns — pre-drawn from real waypoints, not marketing polygons.</span>
+            <div class="pill-tags"><span>🚢 AIS WebSocket</span><span>✈️ OpenSky REST</span><span>🚛 OSRM profiles</span><span>🌦️ Open-Meteo harbor weather</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 05 · DATA FOUNDATION ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker purple"><i class="fa-solid fa-layer-group"></i> DATA FOUNDATION</span>
+        <h2 class="slide-title">Trained on <span class="grad-text">172,765 real order lines</span></h2>
+        <p class="slide-sub">A multi-modal supply-chain corpus (DataCo heritage) segmented across five markets, four service classes and 30 product families — cleaned, feature-engineered, served from PostgreSQL.</p>
+        <div class="grid g4">
+            <div class="card"><div class="big c-blue">172,765</div><div class="lbl">shipment records</div></div>
+            <div class="card"><div class="big c-purple">47</div><div class="lbl">model features</div></div>
+            <div class="card"><div class="big c-cyan">$36.6M</div><div class="lbl">gross freight revenue analyzed</div></div>
+            <div class="card"><div class="big c-amber">5</div><div class="lbl">markets · 4 transit classes</div></div>
+        </div>
+        <div class="grid g3" style="margin-top:18px;">
+            <div class="card"><h3><i class="fa-solid fa-earth-asia c-blue"></i> Geographic Reach</h3><p>LATAM · Europe · Pacific Asia · USCA · Africa — each with regional dwell, weather and corridor signatures.</p></div>
+            <div class="card"><h3><i class="fa-solid fa-boxes-packing c-purple"></i> Modality Coverage</h3><p>Ocean TEU (59.7%) · Highway FTL (19.6%) · Express Air (15.4%) · Same-Day courier (5.3%).</p></div>
+            <div class="card"><h3><i class="fa-solid fa-cloud-rain c-cyan"></i> Telemetry Features</h3><p>Port dwell, precipitation, wind gusts, SOLAS mass holds, demurrage tiers, OTIF penalty exposure — all as model inputs.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 06 · ML ENGINE ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker"><i class="fa-solid fa-microchip"></i> ML ENGINE</span>
+        <h2 class="slide-title">XGBoost regressor + <span class="grad-text">exact TreeSHAP</span> on every inference</h2>
+        <div class="split" style="margin-top:8px;">
+            <div class="chartbox">
+                <h4>Top feature importances (production model, GAIN-normalized)</h4>
+                <canvas id="featImpChart"></canvas>
+            </div>
+            <div>
+                <ul class="pts">
+                    <li><i class="fa-solid fa-circle-check"></i><span><b>47-feature vector</b> — order economics, geography, mode, weather, telemetry dwell, financial exposure.</span></li>
+                    <li><i class="fa-solid fa-circle-check"></i><span><b>1,000-tree regressor</b> served in-process via joblib; strict feature ordering enforced by the model's own <code style="color:#93c5fd;">feature_names_in_</code>.</span></li>
+                    <li><i class="fa-solid fa-circle-check"></i><span><b>Native TreeSHAP</b> contributions per inference — Σφᵢ + φ₀ = f(x) — so operators see <b>why</b> a shipment will be late, not just that it will.</span></li>
+                    <li><i class="fa-solid fa-circle-check"></i><span><b>Risk policy layer</b> converts predicted days vs SLA into breach probability with per-mode floors (First Class base 87.4%).</span></li>
+                    <li><i class="fa-solid fa-circle-check"></i><span><b>MLOps feedback ledger</b> captures every dispatcher decision for periodic re-training.</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 07 · LIVE INFERENCE DEMO ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker rose"><i class="fa-solid fa-wand-magic-sparkles"></i> LIVE INFERENCE — ORD-94821</span>
+        <h2 class="slide-title">From ledger row to <span class="grad-text">money decision</span> in 200&nbsp;ms</h2>
+        <div class="split" style="margin-top:8px;">
+            <div>
+                <div class="grid g2">
+                    <div class="card"><div class="lbl">Shipping mode</div><div class="big" style="font-size:26px;">✈️ First Class Air</div></div>
+                    <div class="card"><div class="lbl">Promised SLA</div><div class="big" style="font-size:26px;">1.0 day</div></div>
+                    <div class="card"><div class="lbl">XGBoost predicted transit</div><div class="big c-amber" style="font-size:26px;">2.27 days</div></div>
+                    <div class="card"><div class="lbl">Breach probability</div><div class="big c-rose" style="font-size:26px;">87.4%</div></div>
+                </div>
+                <p class="slide-sub" style="margin:22px 0 0;">SHAP verdict: <b>SLA infeasibility (shipping mode ⇒ 41.8% of gain)</b>, port congestion, and OTIF exposure dominate the delay. The tower then prices the fix — not just the problem.</p>
+            </div>
+            <div class="chartbox">
+                <h4>Per-shipment cash decision: expedite vs. eat the fine</h4>
+                <canvas id="saveChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 08 · FINANCIAL IMPACT ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker emerald"><i class="fa-solid fa-sack-dollar"></i> FINANCIAL IMPACT</span>
+        <h2 class="slide-title">+ $850 per rescued shipment — <span class="grad-text">fleet-scale arithmetic</span></h2>
+        <p class="slide-sub">Applying the prescriptive modal-shift policy across the at-risk First Class cohort in our data.</p>
+        <div class="split" style="align-items:center;">
+            <div class="grid g2">
+                <div class="card"><div class="big c-blue">26.5k</div><div class="lbl">First Class cohort / cycle</div></div>
+                <div class="card"><div class="big c-rose">100%</div><div class="lbl">currently breach 1-day SLA</div></div>
+                <div class="card"><div class="big c-amber">$1200</div><div class="lbl">avg OTIF penalty per breach</div></div>
+                <div class="card"><div class="big c-green">$22.5M</div><div class="lbl">addressable savings per cycle</div><em>26,513 × $850 net</em></div>
+            </div>
+            <div class="chartbox">
+                <h4>Where the money goes (per shipment, TCO stack)</h4>
+                <canvas id="tcoChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 09 · QUALITY (SPC) ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker purple"><i class="fa-solid fa-chart-area"></i> QUALITY ENGINEERING</span>
+        <h2 class="slide-title">Six-Sigma discipline, not vibes</h2>
+        <p class="slide-sub">Shewhart X-bar control chart over monthly lead-time subgroups — the tower flags when the <b>process itself</b> drifts out of control (May monsoon, November peak).</p>
+        <div class="split">
+            <div class="grid g2">
+                <div class="card"><div class="lbl">X-bar process mean</div><div class="big c-blue">4.96 days</div></div>
+                <div class="card"><div class="lbl">DPMO</div><div class="big c-rose">572,900</div></div>
+                <div class="card"><div class="lbl">Current capability</div><div class="big c-amber">1.60σ</div></div>
+                <div class="card"><div class="lbl">Post-SLA-redesign target</div><div class="big c-green">3.85σ</div><em>Re-promise First Class at 2.0d in ERP</em></div>
+            </div>
+            <div class="chartbox">
+                <h4>Lead-time control chart (congestion regimes breach the UCL)</h4>
+                <canvas id="spcChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 10 · ESG ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker emerald"><i class="fa-solid fa-leaf"></i> ESG · SCOPE 3</span>
+        <h2 class="slide-title">Carbon accounting your CFO can sign</h2>
+        <div class="split" style="margin-top:8px;">
+            <div class="chartbox">
+                <h4>Scope 3 output by transit modality (GLEC factors)</h4>
+                <canvas id="esgChart"></canvas>
+            </div>
+            <div>
+                <ul class="pts">
+                    <li><i class="fa-solid fa-circle-check"></i><span><b>GHG Protocol Category 9</b> — downstream transportation, per tonne-km, per order.</span></li>
+                    <li><i class="fa-solid fa-circle-check"></i><span><b>−4.2% YoY</b> network intensity trend tracked monthly at corridor level.</span></li>
+                    <li><i class="fa-solid fa-circle-check"></i><span><b>Air → Ocean modal shift</b> cuts intensity ~97× (0.500 → 0.015 kg/t-km) for non-urgent cargo.</span></li>
+                    <li><i class="fa-solid fa-circle-check"></i><span><b>Regulatory badges live-checked:</b> IMO 2023 CII (Grade B), SOLAS VGM ≤ 28,200 kg, GST e-Way, FMCSA 11-hr HOS.</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 11 · MARKET ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker amber"><i class="fa-solid fa-globe"></i> MARKET OPPORTUNITY</span>
+        <h2 class="slide-title">Positioned where <span class="grad-text">logistics spend meets AI spend</span></h2>
+        <p class="slide-sub"><em style="color:var(--txt-faint);">Illustrative sizing from public industry research; refined bottoms-up with 3PL pilot contracts.</em></p>
+        <div class="grid g3">
+            <div class="card">
+                <div class="lbl">TAM</div>
+                <div class="big c-blue">$9.1T</div>
+                <em>Global logistics &amp; freight forwarding market (all modes, worldwide).</em>
+            </div>
+            <div class="card">
+                <div class="lbl">SAM</div>
+                <div class="big c-purple">$74B</div>
+                <em>Digital freight platforms, visibility software and supply-chain analytics spend.</em>
+            </div>
+            <div class="card">
+                <div class="lbl">SOM (yr 3)</div>
+                <div class="big c-green">$240M</div>
+                <em>Mid-market forwarders &amp; 3PLs in Asia-Europe corridors adopting predictive control towers.</em>
+            </div>
+        </div>
+        <div class="ask-band" style="margin-top:30px;">
+            <span style="font-size:15px; color:#cbd5e1;">Wedge: <b style="color:var(--txt)">demurrage + OTIF prevention pays for the subscription 40× over</b> — expansion motion follows into procurement &amp; ESG reporting.</span>
+            <div class="pill-tags"><span>3PL Operators</span><span>Freight Forwarders</span><span>Port Authorities</span><span>Manufacturers</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 12 · WHY WE WIN ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker"><i class="fa-solid fa-trophy"></i> WHY WE WIN</span>
+        <h2 class="slide-title">Decision system of record, not another dashboard</h2>
+        <div class="card" style="padding:8px 14px;">
+            <table class="moat-table">
+                <thead>
+                    <tr><th>Capability</th><th>Legacy TMS</th><th>Visibility-only trackers</th><th>SmartTrack™</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Shipment tracking</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td></tr>
+                    <tr><td>Live multi-modal telemetry (AIS/OpenSky/OSRM)</td><td class="no">○</td><td class="part">◐ partial modes</td><td class="yes">● fused</td></tr>
+                    <tr><td>Per-order ETA regression (XGBoost)</td><td class="no">○</td><td class="no">○</td><td class="yes">●</td></tr>
+                    <tr><td>SHAP root-cause explainability</td><td class="no">○</td><td class="no">○</td><td class="yes">● TreeSHAP</td></tr>
+                    <tr><td>Prescriptive $$ actions (priced trade-offs)</td><td class="no">○</td><td class="no">○</td><td class="yes">● 1-click</td></tr>
+                    <tr><td>Six Sigma SPC + DPMO audit trail</td><td class="no">○</td><td class="no">○</td><td class="yes">●</td></tr>
+                    <tr><td>Scope 3 carbon ledger (GLEC)</td><td class="no">○</td><td class="part">◐</td><td class="yes">●</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="slide-sub" style="margin-top:24px;">Moat: <b>decision ledger</b>. Every reroute, voucher and escalation is logged with outcome — proprietary training data competitors (who only observe) cannot replicate.</p>
+    </div>
+</section>
+
+<!-- ============ 13 · BUSINESS MODEL ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker emerald"><i class="fa-solid fa-hand-holding-dollar"></i> BUSINESS MODEL</span>
+        <h2 class="slide-title">SaaS that prices against the waste it kills</h2>
+        <div class="grid g3" style="margin-top:10px;">
+            <div class="card">
+                <div class="lbl">TOWER — OPERATOR</div>
+                <div class="big c-blue">$1.9k<span style="font-size:16px; color:var(--txt-dim);">/mo</span></div>
+                <em>3 seats · live radar · KPI/supplier analytics · SOP copilot</em>
+            </div>
+            <div class="card" style="border-color:rgba(139,92,246,.5); box-shadow:0 0 30px rgba(139,92,246,.12);">
+                <div class="lbl" style="color:#c4b5fd;">TOWER — ENTERPRISE ⭐</div>
+                <div class="big c-purple">$6.5k<span style="font-size:16px; color:var(--txt-dim);">/mo</span></div>
+                <em>Unlimited seats · XGBoost inference API · TreeSHAP reports · SPC guardrails · SSO</em>
+            </div>
+            <div class="card">
+                <div class="lbl">DECISION LEDGER</div>
+                <div class="big c-green">$0.40<span style="font-size:16px; color:var(--txt-dim);">/shipment</span></div>
+                <em>Per prescriptive action executed — aligned directly with customer savings</em>
+            </div>
+        </div>
+        <div class="ask-band">
+            <span style="font-size:15px; color:#cbd5e1;">At 10 enterprise forwarders + 60k billed actions/mo → <b style="color:var(--txt)">$89k MRR, 92% gross margin</b> (model inference ≈ $0.0001/shipment).</span>
+            <div class="pill-tags"><span>Land-and-expand</span><span>Usage upside</span><span>API-first</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ 14 · ROADMAP & ASK ============ -->
+<section class="slide">
+    <div class="slide-inner">
+        <span class="kicker rose"><i class="fa-solid fa-flag-checkered"></i> ROADMAP &amp; THE ASK</span>
+        <h2 class="slide-title">18 months to category default</h2>
+        <div class="timeline">
+            <div class="card tl-item">
+                <div class="tl-q">Q1 → Q2 · 2026</div>
+                <h3>Harden &amp; Pilot</h3>
+                <p>3 design-partner forwarders live; AISstream + Groq keys in prod; PDF board reporting; on-prem PostgreSQL HA.</p>
+            </div>
+            <div class="card tl-item">
+                <div class="tl-q">Q3 · 2026</div>
+                <h3>Optimize Engine v2</h3>
+                <p>Operations-research solver routes reroute decisions; delayed-cohort intervention cockpit; EU MRV export.</p>
+            </div>
+            <div class="card tl-item">
+                <div class="tl-q">Q4 · 2026</div>
+                <h3>GTM Motion</h3>
+                <p>EOS/SLED channel partnerships; self-serve onboarding; SOC-2 Type I; marketplace connectors (SAP / Oracle TMS).</p>
+            </div>
+            <div class="card tl-item">
+                <div class="tl-q">2027</div>
+                <h3>Autonomous Lane</h3>
+                <p>Closed-loop interventions (auto-rebook within policy); 6σ programme certification; Series A.</p>
+            </div>
+        </div>
+        <div class="ask-band">
+            <div>
+                <div class="lbl" style="margin-bottom:4px;">RAISING</div>
+                <div class="amt grad-text">$2.5M Seed</div>
+                <div style="font-size:12.5px; color:var(--txt-dim); margin-top:4px;">18-month runway · 45% engineering · 35% GTM · 20% data &amp; compliance</div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:15px; color:#cbd5e1; margin-bottom:10px;">Live now: <b style="color:var(--txt);">try the control tower →</b></div>
+                <div class="pill-tags" style="justify-content:flex-end;"><span>manager@nexafreight.com</span><span>nexafreight.com/smarttrack</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+// ---------------------------------------------------------
+// Slide engine
+// ---------------------------------------------------------
+const slides = Array.from(document.querySelectorAll('.slide'));
+let idx = 0;
+
+const dotsBox = document.getElementById('deckDots');
+slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => go(i));
+    dotsBox.appendChild(d);
+});
+const dots = Array.from(dotsBox.children);
+
+function go(i) {
+    idx = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, j) => s.classList.toggle('active', j === idx));
+    dots.forEach((d, j) => d.classList.toggle('active', j === idx));
+    document.getElementById('slideCounter').textContent = `${idx + 1} / ${slides.length}`;
+    document.getElementById('progressBar').style.width = `${(idx) / (slides.length - 1) * 100}%`;
+}
+
+document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); go(idx + 1); }
+    else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); go(idx - 1); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(slides.length - 1);
+    else if (e.key.toLowerCase() === 'p') window.print();
+});
+let touchX = null;
+document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (dx < -50) go(idx + 1); else if (dx > 50) go(idx - 1);
+    touchX = null;
+}, { passive: true });
+
+// ---------------------------------------------------------
+// Charts
+// ---------------------------------------------------------
+const T = '#94a3b8', G = 'rgba(255,255,255,0.07)', L = '#f8fafc';
+
+// 1. Feature importance (from production model JSON: backend/models/eta_feature_importances.json)
+const feats = [
+    ['Shipping Mode (SLA infeasibility)', 41.8],
+    ['Scheduled Days (promise length)', 15.4],
+    ['OTIF Penalty Exposure ($)', 15.0],
+    ['Simulated Flight Delay (hrs)', 14.4],
+    ['SOP Escalation Flag', 5.9],
+    ['Demurrage Cost ($)', 0.8],
+    ['Total Financial Exposure ($)', 0.8],
+    ['Truck Corridor Delay (hrs)', 0.5]
+];
+new Chart(document.getElementById('featImpChart'), {
+    type: 'bar',
+    data: {
+        labels: feats.map(f => f[0]),
+        datasets: [{ data: feats.map(f => f[1]), backgroundColor: ['#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#06b6d4', '#22c55e', '#94a3b8', '#64748b'], borderRadius: 6 }]
+    },
+    options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.x}% of model gain` } } },
+        scales: {
+            x: { grid: { color: G }, ticks: { color: T, callback: v => `${v}%` } },
+            y: { grid: { display: false }, ticks: { color: L, font: { size: 11 } } }
+        }
+    }
+});
+
+// 2. Per-shipment decision math
+new Chart(document.getElementById('saveChart'), {
+    type: 'bar',
+    data: {
+        labels: ['Do nothing (breach)', 'SmartTrack reroute'],
+        datasets: [{
+            data: [-1200, +850],
+            backgroundColor: ['rgba(244,63,94,.85)', 'rgba(16,185,129,.85)'],
+            borderRadius: 10, maxBarThickness: 90
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` $${c.parsed.y.toLocaleString()} net impact` } } },
+        scales: {
+            y: { grid: { color: G }, ticks: { color: T, callback: v => `$${v.toLocaleString()}` }, suggestedMin: -1400, suggestedMax: 1100 },
+            x: { grid: { display: false }, ticks: { color: L, font: { size: 12 } } }
+        }
+    }
+});
+
+// 3. TCO stack
+new Chart(document.getElementById('tcoChart'), {
+    type: 'bar',
+    data: {
+        labels: ['Landed cost stack'],
+        datasets: [
+            { label: 'Base freight', data: [450], backgroundColor: 'rgba(59,130,246,.85)' },
+            { label: 'Demurrage', data: [600], backgroundColor: 'rgba(139,92,246,.85)' },
+            { label: 'OTIF penalty', data: [135], backgroundColor: 'rgba(244,63,94,.85)' },
+            { label: 'Holding', data: [45], backgroundColor: 'rgba(245,158,11,.85)' }
+        ]
+    },
+    options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: L, font: { size: 10.5 } } }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: $${c.parsed.x}` } } },
+        scales: {
+            x: { stacked: true, grid: { color: G }, ticks: { color: T, callback: v => `$${v}` } },
+            y: { stacked: true, grid: { display: false }, ticks: { color: L } }
+        }
+    }
+});
+
+// 4. SPC control chart (May / Nov congestion regimes out of control)
+(function () {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const leads = [3.78, 3.81, 3.79, 3.79, 10.8, 3.79, 3.82, 3.79, 3.78, 3.79, 10.8, 3.79];
+    const ucl = 8.8, mu = 4.96, lcl = 1.12;
+    new Chart(document.getElementById('spcChart'), {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [
+                { label: `UCL ${ucl}d`, data: Array(12).fill(ucl), borderColor: '#f43f5e', borderDash: [6, 6], pointRadius: 0, borderWidth: 2 },
+                { label: `μ ${mu}d`, data: Array(12).fill(mu), borderColor: '#3b82f6', borderDash: [4, 4], pointRadius: 0, borderWidth: 2 },
+                { label: `LCL ${lcl}d`, data: Array(12).fill(lcl), borderColor: '#10b981', borderDash: [6, 6], pointRadius: 0, borderWidth: 2 },
+                { label: 'Monthly lead time', data: leads, borderColor: '#f8fafc', pointBackgroundColor: leads.map(v => v > ucl ? '#ef4444' : '#3b82f6'), pointRadius: leads.map(v => v > ucl ? 7 : 4), borderWidth: 2.5, tension: 0.3 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: L, font: { size: 10.5 } } } },
+            scales: {
+                y: { min: 0, grid: { color: G }, ticks: { color: T, callback: v => `${v}d` } },
+                x: { grid: { display: false }, ticks: { color: L } }
+            }
+        }
+    });
+})();
+
+// 5. ESG doughnut
+new Chart(document.getElementById('esgChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['🚢 Ocean TEU', '🚛 Road FTL', '✈️ Air Cargo', '⚡ Same Day'],
+        datasets: [{ data: [42.5, 21.0, 20.5, 16.0], backgroundColor: ['#2563eb', '#ea580c', '#9333ea', '#db2777'], borderWidth: 0 }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { color: L, font: { size: 11 } } }, tooltip: { callbacks: { label: c => ` ${c.parsed}% of network Scope 3 CO₂e` } } }
+    }
+});
+
+go(0);
+</script>
+</body>
+</html>
