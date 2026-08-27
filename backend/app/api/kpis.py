@@ -39,6 +39,7 @@ def kpis(_user: dict = Depends(get_current_user), db: Session = Depends(get_db))
                   .filter(DatacoOrder.profit < 0).scalar() or 0) if db.query(DatacoOrder.id).first() else 0
     all_lines = db.query(func.count(DatacoOrder.id)).scalar() or 0
     return {
+        "provenance": "sections individually labeled (REAL/CALIBRATED)",
         "shipments": {"count": int(total), "total_value_usd": round(float(value), 2),
                       "on_time_pct": round(100 * (1 - late / total), 1) if total else None,
                       "late_pct": round(100 * late / total, 1) if total else None,

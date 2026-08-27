@@ -28,12 +28,12 @@ humans **decide** (role-based approval limits, immutable audit trail).
 
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Repo hygiene, package structure, CI, config/auth core, honest health | ✅ done |
-| 1 | Domain schema, DataCo ingestion, calibrated execution layer, SOP seed | ⬜ |
-| 2 | AIS/OpenSky ingestion, ghost binding, live map | ⬜ |
-| 3 | ETA quantile model, rule engine, alert inbox + approvals | ⬜ |
-| 4 | OR decision engine, financial dashboards | ⬜ |
-| 5 | Forecasting, ESG, free-tier cloud deploy (HF Spaces + Neon) | ⬜ |
+| 0 | Repo hygiene, package structure, CI, config/auth core, honest health | ✅ |
+| 1 | Domain schema, DataCo ingestion (180K real lines → 65,752 shipments), SOP seed | ✅ |
+| 2 | Real geo lanes + AIS/OpenSky telemetry service + ops-dark portal, deployed (Render+Neon, $0) | ✅ |
+| 3 | Rule engine, HITL alert inbox (authority + immutable audit), LightGBM ETA quantiles (MAE 1.14d) | ✅ |
+| 4 | Financial exposure, breakeven, expedite ROI log from real decisions | ✅ |
+| 5 | Demand forecast (MASE 0.996), GLEC ESG, SPC analytics, copilot, charts | ✅ |
 
 ## Quick start (local)
 
