@@ -149,7 +149,8 @@ function setView(v) {
     analytics: 'Analytics', finance: 'Financial Exposure', esg: 'ESG & Carbon'};
   $('#pageTitle').textContent = titles[v];
   map = null;
-  var fn = {dashboard: viewDashboard, shipments: viewShipments, alerts: viewAlerts}[v];
+  var fn = {dashboard: viewDashboard, shipments: viewShipments, alerts: viewAlerts,
+             finance: viewFinance}[v];
   if (fn) { fn(v); } else { viewPlaceholder(v); }
 }
 function viewPlaceholder(v) {
@@ -473,6 +474,43 @@ function renderAlertDetail(id) {
       $('#btnReject').addEventListener('click', function () { decide('REJECTED', null); });
     }
   }).catch(function (e) { toast('Detail failed: ' + e.message, true); });
+}
+
+function viewFinance() {
+  $('#main').innerHTML = '<div id="finBody" class="placeholder">loading…</div>';
+  api('/api/finance').then(function (d) {
+    var cards = [
+      ['SLA Penalty Exposure', '$' + d.sla_penalty_exposure_usd.toLocaleString(), d.window.at_risk_shipments + ' at-risk shipments (replay window)', 'REAL:DataCo+OTIF'],
+      ['Demurrage Potential', '$' + d.demurrage_potential_usd.toLocaleString(), 'UNCTAD dwell prior x SOP tariff', 'CALIBRATED'],
+      ['Expedite Spend', '$' + d.expedite.approved_spend_usd.toLocaleString() + ' / $' + d.expedite.budget_usd.toLocaleString(), d.expedite.utilization_pct + '% of budget', 'REAL:audit'],
+      ['Air/Ocean Breakeven', '$' + d.breakeven.threshold_usd.toLocaleString(), 'air ≈ ' + d.breakeven.air_multiple + 'x ocean — air optimal above this penalty', 'DERIVED']
+    ];
+    var html = '<div class="kpis">' + cards.map(function (c) {
+      return '<div class="card kpi"><div class="label">' + c[0] + '</div><div class="value">' + c[1] +
+        '</div><div class="sub">' + c[2] + '</div><div style="margin-top:6px"><span class="tag">' + c[3] + '</span></div></div>';
+    }).join('') + '</div>';
+    html += '<div class="grid-2"><div class="card"><div class="head"><h3>Breakeven: ocean(+penalty) vs air total cost</h3>' +
+      '<span class="tag">DERIVED:optimizer</span></div><table class="data"><thead><tr><th>Penalty exposure</th>' +
+      '<th>Ocean total</th><th>Air total</th><th>Optimal</th></tr></thead><tbody>' +
+      d.breakeven.curve.map(function (r) {
+        return '<tr><td>$' + r.penalty_exposure_usd.toLocaleString() + '</td><td>$' + r.ocean_total.toLocaleString() +
+          '</td><td>$' + r.air_total.toLocaleString() + '</td><td><span class="mchip ' +
+          (r.choice === 'AIR' ? 'AIR' : 'OCEAN') + '">' + r.choice + '</span></td></tr>';
+      }).join('') + '</tbody></table></div>';
+    html += '<div class="card"><div class="head"><h3>Expedite ROI Log (real decisions)</h3>' +
+      '<span class="tag">REAL:decision-audit</span></div>' +
+      (d.roi_log.length ? d.roi_log.map(function (r) {
+        return '<div class="list-row"><span class="sev ' + (r.net_usd >= 0 ? 'info' : 'crit') + '">' +
+          r.action + '</span><div><div><span class="mono">' + esc(r.shipment) + '</span> · ' + esc(r.option || '—') +
+          ' by ' + esc(r.by) + '</div><div style="color:var(--text-micro);font-size:11px">cost $' +
+          r.cost_usd.toLocaleString() + ' · penalty avoided $' + r.penalty_avoided_usd.toLocaleString() +
+          ' · <b style="color:' + (r.net_usd >= 0 ? '#86efac' : '#fda4af') + '">net $' + r.net_usd.toLocaleString() +
+          '</b> — “' + esc(r.reason) + '”</div></div></div>';
+      }).join('') : '<div class="list-row">No decisions yet — approve alerts and they appear here with realized net.</div>') +
+      '</div></div>';
+    $('#finBody').className = '';
+    $('#finBody').innerHTML = html;
+  }).catch(function (e) { toast('Finance failed: ' + e.message, true); });
 }
 
 /* ---------- BOOT ---------- */
