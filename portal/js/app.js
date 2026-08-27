@@ -47,6 +47,23 @@ function toast(msg, err) {
   setTimeout(function () { t.className = 'toast'; }, 3600);
 }
 
+function chartDefaults() {
+  if (window.Chart) {
+    Chart.defaults.color = '#8B98AB';
+    Chart.defaults.borderColor = '#1E2A3D';
+    Chart.defaults.font.family = 'Inter, sans-serif';
+  }
+}
+function lineChart(id, labels, datasets, opts) {
+  var el = document.getElementById(id);
+  if (!el || !window.Chart) { return; }
+  return new Chart(el.getContext('2d'), Object.assign({
+    type: 'line',
+    data: {labels: labels, datasets: datasets},
+    options: Object.assign({responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {labels: {boxWidth: 10}}}}, opts || {})}, {}));
+}
+
 /* ---------- LOGIN ---------- */
 function renderLogin() {
   $('#root').innerHTML =
@@ -437,7 +454,12 @@ function renderAlertDetail(id) {
           return d.action + ' by ' + esc(d.by) + ' — “' + esc(d.reason) + '”';
         }).join('; ') + '</div>';
     } else {
-      html += '<h4>Your decision (mandatory reason — audit trail)</h4>' +
+      html += '<h4>Ask the copilot (explains, never decides)</h4>' +
+        '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+        '<input id="copQ" placeholder="e.g. why reroute over air here?" style="flex:1;background:var(--input);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:7px 10px">' +
+        '<button class="btn-mini" id="copAsk">Ask</button></div>' +
+        '<div id="copOut" class="list-row" style="display:none"></div>' +
+        '<h4>Your decision (mandatory reason — audit trail)</h4>' +
         '<textarea id="decReason" rows="2" style="width:100%;background:var(--input);' +
         'border:1px solid var(--border);color:var(--text);border-radius:4px;padding:8px" ' +
         'placeholder="Why this decision? (logged permanently)"></textarea>' +
@@ -469,6 +491,19 @@ function renderAlertDetail(id) {
             loadAlerts();
           }).catch(function (e) { toast(e.message, true); });
       };
+      var askCopilot = function () {
+        var q = $('#copQ').value.trim();
+        if (!q) { return; }
+        $('#copOut').style.display = 'block';
+        $('#copOut').innerHTML = '<i>thinking…</i>';
+        api('/api/copilot', {method: 'POST', body: JSON.stringify({question: q, alert_id: id})})
+          .then(function (r) {
+            $('#copOut').innerHTML = '<span class="sev info">COPILOT</span><div style="white-space:pre-wrap">' +
+              esc(r.answer) + '</div><div style="font-size:10px;color:var(--text-micro)">' + esc(r.provenance) + '</div>';
+          }).catch(function (e) { $('#copOut').innerHTML = esc(e.message); });
+      };
+      $('#copAsk').addEventListener('click', askCopilot);
+      $('#copQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') { askCopilot(); } });
       $('#btnApprove').addEventListener('click', function () { decide('APPROVED'); });
       $('#btnModify').addEventListener('click', function () { decide('MODIFIED'); });
       $('#btnReject').addEventListener('click', function () { decide('REJECTED', null); });
@@ -490,7 +525,9 @@ function viewFinance() {
         '</div><div class="sub">' + c[2] + '</div><div style="margin-top:6px"><span class="tag">' + c[3] + '</span></div></div>';
     }).join('') + '</div>';
     html += '<div class="grid-2"><div class="card"><div class="head"><h3>Breakeven: ocean(+penalty) vs air total cost</h3>' +
-      '<span class="tag">DERIVED:optimizer</span></div><table class="data"><thead><tr><th>Penalty exposure</th>' +
+      '<span class="tag">DERIVED:optimizer</span></div>' +
+      '<div style="height:240px"><canvas id="breakevenChart"></canvas></div>' +
+      '<table class="data" style="margin-top:12px"><thead><tr><th>Penalty exposure</th>' +
       '<th>Ocean total</th><th>Air total</th><th>Optimal</th></tr></thead><tbody>' +
       d.breakeven.curve.map(function (r) {
         return '<tr><td>$' + r.penalty_exposure_usd.toLocaleString() + '</td><td>$' + r.ocean_total.toLocaleString() +
@@ -510,7 +547,15 @@ function viewFinance() {
       '</div></div>';
     $('#finBody').className = '';
     $('#finBody').innerHTML = html;
-  }).catch(function (e) { toast('Finance failed: ' + e.message, true); });
+    var curve = d.breakeven.curve;
+    lineChart('breakevenChart',
+      curve.map(function (r) { return '$' + r.penalty_exposure_usd.toLocaleString(); }),
+      [{label: 'Ocean (+penalty)', data: curve.map(function (r) { return r.ocean_total; }),
+        borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,.15)', fill: true, tension: .2},
+       {label: 'Air expedite', data: curve.map(function (r) { return r.air_total; }),
+        borderColor: '#8B5CF6', borderDash: [5, 5], tension: .2}],
+      {scales: {y: {title: {display: true, text: 'Total cost (USD)'}}}});
+  }).catch(function (e) { var b = $('#finBody'); b.className = 'placeholder'; b.innerHTML = '<b>Could not load</b><br>' + esc(e.message); });
 }
 
 function viewAnalytics() {
@@ -526,8 +571,37 @@ function viewAnalytics() {
         return '<tr><td>' + esc(r.country) + '</td><td>' + r.shipments.toLocaleString() + '</td>' +
           '<td><span class="schip ' + (r.late_pct > 50 ? 'late' : 'ontime') + '">' + r.late_pct + '%</span></td></tr>';
       }).join('') + '</tbody></table></div>';
-    $('#anBody').className = ''; $('#anBody').innerHTML = html;
-  }).catch(function (e) { toast('Analytics failed: ' + e.message, true); });
+    $('#anBody').className = ''; $('#anBody').innerHTML = html +
+      '<div class="grid-2" style="margin-top:12px">' +
+      '<div class="card"><div class="head"><h3>Lead-time control chart (weekly, 3-sigma)</h3><span class="tag">REAL:DataCo</span></div>' +
+      '<div style="height:220px"><canvas id="spcChart"></canvas></div></div>' +
+      '<div class="card"><div class="head"><h3>Demand: 26wk history + 12wk forecast</h3><span class="tag" id="fcTag">PROJECTED:seasonal-v1</span></div>' +
+      '<div style="height:220px"><canvas id="fcChart"></canvas></div></div></div>';
+    api('/api/analytics/spc').then(function (s) {
+      lineChart('spcChart', s.labels,
+        [{label: 'Weekly mean transit (d)', data: s.values, borderColor: '#2DD4BF',
+          backgroundColor: 'rgba(45,212,191,.12)', fill: true, pointRadius: 2},
+         {label: 'CL ' + s.cl, data: s.values.map(function () { return s.cl; }),
+          borderColor: '#64748B', borderDash: [4, 4], pointRadius: 0},
+         {label: 'UCL ' + s.ucl, data: s.values.map(function () { return s.ucl; }),
+          borderColor: '#EF4444', borderDash: [4, 4], pointRadius: 0},
+         {label: 'LCL ' + s.lcl, data: s.values.map(function () { return s.lcl; }),
+          borderColor: '#EF4444', borderDash: [4, 4], pointRadius: 0}]);
+    }).catch(function () {});
+    api('/api/analytics/forecast').then(function (f) {
+      if (!f.available) { return; }
+      var labels = f.history_labels.concat(f.forecast_labels);
+      var hist = f.history_values.concat(f.forecast_values.map(function () { return null; }));
+      var proj = f.history_values.map(function () { return null; }).concat(f.forecast_values);
+      lineChart('fcChart', labels,
+        [{label: 'Orders/wk (REAL)', data: hist, borderColor: '#3B82F6',
+          backgroundColor: 'rgba(59,130,246,.12)', fill: true, pointRadius: 2},
+         {label: 'Forecast (PROJECTED)', data: proj, borderColor: '#2DD4BF',
+          borderDash: [5, 5], pointRadius: 2}]);
+      var t = document.getElementById('fcTag');
+      if (t && f.scores) { t.textContent = 'PROJECTED:seasonal-v1 · MASE ' + f.scores.mase; }
+    }).catch(function () {});
+  }).catch(function (e) { var b = $('#anBody'); b.className = 'placeholder'; b.innerHTML = '<b>Could not load</b><br>' + esc(e.message); });
 }
 function viewESG() {
   $('#main').innerHTML = '<div id="esgBody" class="placeholder">loading…</div>';
@@ -542,10 +616,21 @@ function viewESG() {
           '</td><td>' + r.share_pct + '%</td><td>' + r.factor_kg_per_tkm + '</td><td><b>' + r.co2e_tonnes.toLocaleString() + '</b></td></tr>';
       }).join('') + '</tbody></table>' +
       '<div style="font-size:11px;color:var(--text-dim);margin-top:10px">' + esc(d.green_shift.note) +
-      '</div><div style="font-size:10px;color:var(--text-micro);margin-top:6px">Method: ' + esc(d.method.mass) + '</div></div>';
+      '</div><div style="height:200px;margin-top:12px"><canvas id="esgChart"></canvas></div>' +
+      '<div style="font-size:10px;color:var(--text-micro);margin-top:6px">Method: ' + esc(d.method.mass) + '</div></div>';
     $('#esgBody').className = ''; $('#esgBody').innerHTML = html;
-  }).catch(function (e) { toast('ESG failed: ' + e.message, true); });
+    var elc = document.getElementById('esgChart');
+    if (elc && window.Chart) {
+      new Chart(elc.getContext('2d'), {type: 'bar',
+        data: {labels: d.by_mode.map(function (r) { return r.mode; }),
+          datasets: [{label: 'CO2e tonnes', data: d.by_mode.map(function (r) { return r.co2e_tonnes; }),
+            backgroundColor: ['#3B82F6', '#8B5CF6', '#F59E0B']}]},
+        options: {responsive: true, maintainAspectRatio: false,
+          plugins: {legend: {display: false}}}});
+    }
+  }).catch(function (e) { var b = $('#esgBody'); b.className = 'placeholder'; b.innerHTML = '<b>Could not load</b><br>' + esc(e.message); });
 }
 
 /* ---------- BOOT ---------- */
+chartDefaults();
 if (token) { renderApp(); } else { renderLogin(); }
