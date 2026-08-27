@@ -150,7 +150,7 @@ function setView(v) {
   $('#pageTitle').textContent = titles[v];
   map = null;
   var fn = {dashboard: viewDashboard, shipments: viewShipments, alerts: viewAlerts,
-             finance: viewFinance}[v];
+             finance: viewFinance, analytics: viewAnalytics, esg: viewESG}[v];
   if (fn) { fn(v); } else { viewPlaceholder(v); }
 }
 function viewPlaceholder(v) {
@@ -511,6 +511,40 @@ function viewFinance() {
     $('#finBody').className = '';
     $('#finBody').innerHTML = html;
   }).catch(function (e) { toast('Finance failed: ' + e.message, true); });
+}
+
+function viewAnalytics() {
+  $('#main').innerHTML = '<div id="anBody" class="placeholder">loading…</div>';
+  api('/api/analytics').then(function (d) {
+    var html = '<div class="kpis">' + d.lead_time_spc.map(function (r) {
+      return '<div class="card kpi"><div class="label">MEAN LEAD TIME — ' + r.mode + '</div>' +
+        '<div class="value">' + r.mean_days + 'd</div><div class="sub">' + r.n.toLocaleString() +
+        ' shipments</div><div style="margin-top:6px"><span class="tag">REAL:DataCo</span></div></div>';
+    }).join('') + '</div><div class="card"><div class="head"><h3>Late rate by destination (top 10)</h3>' +
+      '<span class="tag">REAL:DataCo</span></div><table class="data"><thead><tr><th>Country</th>' +
+      '<th>Shipments</th><th>Late %</th></tr></thead><tbody>' + d.late_by_country.map(function (r) {
+        return '<tr><td>' + esc(r.country) + '</td><td>' + r.shipments.toLocaleString() + '</td>' +
+          '<td><span class="schip ' + (r.late_pct > 50 ? 'late' : 'ontime') + '">' + r.late_pct + '%</span></td></tr>';
+      }).join('') + '</tbody></table></div>';
+    $('#anBody').className = ''; $('#anBody').innerHTML = html;
+  }).catch(function (e) { toast('Analytics failed: ' + e.message, true); });
+}
+function viewESG() {
+  $('#main').innerHTML = '<div id="esgBody" class="placeholder">loading…</div>';
+  api('/api/esg').then(function (d) {
+    var html = '<div class="kpis">' +
+      '<div class="card kpi"><div class="label">TOTAL CO2e</div><div class="value">' + d.total_co2e_tonnes.toLocaleString() + ' t</div><div class="sub">GLEC factors x REAL mode mix</div><div style="margin-top:6px"><span class="tag">CALIBRATED:GLEC</span></div></div>' +
+      '<div class="card kpi"><div class="label">CARBON COST @ $' + d.internal_price_usd_per_t + '/t</div><div class="value">$' + d.carbon_cost_usd.toLocaleString() + '</div><div class="sub">internal price in every decision</div><div style="margin-top:6px"><span class="tag">CALIBRATED</span></div></div></div>' +
+      '<div class="card"><div class="head"><h3>Emissions by mode</h3><span class="tag">kg CO2e/t-km factors</span></div>' +
+      '<table class="data"><thead><tr><th>Mode</th><th>Shipments</th><th>Share</th><th>Factor</th><th>CO2e t</th></tr></thead><tbody>' +
+      d.by_mode.map(function (r) {
+        return '<tr><td><span class="mchip ' + r.mode + '">' + r.mode + '</span></td><td>' + r.shipments.toLocaleString() +
+          '</td><td>' + r.share_pct + '%</td><td>' + r.factor_kg_per_tkm + '</td><td><b>' + r.co2e_tonnes.toLocaleString() + '</b></td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:10px">' + esc(d.green_shift.note) +
+      '</div><div style="font-size:10px;color:var(--text-micro);margin-top:6px">Method: ' + esc(d.method.mass) + '</div></div>';
+    $('#esgBody').className = ''; $('#esgBody').innerHTML = html;
+  }).catch(function (e) { toast('ESG failed: ' + e.message, true); });
 }
 
 /* ---------- BOOT ---------- */
