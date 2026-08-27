@@ -249,7 +249,8 @@ function renderCongestion(d) {
 }
 function renderMap() {
   map = L.map('map', {zoomControl: true, attributionControl: false}).setView([15, 62], 3);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom: 10}).addTo(map);
+  L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {maxZoom: 10}).addTo(map);
+  L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {maxZoom: 10}).addTo(map);
   laneLayer = L.layerGroup().addTo(map);
   vesselLayer = L.layerGroup().addTo(map);
   api('/api/lanes').then(function (d) {
