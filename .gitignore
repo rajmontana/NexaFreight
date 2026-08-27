@@ -36,3 +36,4 @@ Thumbs.db
 
 # Node (portal tooling, if added later)
 node_modules/
+models_cache/

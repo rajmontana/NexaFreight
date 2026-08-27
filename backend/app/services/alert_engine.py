@@ -66,11 +66,19 @@ def _options_for(db: Session, alert: Alert, s: Shipment, rule: SopRule) -> list[
         ("PARTIAL_AIR", "Partial air expedite of urgent lines (~$12,500)", air_cost),
     ):
         prior = PRIORS[otype]
+        from backend.app.ml import eta_model
+        base_p = None
+        if otype == "HOLD":
+            pred = eta_model.predict_for_shipment(s)
+            base_p = pred["p_on_time"] if pred and pred.get("p_on_time") is not None else None
+        uplift = {"HOLD": 0.0, "REROUTE_PORT": 0.5, "PARTIAL_AIR": 0.75}[otype]
+        p = prior["p_on_time"] if base_p is None else round(min(0.97, max(0.02, base_p + uplift)), 3)
+        prov = "DERIVED:heuristic-v1" if base_p is None else "DERIVED:eta-model-v1 (+uplift prior)"
         rows.append({
             "alert_id": alert.id, "option_type": otype, "label": label, "cost_usd": cost,
-            "days_saved": prior["days_saved"], "p_on_time": prior["p_on_time"],
-            "expected_total_cost_usd": round(cost + (1 - prior["p_on_time"]) * sla_fine, 2),
-            "detail": {"provenance": "DERIVED:heuristic-v1", "tariff_source": "SOP guide v0.1-draft"},
+            "days_saved": prior["days_saved"], "p_on_time": p,
+            "expected_total_cost_usd": round(cost + (1 - p) * sla_fine, 2),
+            "detail": {"provenance": prov, "tariff_source": "SOP guide v0.1-draft"},
         })
     return rows
 

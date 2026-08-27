@@ -369,3 +369,17 @@ class Decision(Base):
     decided_by: Mapped[str] = mapped_column(String(120))
     decided_at: Mapped[dt.datetime] = mapped_column(DateTime, default=UTC_NOW)
     reason: Mapped[str] = mapped_column(String(400))
+
+
+class ModelRun(Base):
+    """Model registry: every trained model's scores are auditable (AGENTS.md §9)."""
+
+    __tablename__ = "model_runs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    model: Mapped[str] = mapped_column(String(60))          # eta_quantile | demand_ets | ...
+    version: Mapped[str] = mapped_column(String(20), default="1.0")
+    target: Mapped[str] = mapped_column(String(80))
+    data_n: Mapped[int] = mapped_column(Integer)
+    metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    params: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    trained_at: Mapped[dt.datetime] = mapped_column(DateTime, default=UTC_NOW)

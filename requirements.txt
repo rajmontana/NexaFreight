@@ -46,3 +46,6 @@ uvicorn==0.52.4
 uvloop==0.22.1
 watchfiles==1.2.0
 websockets==17.0.1
+scikit-learn==1.9.0
+lightgbm==4.7.0
+joblib==1.5.3

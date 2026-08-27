@@ -17,6 +17,7 @@ from backend.app.api.alerts import router as alerts_router
 from backend.app.api.auth import router as auth_router
 from backend.app.api.kpis import router as kpis_router
 from backend.app.api.lanes import router as lanes_router
+from backend.app.api.models import router as models_router
 from backend.app.api.router import router as api_router
 from backend.app.api.shipments import router as shipments_router
 from backend.app.api.telemetry import router as telemetry_router
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(shipments_router)
     app.include_router(lanes_router)
+    app.include_router(models_router)
     app.include_router(alerts_router)
     app.include_router(telemetry_router)
 
