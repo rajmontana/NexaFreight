@@ -1,0 +1,315 @@
+"""Disruption detection (Definitive Plan — Phase 2).
+
+Two detectors feed the alert pipeline with ``DetectionCandidate`` value
+objects:
+
+1. ``check_vessel_delay`` — compares a leg's *planned* progress fraction
+   (time elapsed / time planned) against the *actual* reported progress.
+   A gap above 15% flags a vessel delay.
+2. ``check_port_congestion`` — daily scan: today's congestion index vs the
+   90-day rolling average; when the ratio is >= 1.5 AND today's index is
+   material (>= 0.5), every inbound shipment (legs into the port with
+   status PLANNED/IN_PROGRESS) gets a candidate.
+
+Delay estimation uses fixed severity bands:
+    LOW 12h / MEDIUM 24h / HIGH 48h / CRITICAL 96h
+with multipliers: congestion × (ratio − 0.5), severe weather × 1.5.
+Severity floors: any SLA breach ⇒ at least HIGH; delay > 72h ⇒ CRITICAL.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from nexafreight.enums import (
+    AlertSeverity,
+    DisruptionType,
+    LegStatus,
+)
+from nexafreight.models import Leg, Port, PortDailyStat
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Detection constants
+# ---------------------------------------------------------------------------
+
+#: Progress gap (planned − actual) above which a vessel delay is flagged.
+VESSEL_PROGRESS_GAP_THRESHOLD: float = 0.15
+
+#: Daily congestion index ratio (today / 90d avg) that flags congestion.
+CONGESTION_RATIO_THRESHOLD: float = 1.5
+
+#: Absolute congestion index floor — tiny indices are too noisy to trust.
+MIN_CONGESTION_INDEX: float = 0.5
+
+#: Rolling baseline window (days) for the congestion average.
+BASELINE_DAYS: int = 90
+
+#: Base delay per severity band (hours).
+SEVERITY_BAND_DELAY_HOURS: dict[AlertSeverity, float] = {
+    AlertSeverity.LOW: 12.0,
+    AlertSeverity.MEDIUM: 24.0,
+    AlertSeverity.HIGH: 48.0,
+    AlertSeverity.CRITICAL: 96.0,
+}
+
+#: Multiplier applied to weather-driven estimates.
+WEATHER_SEVERE_MULTIPLIER: float = 1.5
+
+#: Fixed shipment weight assumption used across the plan (t/container).
+TONNES_PER_CONTAINER: float = 14.0
+
+_SEVERITY_ORDER = [
+    AlertSeverity.LOW,
+    AlertSeverity.MEDIUM,
+    AlertSeverity.HIGH,
+    AlertSeverity.CRITICAL,
+]
+
+
+# ---------------------------------------------------------------------------
+# Value object
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DetectionCandidate:
+    """A detected-but-not-yet-persisted disruption.
+
+    Producing candidates as value objects keeps detection pure and testable;
+    persistence (Disruption row + alert pipeline) happens in the caller.
+    """
+
+    disruption_type: DisruptionType
+    shipment_id: str | None
+    leg_id: int | None
+    estimated_delay_hours: float
+    description: str
+    severity_hint: AlertSeverity
+
+
+# ---------------------------------------------------------------------------
+# Pure helpers
+# ---------------------------------------------------------------------------
+
+
+def _floor_severity(severity: AlertSeverity, floor: AlertSeverity) -> AlertSeverity:
+    """Raise ``severity`` to at least ``floor``."""
+    if _SEVERITY_ORDER.index(severity) < _SEVERITY_ORDER.index(floor):
+        return floor
+    return severity
+
+
+def classify_severity(
+    estimated_delay_hours: float,
+    *,
+    has_sla_breach: bool = False,
+) -> AlertSeverity:
+    """Map an estimated delay to an alert severity.
+
+    Floors: >72h ⇒ CRITICAL; any known SLA breach ⇒ at least HIGH.
+    """
+    if estimated_delay_hours > 72:
+        return AlertSeverity.CRITICAL
+    if estimated_delay_hours > 48:
+        sev = AlertSeverity.HIGH
+    elif estimated_delay_hours > 24:
+        sev = AlertSeverity.MEDIUM
+    else:
+        sev = AlertSeverity.LOW
+    if has_sla_breach:
+        sev = _floor_severity(sev, AlertSeverity.HIGH)
+    return sev
+
+
+def estimate_delay_hours(
+    disruption_type: DisruptionType | str,
+    *,
+    congestion_ratio: float | None = None,
+    weather_severe: bool = False,
+) -> float:
+    """Estimate disruption delay in hours from the severity bands.
+
+    band_delay = base band for the disruption type
+    congestion  ⇒ base × (ratio − 0.5)
+    weather     ⇒ base × 1.5 when severe
+    """
+    dtype = DisruptionType(str(disruption_type))
+
+    if dtype is DisruptionType.VESSEL_DELAY:
+        base = SEVERITY_BAND_DELAY_HOURS[AlertSeverity.MEDIUM]
+    elif dtype is DisruptionType.PORT_CONGESTION:
+        base = SEVERITY_BAND_DELAY_HOURS[AlertSeverity.MEDIUM]
+        if congestion_ratio is not None:
+            return base * (congestion_ratio - 0.5)
+    elif dtype is DisruptionType.WEATHER:
+        base = SEVERITY_BAND_DELAY_HOURS[AlertSeverity.HIGH]
+    else:  # MANUAL and anything unmapped
+        base = SEVERITY_BAND_DELAY_HOURS[AlertSeverity.MEDIUM]
+
+    hours = base * (WEATHER_SEVERE_MULTIPLIER if weather_severe else 1.0)
+    return hours
+
+
+def planned_progress_fraction(leg: Leg, now: datetime | None = None) -> float:
+    """Fraction of a leg's planned duration elapsed at ``now`` (0..1).
+
+    Timezone-safe: naive datetimes are treated as UTC.
+    """
+    now = now or datetime.now(UTC)
+
+    dep = leg.planned_departure
+    arr = leg.planned_arrival
+    if dep.tzinfo is None:
+        dep = dep.replace(tzinfo=UTC)
+    if arr.tzinfo is None:
+        arr = arr.replace(tzinfo=UTC)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+
+    total = (arr - dep).total_seconds()
+    if total <= 0:
+        return 1.0
+    elapsed = (now - dep).total_seconds()
+    return max(0.0, min(1.0, elapsed / total))
+
+
+# ---------------------------------------------------------------------------
+# Detectors
+# ---------------------------------------------------------------------------
+
+
+async def check_vessel_delay(
+    session: AsyncSession,
+    leg_id: int,
+    actual_progress: float,
+    *,
+    now: datetime | None = None,
+) -> DetectionCandidate | None:
+    """Flag a vessel delay when actual progress lags planned by > threshold.
+
+    Estimated delay = progress gap × the leg's planned duration.
+    Returns None when the leg is missing, not SEA/ROAD, or on track.
+    """
+    leg = await session.get(Leg, leg_id)
+    if leg is None:
+        return None
+
+    planned = planned_progress_fraction(leg, now)
+    gap = planned - max(0.0, min(1.0, actual_progress))
+    if gap <= VESSEL_PROGRESS_GAP_THRESHOLD:
+        return None
+
+    dep = leg.planned_departure
+    arr = leg.planned_arrival
+    if dep.tzinfo is None:
+        dep = dep.replace(tzinfo=UTC)
+    if arr.tzinfo is None:
+        arr = arr.replace(tzinfo=UTC)
+    planned_hours = max(1.0, (arr - dep).total_seconds() / 3600.0)
+    delay_hours = gap * planned_hours
+
+    severity = classify_severity(delay_hours)
+    return DetectionCandidate(
+        disruption_type=DisruptionType.VESSEL_DELAY,
+        shipment_id=leg.shipment_id,
+        leg_id=leg.id,
+        estimated_delay_hours=round(delay_hours, 2),
+        description=(
+            f"Vessel behind plan on leg #{leg.sequence_number}: "
+            f"{actual_progress:.0%} actual vs {planned:.0%} planned "
+            f"(gap {gap:.0%} > {VESSEL_PROGRESS_GAP_THRESHOLD:.0%} threshold)"
+        ),
+        severity_hint=severity,
+    )
+
+
+async def check_port_congestion(
+    session: AsyncSession,
+    *,
+    now: datetime | None = None,
+    min_index: float = MIN_CONGESTION_INDEX,
+) -> list[DetectionCandidate]:
+    """Daily congestion scan across all ports.
+
+    For each port: today's congestion index vs the 90-day average. When
+    ratio >= 1.5 AND index >= min_index, every shipment with a PLANNED or
+    IN_PROGRESS leg *into* that port gets a candidate.
+    """
+    now = now or datetime.now(UTC)
+    today: date = now.date()
+    baseline_start = today - timedelta(days=BASELINE_DAYS)
+
+    ports = (await session.execute(select(Port))).scalars().all()
+    candidates: list[DetectionCandidate] = []
+
+    for port in ports:
+        rows = (
+            await session.execute(
+                select(PortDailyStat.stat_date, PortDailyStat.congestion_index).where(
+                    PortDailyStat.port_id == port.id,
+                    PortDailyStat.stat_date >= baseline_start,
+                    PortDailyStat.stat_date <= today,
+                )
+            )
+        ).all()
+        if not rows:
+            continue
+
+        today_rows = [r for r in rows if r.stat_date == today]
+        if not today_rows:
+            continue
+        today_index = float(today_rows[-1].congestion_index)
+
+        baseline_rows = [r for r in rows if r.stat_date < today]
+        if not baseline_rows:
+            continue
+        baseline_avg = sum(float(r.congestion_index) for r in baseline_rows) / len(baseline_rows)
+        if baseline_avg <= 0:
+            continue
+
+        ratio = today_index / baseline_avg
+        if ratio < CONGESTION_RATIO_THRESHOLD or today_index < min_index:
+            continue
+
+        # Inbound shipments: legs ending at this port still en route.
+        inbound_legs = (
+            await session.execute(
+                select(Leg).where(
+                    Leg.destination_id == port.location_id,
+                    Leg.status.in_([LegStatus.PLANNED, LegStatus.IN_PROGRESS]),
+                )
+            )
+        ).scalars().all()
+        seen: set[str] = set()
+        for leg in inbound_legs:
+            if leg.shipment_id in seen:
+                continue
+            seen.add(leg.shipment_id)
+            delay = estimate_delay_hours(
+                DisruptionType.PORT_CONGESTION, congestion_ratio=ratio
+            )
+            locode = port.locode or f"PORT-{port.id}"
+            candidates.append(
+                DetectionCandidate(
+                    disruption_type=DisruptionType.PORT_CONGESTION,
+                    shipment_id=leg.shipment_id,
+                    leg_id=leg.id,
+                    estimated_delay_hours=round(delay, 2),
+                    description=(
+                        f"Port congestion at {locode}: index {today_index:.2f} today vs "
+                        f"{baseline_avg:.2f} 90-day average (ratio {ratio:.1f})"
+                    ),
+                    severity_hint=classify_severity(delay),
+                )
+            )
+
+    if candidates:
+        logger.warning("Congestion scan flagged %d inbound shipments", len(candidates))
+    return candidates

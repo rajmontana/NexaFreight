@@ -1,131 +1,222 @@
-# 🚢 NexaFreight SmartTrack™ AI
-### Multi-Modal Predictive Logistics & Intelligent Autonomous Supply Chain Tower
+# NexaFreight — Autonomous Multimodal Logistics & Maritime Intelligence Control Tower
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![XGBoost](https://img.shields.io/badge/XGBoost-EB5424?style=for-the-badge)](https://xgboost.readthedocs.io/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Neon](https://img.shields.io/badge/Neon_Postgres-00E599?style=for-the-badge&logo=neon&logoColor=black)](https://neon.tech/)
+[![CI](https://github.com/rajmontana/NexaFreight/actions/workflows/ci.yml/badge.svg)](https://github.com/rajmontana/NexaFreight/actions/workflows/ci.yml)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2-black.svg?logo=next.js&logoColor=white)](https://nextjs.org)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://python.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
----
-
-## 📌 Executive Overview
-
-**NexaFreight SmartTrack™** is an enterprise-grade logistics control tower designed for global freight forwarders, 3PLs, and supply chain operators. Built on **172,765 real-world multi-modal shipment records**, it integrates **gradient-boosted machine learning**, **explainable AI (TreeSHAP)**, **live satellite telemetry**, and **Six Sigma Statistical Process Control (SPC)** to predict delivery breaches, prevent demurrage fines, and optimize multi-modal routing in real time.
+NexaFreight is an enterprise-grade autonomous multimodal logistics control tower and maritime intelligence platform. It provides end-to-end visibility across ocean freight, air cargo, road haulage, and warehouse hubs with real-time AIS vessel telemetry, predictive machine learning delay models, automated disruption mitigation, and an AI Operations Copilot powered by Google Gemini.
 
 ---
 
-## 🏛️ System Architecture
+## Architecture Overview
 
-```mermaid
-flowchart TD
-    subgraph Data & Storage
-        DB[("PostgreSQL Database (Neon.tech)\n172,765 Shipments")]
-    end
+NexaFreight runs as a coordinated two-tier architecture:
 
-    subgraph Backend Engine (FastAPI)
-        AUTH["JWT Cryptographic Auth\n(SHA-256 HMAC)"]
-        ML["XGBoost ETA Regressor\n(47 Feature Vector)"]
-        SHAP["Native TreeSHAP Engine\n(Feature Attribution)"]
-        SPC["Shewhart SPC Engine\n(X-bar, UCL/LCL, DPMO)"]
-        DEM["Demurrage Accrual Calculator\n(Port Dwell Tiers)"]
-        ESG["Scope 3 Carbon Engine\n(GLEC Multi-Modal Factors)"]
-    end
-
-    subgraph Frontend Control Tower (Vanilla Web)
-        UI["Glassmorphism Dashboard\n(Leaflet.js + Chart.js)"]
-    end
-
-    DB --> AUTH
-    DB --> SPC
-    DB --> DEM
-    DB --> ESG
-    AUTH --> UI
-    ML --> UI
-    SHAP --> UI
-    SPC --> UI
-    DEM --> UI
-    ESG --> UI
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       Next.js Frontend (Port 3000)                      │
+│   • Interactive 3D Tactical Globe & Multimodal Corridor Map             │
+│   • Operations Intelligence, Disruption Alerts & Financial Analytics    │
+│   • AI Operations Copilot (Gemini & Rule-Based Intent Routing)          │
+│   • Real-Time Position Stream Consumer (Server-Sent Events)             │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │ REST & SSE (:8000)
+┌────────────────────────────────────▼────────────────────────────────────┐
+│                       FastAPI Backend (Port 8000)                       │
+│   • Telemetry Engine: AISStream live WebSocket & High-Res Interpolation │
+│   • Multimodal Router: Sea corridors (searoute), Road (ORS/OSRM), Air   │
+│   • Disruption & Reroute Engine: 3 deterministic mitigation options     │
+│   • SLA & Demurrage Monitor: Risk band calculations & auto-escalation   │
+│   • Predictive ML: LightGBM delay classifier, StatsForecast demand     │
+│   • Database: SQLite (local) / PostgreSQL with Async SQLAlchemy         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🌟 Key Capabilities
+## Key Capabilities
 
-### 1. 🤖 Predictive Lead-Time & Delay Risk (XGBoost + TreeSHAP)
-* Evaluates an **exact 47-feature vector** across order geography, shipping mode, cargo weight, and simulated weather/transit delays.
-* Dynamically computes **TreeSHAP feature contributions** ($\sum \phi_i + \phi_0 = f(x)$) to explain the root cause of every predicted delay.
-* Provides **prescriptive ROI recommendations** (e.g., $+ \$850$ net benefit by switching delayed First Class shipments to Air Cargo).
+### 1. Global Multimodal Visibility & Real-Time AIS Telemetry
+- **Live Vessel Tracking**: Integrates with live AIS feeds (`aisstream.io`) and high-frequency historical position interpolators.
+- **Intermodal Corridor Engine**: Automatically computes and renders multi-leg journeys across ocean container shipping, air freight, and inland trucking routes.
+- **Hub & Depot Infrastructure**: Live visualization of maritime ports, air hubs, and regional distribution warehouses.
 
-### 2. ⏱️ Demurrage & Detention Ticking Clocks
-* Accrues tier-based container storage costs across major global ports:
-  * **Free Period (0–4 Days):** $\$0$
-  * **Tier 1 (5–7 Days):** $\$300/\text{day}$
-  * **Tier 2 (8–10 Days):** $\$450/\text{day}$
-  * **Tier 3 (10+ Days):** $\$600/\text{day}$
-* Evaluates active financial exposure ($> \$90\text{M}$ across historical demurrage risk clusters).
+### 2. Autonomous Disruption & Deterministic Rerouting
+- **Automated Disruption Detection**: Real-time detection of canal blockages, severe weather, port labor delays, and terminal congestion.
+- **Three-Way Recovery Generator**:
+  1. **Accept Delay**: Evaluates cost and SLA impact of waiting out the disruption.
+  2. **Port Divert**: Computes alternative maritime routes and terminal bypasses with distance, CO2, and demurrage trade-offs.
+  3. **Modal Shift**: Triggers emergency air or expedited road freight for high-priority shipments near SLA breach thresholds.
 
-### 3. 📈 Six Sigma Statistical Process Control (SPC)
-* Computes real **Shewhart $\bar{X}$-Bar control limits** ($\bar{X} = 3.79\text{d}$, $\text{UCL} = 7.63\text{d}$, $\text{LCL} = 0.0\text{d}$).
-* Benchmarks carrier performance using **Defects Per Million Opportunities ($\text{DPMO} = 572,899$)** and Six Sigma Quality metrics.
+### 3. Predictive Analytics & Operational Finance
+- **Machine Learning Delay Classifier**: Pre-trained LightGBM model assessing delay risk based on shipment mode, route geography, and seasonal congestion.
+- **Financial Risk Modeling**: Real-time calculations of demurrage penalties, inventory holding costs, and fuel surcharges.
+- **Carbon Accounting**: GLEC-compliant CO2 emission calculations across all transportation modes.
 
-### 4. 🌿 Scope 3 GHG Emissions Tracker (GLEC Framework)
-* Multi-modal carbon calculation across Air ($0.500\text{ kg CO}_2\text{e/t-km}$), Road ($0.062$), Rail ($0.022$), and Ocean ($0.015$).
-* Identifies green corridor opportunities to meet corporate ESG targets.
-
-### 5. 🔒 Zero-Trust JWT Authentication
-* All control tower analytics, shipment tables, and ML prediction endpoints are strictly protected by **Bearer JWT token verification**.
+### 4. NexaFreight AI Copilot
+- **Intelligent Dispatch**: Hybrid query router using deterministic operational rules for high-precision entity lookups (vessels, shipments, alerts) and Google Gemini LLMs for complex advisory and root-cause analysis.
+- **Auditable Provenance**: Every AI answer and metric carries explicit provenance badges (`REAL`, `DERIVED`, `REPLAYED`) ensuring full auditability.
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## Directory Structure
 
-### 1. Clone & Configure Environment
+```
+.
+├── backend/
+│   ├── migrations/             # Alembic database migration scripts
+│   ├── models/                 # Pre-trained ML models (LightGBM, StatsForecast)
+│   ├── scripts/                # Database seed scripts & ingestion pipelines
+│   ├── src/nexafreight/        # Application source code
+│   │   ├── api/                # API routers (shipments, alerts, telemetry, copilot, etc.)
+│   │   ├── core/               # Configuration, security, and database engine
+│   │   ├── models/             # SQLAlchemy ORM models & Pydantic schemas
+│   │   ├── services/           # Routing, telemetry, SLA checker, ML, reroute engine
+│   │   └── workers/            # Background cron jobs & AIS listener workers
+│   ├── tests/                  # Unit and integration test suite (600+ tests)
+│   ├── alembic.ini             # Alembic configuration
+│   ├── pyproject.toml          # Python project specification & dependencies
+│   └── requirements.txt        # Production pip requirements
+│
+├── frontend/
+│   ├── public/                 # Static assets, icons, and audio alerts
+│   ├── src/
+│   │   ├── app/                # Next.js App Router pages and proxy API routes
+│   │   ├── components/         # Tactical UI components (GlobeMap, Analytics, Copilot)
+│   │   ├── hooks/              # Custom React hooks (SSE streams, audio, telemetry)
+│   │   └── lib/                # API clients, geo utilities, and style tokens
+│   ├── package.json            # Node.js dependencies and scripts
+│   ├── tsconfig.json           # TypeScript configuration
+│   └── vitest.config.ts        # Frontend test configuration
+│
+├── .github/workflows/          # CI/CD automation (Pytest, Vitest, Typecheck, Build)
+├── Makefile                    # Developer build and test shortcuts
+└── README.md                   # Project documentation
+```
+
+---
+
+## Quickstart Guide
+
+### Prerequisites
+- **Python**: 3.11 or newer
+- **Node.js**: 20.x or newer, with `npm`
+- **Git**
+
+---
+
+### 1. Backend Setup
+
 ```bash
-git clone https://github.com/rajmontana/NexaFreight.git
-cd NexaFreight
-copy .env.example .env
+# Navigate to the backend directory
+cd backend
+
+# Create and activate a Python virtual environment
+python -m venv .venv
+
+# On Linux/macOS:
+source .venv/bin/activate
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e .
+
+# Configure environment variables
+cp .env.example .env
+# Edit .env to set your JWT_SECRET and optional API keys (Gemini, AISStream, ORS)
+
+# Apply database migrations
+alembic upgrade head
+
+# Seed initial operational data (users, shipments, telemetry, analytics)
+python scripts/seed_user.py
+python scripts/06_seed_analytics.py
+python scripts/activate_and_seed_positions.py
+
+# Start the FastAPI server
+uvicorn nexafreight.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 2. Run with Docker Compose
-```bash
-docker-compose up --build
-```
-* **Frontend Control Tower:** [http://localhost:8000](http://localhost:8000)
-* **Interactive API Docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
+Backend API documentation (Swagger UI) is available at:
+`http://localhost:8000/docs`
 
-### 3. Run with Python Virtual Environment
+---
+
+### 2. Frontend Setup
+
 ```bash
-pip install -r backend/requirements.txt
-uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
+# Open a second terminal and navigate to the frontend directory
+cd frontend
+
+# Configure environment variables
+cp .env.example .env.local
+# Ensure NEXT_PUBLIC_NEXA_API_URL=http://localhost:8000
+
+# Install Node dependencies
+npm ci
+
+# Start the Next.js development server
+npm run dev
+```
+
+Open your browser at `http://localhost:3000`.
+
+**Default Credentials:**
+- **Email:** `operator@nexafreight.dev`
+- **Password:** `changeme123`
+
+---
+
+## Testing & Quality Assurance
+
+NexaFreight includes a comprehensive test suite across backend services and frontend components.
+
+### Automated Test Suite
+```bash
+# Run both test suites via Makefile
+make test
+
+# Run backend tests (608 tests)
+cd backend
+pytest -q
+
+# Run frontend unit tests (234 tests)
+cd frontend
+npx vitest run
+
+# Run frontend typechecking
+cd frontend
+npx tsc --noEmit
+
+# Test production build
+cd frontend
+npm run build
 ```
 
 ---
 
-## 🔑 Demo Credentials
+## API Reference Summary
 
-| Role | Email | Password |
-|:---|:---|:---|
-| **Logistics Manager** | `manager@nexafreight.com` | `SmartTrack2025` |
-| **Supply Chain Director** | `director@nexafreight.com` | `SmartTrack2025` |
-
----
-
-## ☁️ Cloud Deployment
-
-### 1. Database (Neon.tech PostgreSQL)
-Stream your local PostgreSQL database into Neon in seconds:
-```bash
-set DATABASE_URL="postgresql://user:pass@ep-cool-db.neon.tech/neondb?sslmode=require"
-python backend/migrate_to_cloud_db.py
-```
-
-### 2. Web Service (Render / Railway / Fly.io)
-1. Link this repository to **Render**.
-2. Select **Docker** environment.
-3. Configure `DATABASE_URL` and `JWT_SECRET` in environment variables.
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/auth/login` | Authenticates user and returns JWT bearer token |
+| `GET` | `/api/v1/shipments` | Lists multimodal shipments with filter by status/mode |
+| `GET` | `/api/v1/shipments/{id}` | Detailed shipment manifest, leg geometries, and SLA |
+| `GET` | `/api/v1/telemetry/stream` | Server-Sent Events (SSE) stream of live positions |
+| `GET` | `/api/v1/alerts` | Active operational alerts and demurrage warnings |
+| `POST` | `/api/v1/alerts/{id}/options` | Evaluates 3 reroute recovery options for an alert |
+| `POST` | `/api/v1/decisions` | Commits an approved reroute decision to the audit log |
+| `GET` | `/api/v1/analytics/summary` | Executive dashboard KPIs, volume, revenue, and CO2 |
+| `POST` | `/api/v1/copilot/chat` | Interacts with the AI Copilot for operational queries |
 
 ---
 
-## 📄 License
-Distributed under the MIT License. See `LICENSE` for more information.
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](frontend/LICENSE) file for details.
