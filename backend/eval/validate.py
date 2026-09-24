@@ -207,6 +207,24 @@ def validate_artifact(refs: dict) -> bool:
     meta = json.loads(meta_path.read_text())
     ref = refs["ml_baselines_dataco"]["eta_sea_inclusive_test_pinball"]
     m = meta["metrics"]["test"]
+    # Red Sea drill artifact (task 16): ratios checked when the drill has
+    # produced its artifact; SKIP (green) before the first drill run.
+    drill_ok = True
+    drill_path = Path(__file__).resolve().parent / "artifacts" / "red_sea_drill.json"
+    if drill_path.exists():
+        print("== Artifact layer: Red Sea replay ratios vs pinned bands ==")
+        drill = json.loads(drill_path.read_text())
+        groups = {"INJNP->NLRTM": "india_eu", "INMUN->NLRTM": "india_eu", "SGSIN->NLRTM": "singapore_eu"}
+        for lane, group in groups.items():
+            r = drill["results"][lane]["ratio"]
+            cref = refs[f"cape_diversion_ratio_{group}"]
+            drill_ok &= _check(
+                f"cape ratio {lane}",
+                r,
+                cref["value"],
+                cref["check"]["abs"],
+            )
+
     print("== Artifact layer: ETA test pinball vs reproduced references ==")
     ok = _check("p10 pinball", m["p10"]["pinball_loss"], ref["p10"], 0.01)
     ok &= _check("p50 pinball", m["p50"]["pinball_loss"], ref["p50"], 0.01)
@@ -244,7 +262,7 @@ def validate_live(refs: dict) -> bool:
             ok &= _check(f"searoute {name}", nm, ref["value"], ref["tol"])
         except Exception as exc:  # network/graph failure — report, don't crash
             print(f"  [SKIP] searoute {name}: {exc}")
-    return bool(ok)
+    return bool(ok and drill_ok)
 
 
 def _make_stdout_safe() -> None:

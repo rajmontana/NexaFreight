@@ -128,6 +128,18 @@ port_dwell_p90_ratio:
   source: "Documented simplification pending empirical per-port p90 from PortWatch distributions (task 15); real dwell tails vary by port and congestion regime"
   check: {abs: 0.01}
 
+cape_diversion_ratio_india_eu:
+  value: 1.72
+  unit: "Cape distance / Suez distance, India -> North EU lanes"
+  source: "searoute marine graph measured 24 Sep 2026 (INJNP/INMUN->NLRTM 1.70/1.74); UNCTAD Cape-diversion analyses: +40-70% distance vs Suez on Asia-EU"
+  check: {abs: 0.15}
+
+cape_diversion_ratio_singapore_eu:
+  value: 1.25
+  unit: "Cape distance / Suez distance, Singapore -> North EU lane"
+  source: "searoute marine graph measured 24 Sep 2026 (SGSIN->NLRTM 1.245); Singapore sits before the Gulf, so the Cape adds less"
+  check: {abs: 0.08}
+
 carbon_price_usd_per_kg:
   value: 0.08
   unit: USD per kg CO2
