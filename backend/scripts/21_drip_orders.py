@@ -60,6 +60,12 @@ from nexafreight.models.location import Location  # noqa: E402
 from nexafreight.models.network import NetworkNode  # noqa: E402
 from nexafreight.models.order import Order  # noqa: E402
 from nexafreight.services.demo_parties import assign_parties, load_party_pools  # noqa: E402
+from nexafreight.services.consolidation import (  # noqa: E402
+    DEFAULT_NOMINAL,
+    NOMINAL_ORDER_LOAD,
+    containers_for_total,
+    enum_key,
+)
 from nexafreight.models.parameter import ParameterEmpirical  # noqa: E402
 from nexafreight.models.shipment import Shipment  # noqa: E402
 from nexafreight.services.planner import get_planner  # noqa: E402
@@ -250,6 +256,12 @@ class WorldDripper:
             shipping_mode=TransportMode.ROAD,  # provisional; set from the plan
             cargo_class=self.rng.choice(list(CargoClass)),
         )
+        # Task 21 (E13): demo orders carry a measured load (cargo-class
+        # nominal +/-30%), and the shipment's container count derives from
+        # it — no more coin-flip containers.
+        nom_w, nom_v = NOMINAL_ORDER_LOAD.get(enum_key(order.cargo_class), DEFAULT_NOMINAL)
+        order.weight_kg = round(nom_w * self.rng.uniform(0.7, 1.3), 1)
+        order.volume_m3 = round(nom_v * self.rng.uniform(0.7, 1.3), 2)
         # Task 18: deterministic party assignment (shipper/consignee/carrier).
         assign_parties(order, self.party_pools, self.rng)
 
@@ -257,7 +269,7 @@ class WorldDripper:
             id=shipment_id,
             provenance=Provenance.SIMULATED,
             status=ShipmentStatus.PLANNED,
-            container_count=self.rng.randint(1, 2),
+            container_count=containers_for_total(order.weight_kg or 0.0, order.volume_m3 or 0.0, "ROAD"),
             route_version=1,
             # NOT NULL columns; provisional until the planner picks the chain
             # (overwritten below once the recommended itinerary is known).
