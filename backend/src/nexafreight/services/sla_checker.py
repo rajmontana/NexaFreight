@@ -22,9 +22,10 @@ from enum import StrEnum
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from nexafreight.core import params
-from nexafreight.enums import AlertStatus, OrderSlaStatus, ShipmentStatus
+from nexafreight.enums import AlertStatus, LegStatus, OrderSlaStatus, ShipmentStatus
 from nexafreight.models import Alert, AuditLog, Order, Shipment
 from nexafreight.services.alert_engine import latest_planned_arrival
 
@@ -57,6 +58,9 @@ def compute_sla_risk(
     - slack < 12h → HIGH
     - slack < 36h → MEDIUM
     - Else → ON_TIME
+
+    Note: there is deliberately no LOW band; the persisted OrderSlaStatus
+    is the 3-state ON_TIME / AT_RISK / LATE (see _risk_to_order_status).
     """
     if deadline is None or predicted_p85_arrival is None:
         return SlaRisk.ON_TIME
