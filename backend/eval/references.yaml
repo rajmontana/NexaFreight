@@ -1,0 +1,116 @@
+# Published external references — the project's numbers must trace here.
+# Structure per entry: value/unit/source(what+where)/check(tol or range).
+# Rule (project constraint): evaluation is against PUBLICLY available
+# research/reports/benchmarks — never the project against itself.
+
+fx_usd_inr:
+  value: 88.0
+  unit: INR per USD
+  source: "Market as-of 2026-09 (dated in Regulatory_Tax_Reference.md)"
+  check: {abs: 0.5}
+
+freight_air_usd_per_tkm:
+  value: 0.9
+  unit: USD per tonne-km
+  source: "NCAER/DPIIT air freight anchor Rs72/tkm / fx 88 (E9 closure)"
+  check: {abs: 0.05}
+
+freight_road_inr_per_tkm:
+  value: 3.2
+  unit: INR per tonne-km
+  source: "Bottom-up truck economics build-up (Reg doc SS6; TCI-IIM corroboration)"
+  check: {abs: 0.2}
+
+freight_rail_inr_per_tkm:
+  value: 1.4
+  unit: INR per tonne-km
+  source: "Indian Railways class-average freight (0.90 bulk-container)"
+  check: {abs: 0.1}
+
+freight_sea_usd_per_tkm:
+  value: 0.012
+  unit: USD per tonne-km
+  source: "Mainline container shipping INDUSTRY nominal"
+  check: {abs: 0.004}
+
+demurrage_inr_per_box_day:
+  value: 5500
+  unit: INR per box-day
+  source: "JNPT demurrage band Rs3,000-8,000/box/day, band-mid (terminal tariffs)"
+  check: {abs: 500}
+
+demurrage_free_days:
+  value: 4
+  unit: days
+  source: "JNPT/NSA standard free time (industry norm 3-5 days)"
+  check: {abs: 1}
+
+sla_penalty_pct_per_week:
+  value: 0.5
+  unit: pct of order value per week
+  source: "Indian LD (liquidated damages) norms; cap 10% (Reg doc SS7)"
+  check: {abs: 0.1}
+
+sla_penalty_cap_pct:
+  value: 10.0
+  unit: pct of order value
+  source: "LD cap (Reg doc SS7)"
+  check: {abs: 0.5}
+
+road_speed_expressway_kmph:
+  value: 48
+  unit: km/h
+  source: "Govt truck-telemetry study (Livemint/DPIIT-NCAER): 47-48 km/h expressway"
+  check: {abs: 3}
+
+road_speed_artificial_city_kmph:
+  value: 38
+  unit: km/h
+  source: "Govt study: 37-38 km/h all-artificial-surface/city corridors"
+  check: {abs: 3}
+
+insurance_pct_sea:
+  value: 0.003
+  unit: fraction of insured value
+  source: "Marine cargo INDUSTRY premium band (ocean)"
+  check: {abs: 0.002}
+
+insurance_pct_air:
+  value: 0.0075
+  unit: fraction of insured value
+  source: "Air cargo INDUSTRY premium band"
+  check: {abs: 0.002}
+
+insurance_uplift:
+  value: 1.10
+  unit: multiplier
+  source: "CIF-style 110% insured-value uplift (INCOTERMS practice)"
+  check: {abs: 0.02}
+
+carbon_price_usd_per_kg:
+  value: 0.08
+  unit: USD per kg CO2
+  source: "CBAM transitory price anchor (~EUR 80/t)"
+  check: {abs: 0.02}
+
+sea_route_nm:
+  comment: "searoute graph distances, nautical miles (verified in External_Benchmark_Validation.md)"
+  JNPT_JEA: {value: 1169, tol: 25}
+  JNPT_SIN: {value: 2511, tol: 60}
+  Mundra_HAM: {value: 6618, tol: 150}
+  SIN_RTM: {value: 8368, tol: 200}
+
+portwatch_dwell_p90_days:
+  comment: "PortWatch (IMF) daily port data, p90 dwell; tiers warn 1.5 / critical 2.5"
+  JNPT_p90: {value: 1.42, tol: 0.15}
+  warn_tier: 1.5
+  critical_tier: 2.5
+
+ml_baselines_dataco:
+  comment: "Committed-model metrics on the DataCo test split (reproduced in-repo)"
+  delay_classifier:
+    accuracy: 0.7313
+    precision: 0.7911
+    brier: 0.2326
+  grouped_quantile_baseline_p85_pinball: 0.2080
+  eta_sea_inclusive_test_pinball: {p10: 0.1685, p50: 0.5054, p85: 0.2562}
