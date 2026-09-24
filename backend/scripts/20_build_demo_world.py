@@ -54,6 +54,7 @@ from nexafreight.models.leg import Leg  # noqa: E402
 from nexafreight.models.location import Location  # noqa: E402
 from nexafreight.models.network import NetworkEdge, NetworkNode  # noqa: E402
 from nexafreight.models.order import Order  # noqa: E402
+from nexafreight.services.demo_parties import PARTY_SPECS, seed_parties  # noqa: E402
 from nexafreight.models.parameter import ParameterEmpirical  # noqa: E402
 from nexafreight.models.position import PositionReport  # noqa: E402
 from nexafreight.models.shipment import Shipment  # noqa: E402
@@ -131,9 +132,10 @@ async def reset_world() -> int:
             log.info("No SIMULATED shipments found — nothing to reset.")
             return 0
 
-        # children by shipment_id (string FKs)
-        await session.execute(delete(Alert).where(Alert.shipment_id.in_(shipment_ids)))
+        # children by shipment_id (string FKs). Decisions RESTRICT-delete
+        # alerts (Decision.alert_id), so decisions must go first.
         await session.execute(delete(Decision).where(Decision.shipment_id.in_(shipment_ids)))
+        await session.execute(delete(Alert).where(Alert.shipment_id.in_(shipment_ids)))
         await session.execute(delete(Disruption).where(Disruption.shipment_id.in_(shipment_ids)))
         # route plans reference shipment_id as a plain string column
         from nexafreight.models.route_plan import RoutePlanRecord  # local: heavy module
@@ -391,12 +393,16 @@ async def main() -> int:
     kv = await anchor_world(args.warp)
     await densify_schedules()
     await seed_congestion_story()
+    async with get_session_factory()() as session:
+        parties_created = await seed_parties(session)
+    party_count = len(PARTY_SPECS)
 
     log.info("=" * 54)
     log.info("Demo world ready")
     log.info("  nodes: %d  edges: %d", stats["node_count"], stats["edge_count"])
     for node_type, count in stats["mode_hist"]:
         log.info("    %-14s %d", str(node_type), count)
+    log.info("  parties: %d (created %d)", party_count, parties_created)
     log.info("  anchor : %s", kv["time_world.anchor_iso"])
     log.info("  warp   : %s", kv["time_world.warp"])
     log.info("Next: python scripts/21_drip_orders.py --once")

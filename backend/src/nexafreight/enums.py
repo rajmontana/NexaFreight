@@ -155,6 +155,14 @@ class OrderSlaStatus(StrEnum):
     LATE = "LATE"
 
 
+class PartyRole(StrEnum):
+    """Role of a demo supply-chain party (Task 18)."""
+
+    SHIPPER = "SHIPPER"
+    CONSIGNEE = "CONSIGNEE"
+    CARRIER = "CARRIER"
+
+
 class NodeType(StrEnum):
     """Type of network node in the multimodal logistics graph."""
 

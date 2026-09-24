@@ -59,6 +59,7 @@ from nexafreight.models.leg import Leg  # noqa: E402
 from nexafreight.models.location import Location  # noqa: E402
 from nexafreight.models.network import NetworkNode  # noqa: E402
 from nexafreight.models.order import Order  # noqa: E402
+from nexafreight.services.demo_parties import assign_parties, load_party_pools  # noqa: E402
 from nexafreight.models.parameter import ParameterEmpirical  # noqa: E402
 from nexafreight.models.shipment import Shipment  # noqa: E402
 from nexafreight.services.planner import get_planner  # noqa: E402
@@ -86,6 +87,8 @@ class WorldDripper:
         self.in_nodes = sorted(n.locode for n in nodes if n.locode.startswith("IN"))
         if len(self.in_nodes) < 2:
             raise SystemExit("Need >=2 IN* network nodes (run alembic upgrade head)")
+        self.party_pools = await load_party_pools(session)
+
 
         # Network nodes may carry planning codes absent from the UN/LOCODE
         # ingest (e.g. INJPR). Upsert the missing ones as locations so the
@@ -247,6 +250,8 @@ class WorldDripper:
             shipping_mode=TransportMode.ROAD,  # provisional; set from the plan
             cargo_class=self.rng.choice(list(CargoClass)),
         )
+        # Task 18: deterministic party assignment (shipper/consignee/carrier).
+        assign_parties(order, self.party_pools, self.rng)
 
         shipment = Shipment(
             id=shipment_id,
