@@ -34,6 +34,7 @@ import random
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
+from math import asin, atan2, cos, degrees, radians, sin, sqrt
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -148,6 +149,40 @@ class WorldDripper:
             return LegStatus.IN_PROGRESS
         return LegStatus.PLANNED
 
+    @staticmethod
+    def _densified_line(o_coord: tuple[float, float], d_coord: tuple[float, float], points: int = 16) -> str:
+        """Densified great-circle LineString as GeoJSON (lon,lat pairs).
+
+        The interpolator walks this geometry to place moving markers. The
+        straight great-circle is an honest SIMULATED approximation; coastal
+        sea lanes will be upgraded to searoute geometry as polish later.
+        """
+        lat1, lon1 = radians(o_coord[0]), radians(o_coord[1])
+        lat2, lon2 = radians(d_coord[0]), radians(d_coord[1])
+        coords: list[list[float]] = []
+        for i in range(points + 1):
+            f = i / points
+            d = 2 * asin(
+                sqrt(
+                    sin((lat2 - lat1) / 2) ** 2
+                    + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) ** 2
+                )
+            )
+            if d < 1e-12:
+                coords.append([o_coord[1], o_coord[0]])
+                continue
+            a = sin((1 - f) * d) / sin(d)
+            b = sin(f * d) / sin(d)
+            x = a * cos(lat1) * cos(lon1) + b * cos(lat2) * cos(lon2)
+            y = a * cos(lat1) * sin(lon1) + b * cos(lat2) * sin(lon2)
+            z = a * sin(lat1) + b * sin(lat2)
+            lat = degrees(atan2(z, sqrt(x * x + y * y)))
+            lon = degrees(atan2(y, x))
+            coords.append([round(lon, 5), round(lat, 5)])
+        import json as _json
+
+        return _json.dumps({"type": "LineString", "coordinates": coords})
+
     def _shipment_state(self, legs: list[Leg], world: datetime) -> ShipmentStatus:
         if all(leg.status == LegStatus.COMPLETED for leg in legs):
             return ShipmentStatus.DELIVERED
@@ -179,6 +214,9 @@ class WorldDripper:
                 destination_id=d_id,
                 planned_departure=kpi.departure_at,
                 planned_arrival=kpi.arrival_at,
+                # Task-7 wire: the position interpolator walks this geometry
+                # to place moving markers (LINESTRING GeoJSON, lon/lat).
+                route_geometry_json=self._densified_line(o_coord, d_coord),
                 distance_km=round(km, 1) if km else None,
                 co2_kg=round(kpi.co2_kg, 1),
                 provenance=Provenance.SIMULATED,
