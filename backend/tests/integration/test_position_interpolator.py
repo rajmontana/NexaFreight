@@ -34,7 +34,6 @@ from nexafreight.workers.position_interpolator import (
     get_interpolator_worker,
 )
 
-pytestmark = pytest.mark.asyncio
 
 # ---------------------------------------------------------------------------
 # Shared test constants

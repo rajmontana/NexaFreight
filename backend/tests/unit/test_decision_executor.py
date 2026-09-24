@@ -22,7 +22,6 @@ from nexafreight.services.decision_executor import (
     haversine_km,
 )
 
-pytestmark = pytest.mark.asyncio
 
 NOW = datetime.now(UTC)
 

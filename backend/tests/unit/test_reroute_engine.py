@@ -13,7 +13,6 @@ from nexafreight.exceptions import ResourceNotFoundError
 from nexafreight.models import Alert, CorridorAlternative, Disruption
 from nexafreight.services.reroute_engine import generate_options
 
-pytestmark = pytest.mark.asyncio
 
 NOW = datetime.now(UTC)
 

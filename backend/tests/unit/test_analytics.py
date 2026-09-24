@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from nexafreight.api.routes.analytics import ShipmentFinancialAggregate, window_stats
 
-pytestmark = pytest.mark.asyncio
 
 NOW = datetime.now(UTC)
 

@@ -19,7 +19,6 @@ from nexafreight.services.sla_checker import (
     escalate_unacknowledged,
 )
 
-pytestmark = pytest.mark.asyncio
 
 NOW = datetime.now(UTC)
 
