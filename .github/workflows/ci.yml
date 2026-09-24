@@ -62,6 +62,13 @@ jobs:
         run: |
           python eval/validate.py
 
+      - name: Disruption drill (Red Sea replay)
+        # Task 23: scripted disruption scenarios as CI — Suez vs Cape ratios
+        # for 3 lane groups must stay inside the UNCTAD-anchored bands
+        # (eval/references.yaml). Pure marine-graph computation, no DB.
+        run: |
+          python scripts/24_red_sea_drill.py
+
   frontend-test:
     name: Frontend Typecheck & Vitest
     runs-on: ubuntu-latest
