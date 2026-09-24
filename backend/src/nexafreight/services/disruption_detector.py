@@ -40,9 +40,6 @@ logger = logging.getLogger(__name__)
 # Detection constants
 # ---------------------------------------------------------------------------
 
-#: Progress gap (planned − actual) above which a vessel delay is flagged.
-VESSEL_PROGRESS_GAP_THRESHOLD: float = 0.15
-
 from nexafreight.core import params
 
 #: Progress gap (planned − actual) above which a vessel delay is flagged.
