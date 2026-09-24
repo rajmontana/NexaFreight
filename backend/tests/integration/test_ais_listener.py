@@ -44,7 +44,6 @@ from nexafreight.workers.ais_listener import (
     get_position_tracker,
 )
 
-pytestmark = pytest.mark.asyncio
 
 
 # ---------------------------------------------------------------------------

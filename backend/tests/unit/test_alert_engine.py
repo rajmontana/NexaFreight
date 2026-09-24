@@ -26,7 +26,6 @@ from nexafreight.services.alert_engine import (
     resolve_disruption,
 )
 
-pytestmark = pytest.mark.asyncio
 
 NOW = datetime.now(UTC)
 

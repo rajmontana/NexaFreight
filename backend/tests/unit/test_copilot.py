@@ -14,7 +14,6 @@ from nexafreight.services.copilot import (
     needs_llm,
 )
 
-pytestmark = pytest.mark.asyncio
 
 NOW = datetime.now(UTC)
 

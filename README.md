@@ -217,6 +217,13 @@ npm run build
 
 ---
 
+## Contributing (Windows note)
+
+This repo is developed and verified via `git format-patch` / `git am --3way`
+workflows. On Windows checkouts, set `git config core.autocrlf false` for
+this repository to avoid phantom whole-file diffs; editors should save
+UTF-8 without BOM. Console tooling assumes cp1252-safe (ASCII) output.
+
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](frontend/LICENSE) file for details.
