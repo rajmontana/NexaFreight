@@ -202,12 +202,13 @@ class TestLifecycleIdempotency:
 
 
 class TestLegQueryFiltering:
-    async def test_query_returns_only_in_progress_road_and_air(
+    async def test_query_returns_all_movable_in_progress_modes(
         self, db_session, make_leg, make_shipment
     ) -> None:
         """
-        Only IN_PROGRESS ROAD and AIR legs should be returned.
-        SEA and COMPLETED legs must be excluded.
+        IN_PROGRESS ROAD/AIR/SEA/RAIL legs are returned (task-7 integration —
+        the demo world drips all four modes; frozen SEA/RAIL made the map lie
+        by omission). COMPLETED legs are still excluded.
         """
         shipment = await make_shipment()
 
@@ -217,8 +218,11 @@ class TestLegQueryFiltering:
         air_leg = await make_leg(
             shipment_id=shipment.id, mode=TransportMode.AIR, status=LegStatus.IN_PROGRESS
         )
-        _sea_leg = await make_leg(
+        sea_leg = await make_leg(
             shipment_id=shipment.id, mode=TransportMode.SEA, status=LegStatus.IN_PROGRESS
+        )
+        rail_leg = await make_leg(
+            shipment_id=shipment.id, mode=TransportMode.RAIL, status=LegStatus.IN_PROGRESS
         )
         _completed_leg = await make_leg(
             shipment_id=shipment.id, mode=TransportMode.ROAD, status=LegStatus.COMPLETED
@@ -228,7 +232,8 @@ class TestLegQueryFiltering:
         returned_ids = {leg.leg_id for leg in legs}
         assert road_leg.id in returned_ids
         assert air_leg.id in returned_ids
-        assert _sea_leg.id not in returned_ids
+        assert sea_leg.id in returned_ids
+        assert rail_leg.id in returned_ids
         assert _completed_leg.id not in returned_ids
 
     async def test_query_returns_empty_when_no_active_legs(self, db_session) -> None:

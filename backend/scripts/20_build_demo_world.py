@@ -34,7 +34,7 @@ import asyncio
 import argparse
 import logging
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -187,6 +187,82 @@ async def anchor_world(warp: float) -> dict[str, str]:
     return kv
 
 
+async def densify_schedules(days_ahead: int = 21) -> None:
+    """Ensure every edge has a usable service cadence (task-7 wire).
+
+    The migration-seeded timetable is sparse (weekly services), which makes
+    the demo map dead: almost every leg is either COMPLETED or waiting days
+    for the next departure. Generate SIMULATED services at a demo cadence —
+    ROAD/RAIL every 6h, AIR every 12h, SEA every 24h — with durations from
+    the SAME parameter keys the planner uses (no hardcoded speeds; knots
+    keys get the 1.852 conversion, mirroring planner._get_speed).
+
+    Idempotent: previously generated rows (service_name prefix 'DENSIFIED')
+    are replaced on each run; seeded/live schedules are untouched.
+    """
+    from nexafreight.enums import TransportMode
+    from nexafreight.core import params
+    from nexafreight.models.network import EdgeSchedule
+
+    cadence_h = {
+        TransportMode.ROAD: 6,
+        TransportMode.RAIL: 6,
+        TransportMode.AIR: 12,
+        TransportMode.SEA: 24,
+    }
+    now = datetime.now(UTC)
+    # The timetable must exist in HISTORY too: backfilled orders plan at their
+    # own order moment (days/weeks back). Without past services those queries
+    # find nothing and every container teleports to "today" (found live —
+    # delivered=0 world).
+    horizon_start = now - timedelta(days=30)
+    horizon_end = now + timedelta(days=days_ahead)
+
+    async with get_session_factory()() as session:
+        edges = (await session.execute(select(NetworkEdge))).scalars().all()
+        generated = 0
+        for edge in edges:
+            mode = edge.mode if isinstance(edge.mode, TransportMode) else TransportMode(str(edge.mode))
+            cad = cadence_h.get(mode, 12)
+
+            # Replace only our own generated rows.
+            from sqlalchemy import delete as _delete
+
+            await session.execute(
+                _delete(EdgeSchedule).where(
+                    EdgeSchedule.edge_id == edge.id,
+                    EdgeSchedule.service_name.like("DENSIFIED-%"),
+                )
+            )
+
+            speed = params.get_float(edge.transit_speed_param_key, 40.0)
+            if "kn" in str(edge.transit_speed_param_key):
+                speed *= 1.852  # knots → km/h (mirrors planner._get_speed)
+            if speed <= 0:
+                continue
+            # Floor: tiny connector edges (drayage hub→terminal, distance ~0)
+            # would generate zero-duration services (dep==arr) that confuse
+            # leg-status math. 0.5h minimum is honest for a connector.
+            duration_h = max(0.5, edge.distance_km / speed)
+
+            dep = horizon_start.replace(minute=0, second=0, microsecond=0)
+            step = timedelta(hours=cad)
+            while dep <= horizon_end:
+                session.add(
+                    EdgeSchedule(
+                        edge_id=edge.id,
+                        service_name=f"DENSIFIED-{edge.id}-{dep:%Y%m%d%H%M}",
+                        departure_at=dep,
+                        arrival_at=dep + timedelta(hours=round(duration_h, 2)),
+                        provenance="SIMULATED",
+                    )
+                )
+                generated += 1
+                dep += step
+        await session.commit()
+    log.info("Densified schedules: %d services generated across %d edges.", generated, len(edges))
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--warp", type=float, default=1.0, help="world seconds per real second (default 1.0)")
@@ -200,6 +276,7 @@ async def main() -> int:
         await reset_world()
 
     kv = await anchor_world(args.warp)
+    await densify_schedules()
 
     log.info("=" * 54)
     log.info("Demo world ready")
