@@ -146,6 +146,22 @@ def validate_static(refs: dict) -> bool:
         refs["carbon_price_usd_per_kg"]["check"]["abs"],
     )
 
+    # Congestion tiers (Sim C design): warn triggers the scan, critical is
+    # the documented severity-escalation level.
+    tiers = refs["disruption_congestion_tiers"]
+    all_ok &= _check(
+        "congestion tier warn",
+        FALLBACK_DEFAULTS["disruption.congestion.ratio_warn"],
+        tiers["warn"]["value"],
+        tiers["warn"]["check"]["abs"],
+    )
+    all_ok &= _check(
+        "congestion tier critical",
+        FALLBACK_DEFAULTS["disruption.congestion.ratio_critical"],
+        tiers["critical"]["value"],
+        tiers["critical"]["check"]["abs"],
+    )
+
     # Port dwell (C8/C9, audit F4): pin the on-screen delay-estimate inputs.
     dwell_refs = {k: v for k, v in refs["port_dwell_p50_hours"].items() if isinstance(v, dict)}
     worst_ratio_dev = 0.0
@@ -191,6 +207,24 @@ def validate_artifact(refs: dict) -> bool:
     meta = json.loads(meta_path.read_text())
     ref = refs["ml_baselines_dataco"]["eta_sea_inclusive_test_pinball"]
     m = meta["metrics"]["test"]
+    # Red Sea drill artifact (task 16): ratios checked when the drill has
+    # produced its artifact; SKIP (green) before the first drill run.
+    drill_ok = True
+    drill_path = Path(__file__).resolve().parent / "artifacts" / "red_sea_drill.json"
+    if drill_path.exists():
+        print("== Artifact layer: Red Sea replay ratios vs pinned bands ==")
+        drill = json.loads(drill_path.read_text())
+        groups = {"INJNP->NLRTM": "india_eu", "INMUN->NLRTM": "india_eu", "SGSIN->NLRTM": "singapore_eu"}
+        for lane, group in groups.items():
+            r = drill["results"][lane]["ratio"]
+            cref = refs[f"cape_diversion_ratio_{group}"]
+            drill_ok &= _check(
+                f"cape ratio {lane}",
+                r,
+                cref["value"],
+                cref["check"]["abs"],
+            )
+
     print("== Artifact layer: ETA test pinball vs reproduced references ==")
     ok = _check("p10 pinball", m["p10"]["pinball_loss"], ref["p10"], 0.01)
     ok &= _check("p50 pinball", m["p50"]["pinball_loss"], ref["p50"], 0.01)
@@ -228,7 +262,7 @@ def validate_live(refs: dict) -> bool:
             ok &= _check(f"searoute {name}", nm, ref["value"], ref["tol"])
         except Exception as exc:  # network/graph failure — report, don't crash
             print(f"  [SKIP] searoute {name}: {exc}")
-    return bool(ok)
+    return bool(ok and drill_ok)
 
 
 def _make_stdout_safe() -> None:

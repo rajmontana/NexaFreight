@@ -41,6 +41,7 @@ from nexafreight.exceptions import (
     ValidationError,
 )
 from nexafreight.models import (
+    DecisionOutcome,
     Alert,
     AuditLog,
     Decision,
@@ -221,6 +222,11 @@ async def _create_new_legs(
 # ---------------------------------------------------------------------------
 
 
+def _aware_dt(dt: datetime) -> datetime:
+    """SQLite-friendly tz normalization (E26 pattern)."""
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
 async def execute_decision(
     session: AsyncSession,
     *,
@@ -267,6 +273,16 @@ async def execute_decision(
 
     route_before = shipment.route_version
     route_after = route_before
+    # Baseline for the outcome row: final planned arrival of the plan as it
+    # stands at decision time (replaced legs keep planned_arrival, so this is
+    # stable for REROUTE too).
+    pre_legs = (
+        await session.execute(select(Leg).where(Leg.shipment_id == shipment.id))
+    ).scalars().all()
+    pre_planned = [
+        _aware_dt(l.planned_arrival) for l in pre_legs if l.planned_arrival is not None
+    ]
+    baseline_arrival = max(pre_planned) if pre_planned else None
     if chosen.action is DecisionAction.REROUTE:
         route_after = route_before + 1
         replaced = await _replace_old_legs(session, shipment.id)
@@ -322,6 +338,31 @@ async def execute_decision(
                     "route_version_after": route_after,
                 }
             ),
+        )
+    )
+    # Task 12: freeze the predicted picture + recommendation into a
+    # learnable outcome row (phase 1; phase 2 runs at shipment delivery).
+    recommended = next((o for o in options if o.recommended), None)
+    override = None
+    if recommended is not None and recommended.option_key != chosen.option_key:
+        override = (
+            f"operator chose {chosen.option_key} over recommended "
+            f"{recommended.option_key}"
+        )
+    session.add(
+        DecisionOutcome(
+            decision_id=decision.id,
+            shipment_id=shipment.id,
+            chosen_option_key=chosen.option_key,
+            recommended_option_key=recommended.option_key if recommended else None,
+            override_reason=override,
+            predicted_total_impact_usd=round(chosen.total_impact_usd, 2),
+            predicted_cost_delta_usd=round(chosen.cost_delta_usd, 2),
+            predicted_sla_usd=round(chosen.sla_penalty_usd, 2),
+            predicted_demurrage_usd=round(chosen.demurrage_usd, 2),
+            predicted_carbon_usd=round(chosen.carbon_cost_usd, 2),
+            predicted_revised_eta=chosen.revised_eta,
+            baseline_planned_arrival=baseline_arrival,
         )
     )
     await session.flush()

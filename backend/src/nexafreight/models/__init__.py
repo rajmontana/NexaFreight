@@ -10,6 +10,7 @@ from nexafreight.models.audit import AuditLog
 from nexafreight.models.base import Base
 from nexafreight.models.corridor import CorridorAlternative
 from nexafreight.models.decision import Decision
+from nexafreight.models.decision_outcome import DecisionOutcome
 from nexafreight.models.disruption import Disruption
 from nexafreight.models.leg import Leg
 from nexafreight.models.location import Location
@@ -39,6 +40,7 @@ __all__ = [
     "Alert",
     "CorridorAlternative",
     "Decision",
+    "DecisionOutcome",
     "AuditLog",
     "ParameterPolicy",
     "ParameterEmpirical",

@@ -55,6 +55,13 @@ jobs:
         run: |
           pytest -q
 
+      - name: Validate references (eval gate)
+        env:
+          JWT_SECRET: test-secret-key-for-ci-runs-only-min-32-chars-long
+          ENVIRONMENT: test
+        run: |
+          python eval/validate.py
+
   frontend-test:
     name: Frontend Typecheck & Vitest
     runs-on: ubuntu-latest

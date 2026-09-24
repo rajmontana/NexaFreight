@@ -110,6 +110,12 @@ port_dwell_p50_hours:
   SGSIN: {value: 12.0, check: {abs: 2.0}}
   source: "Project C8 registry (WORLD_BANK_CPPI-labelled, docs/parameters.md); bounds from UNCTAD containership median 23.5 h + India all-vessel avg 48.84 h FY26"
 
+disruption_congestion_tiers:
+  warn: {value: 1.5, check: {abs: 0.05}}
+  critical: {value: 2.5, check: {abs: 0.05}}
+  unit: "alert ratio = today index / 90-day baseline average (baseline excludes today)"
+  source: "Sim C design tiers (PortWatch-style ratio; warn triggers the scan, critical reserved for severity escalation)"
+
 port_dwell_allvessel_upper_h:
   value: 48.84
   unit: hours
@@ -121,6 +127,18 @@ port_dwell_p90_ratio:
   unit: "p90_ext = ratio x p50 (uniform tail simplification, row C9)"
   source: "Documented simplification pending empirical per-port p90 from PortWatch distributions (task 15); real dwell tails vary by port and congestion regime"
   check: {abs: 0.01}
+
+cape_diversion_ratio_india_eu:
+  value: 1.72
+  unit: "Cape distance / Suez distance, India -> North EU lanes"
+  source: "searoute marine graph measured 24 Sep 2026 (INJNP/INMUN->NLRTM 1.70/1.74); UNCTAD Cape-diversion analyses: +40-70% distance vs Suez on Asia-EU"
+  check: {abs: 0.15}
+
+cape_diversion_ratio_singapore_eu:
+  value: 1.25
+  unit: "Cape distance / Suez distance, Singapore -> North EU lane"
+  source: "searoute marine graph measured 24 Sep 2026 (SGSIN->NLRTM 1.245); Singapore sits before the Gulf, so the Cape adds less"
+  check: {abs: 0.08}
 
 carbon_price_usd_per_kg:
   value: 0.08
