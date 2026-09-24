@@ -93,6 +93,35 @@ sea_co2_ef_g_per_tkm:
   source: "GLEC v3.2 deep-sea container: 7.6 (>=8k TEU) - 9.1 (3-8k TEU); modeled mix mid"
   check: {abs: 0.6}
 
+# Port dwell p50 hours (benchmark row C8). CPPI-labelled per-port project
+# values (docs/parameters.md). External anchors: UNCTAD global containership
+# median port-call ~23.5 h; India all-vessel avg turnaround 48.84 h FY26
+# (was ~96 h in 2014) - container-specific p50 values must sit below the
+# all-vessel average.
+port_dwell_p50_hours:
+  INJNP: {value: 22.0, check: {abs: 2.0}}
+  INMUN: {value: 18.0, check: {abs: 2.0}}
+  INMAA: {value: 26.0, check: {abs: 2.0}}
+  INVTZ: {value: 24.0, check: {abs: 2.0}}
+  INCCU: {value: 38.0, check: {abs: 2.0}}
+  INCOK: {value: 20.0, check: {abs: 2.0}}
+  NLRTM: {value: 16.0, check: {abs: 2.0}}
+  GRPIR: {value: 20.0, check: {abs: 2.0}}
+  SGSIN: {value: 12.0, check: {abs: 2.0}}
+  source: "Project C8 registry (WORLD_BANK_CPPI-labelled, docs/parameters.md); bounds from UNCTAD containership median 23.5 h + India all-vessel avg 48.84 h FY26"
+
+port_dwell_allvessel_upper_h:
+  value: 48.84
+  unit: hours
+  source: "India all-vessel average turnaround, FY26 (was ~96 h in 2014); one-sided upper bound - container calls are faster than the all-vessel average"
+  check: {abs: 0.0}
+
+port_dwell_p90_ratio:
+  value: 2.0
+  unit: "p90_ext = ratio x p50 (uniform tail simplification, row C9)"
+  source: "Documented simplification pending empirical per-port p90 from PortWatch distributions (task 15); real dwell tails vary by port and congestion regime"
+  check: {abs: 0.01}
+
 carbon_price_usd_per_kg:
   value: 0.08
   unit: USD per kg CO2
