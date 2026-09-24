@@ -239,7 +239,8 @@ async def densify_schedules(days_ahead: int = 21) -> None:
                 )
             )
 
-            speed = params.get_float(edge.transit_speed_param_key, 40.0)
+            # E18: registry fallback (aligned with the planner; was 40.0 shadow)
+            speed = params.get_float(edge.transit_speed_param_key)
             if "kn" in str(edge.transit_speed_param_key):
                 speed *= 1.852  # knots → km/h (mirrors planner._get_speed)
             if speed <= 0:
