@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from nexafreight.enums import DecisionAction, LegStatus
 from nexafreight.models import Alert, Order, Shipment
 from nexafreight.models.corridor import CorridorAlternative
+from nexafreight.services.preference import apply_preference_prior, preference_stats
 from nexafreight.services.alert_engine import (
     estimate_demurrage,
     latest_planned_arrival,
@@ -591,6 +592,14 @@ async def generate_options(
 
     best = min(options, key=lambda o: o.total_impact_usd)
     options = [replace(o, recommended=True) if o is best else o for o in options]
+
+    # Task 14: revealed-preference prior reorders the slate (presentation
+    # only — the recommended flag stays the pure cost-optimal answer).
+    try:
+        prior = await preference_stats(session)
+        options = apply_preference_prior(options, prior, disruption_type)
+    except Exception:  # non-fatal: a stats read must never block a decision
+        logger.warning("preference prior unavailable; serving unranked slate", exc_info=True)
 
     logger.info(
         "Generated %d options for alert %s; recommended=%s ($%.2f)",
