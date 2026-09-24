@@ -203,14 +203,14 @@ async def test_divert_corridor_financial_math(
     divert = options[1]
     # freight: 5000km × 28t × $0.012 (calibrated SEA) = 1680; factor 1.2 ⇒ Δ = 0.2 × 1680 = 336
     assert divert.cost_delta_usd == pytest.approx(336.0)
-    # co2: 6.5 g/t-km × 5000 × 28 /1000 = 910 kg → ×1.1 ⇒ Δ91 kg → $7.28
-    assert divert.co2_delta_kg == pytest.approx(91.0)
-    assert divert.carbon_cost_usd == pytest.approx(7.28)
+    # co2: 8.0 g/t-km × 5000 × 28 /1000 = 1120 kg; ×1.1 detour ⇒ Δ = 112 kg → $8.96
+    assert divert.co2_delta_kg == pytest.approx(112.0)
+    assert divert.carbon_cost_usd == pytest.approx(8.96)
     # ETA has 30h added → crosses deadline by 6h → 1 part-week → 20000 × 0.5% = 100
     assert divert.sla_penalty_usd == 100.0
     # 2 days < 4 demurrage free days
     assert divert.demurrage_usd == 0.0
-    assert divert.total_impact_usd == pytest.approx(336.0 + 7.28 + 100.0)
+    assert divert.total_impact_usd == pytest.approx(336.0 + 8.96 + 100.0)
     assert divert.route_template is not None
 
 
@@ -238,12 +238,12 @@ async def test_modal_shift_option_math(
     assert modal.option_key == "MODAL_SHIFT_AIR"
     # air: 0.9 × 5000 × 28 = 126000 vs sea 1680 → Δ 124320 (NCAER-anchored rates)
     assert modal.cost_delta_usd == pytest.approx(124_320.0)
-    # co2: (500 − 6.5) g/t-km × 5000 × 28 /1000 = 69090 kg
-    assert modal.co2_delta_kg == pytest.approx(69_090.0)
+    # co2: (500 − 8.0) g/t-km × 5000 × 28 /1000 = 68880 kg
+    assert modal.co2_delta_kg == pytest.approx(68_880.0)
     # air ETA = now + 5000/800 + 12h → ~18h — well before the deadline
     assert modal.sla_penalty_usd == 0.0
     # Δfreight 124320 + carbon 5527.20 + insurance delta 99 (20000 × 1.1 × 0.45%)
-    assert modal.total_impact_usd == pytest.approx(124_320.0 + 5_527.2 + 99.0)
+    assert modal.total_impact_usd == pytest.approx(124_320.0 + 5_510.4 + 99.0)
 
 
 async def test_modal_shift_revised_eta_uses_now_as_anchor(

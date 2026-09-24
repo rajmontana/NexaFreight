@@ -14,8 +14,9 @@ fx USD/INR = 88):
   JNPT band Rs3-8k/box/day); after 7 billable days the rate doubles.
 - Freight: per-mode $/tonne-km (SEA 0.012 mainline; AIR 0.9 = NCAER Rs72/tkm
   anchor; ROAD 0.036 = Rs3.2/tkm bottom-up; RAIL 0.016 = Rs1.4/tkm class-avg).
-- CO2: per-mode g/tonne-km emission factors (SEA 6.5, AIR 500,
-  ROAD 62, RAIL 22) priced at $0.08/kg (CBAM transitory price anchor).
+- CO2: per-mode g/tonne-km emission factors (SEA 8.0 = GLEC v3.2 container
+  band 7.6-9.1 mix mid, AIR 500, ROAD 62, RAIL 22) priced at $0.08/kg
+  (CBAM transitory price anchor).
 """
 
 from __future__ import annotations
@@ -65,8 +66,10 @@ FREIGHT_RATE_PER_T_KM: dict[str, float] = {
 }
 
 #: CO2 emission factors, grams per tonne-km, by transport mode.
+#: SEA: GLEC v3.2 deep-sea container 7.6 (>=8k TEU) - 9.1 (3-8k TEU);
+#: 8.0 = mid for the modeled vessel mix (was 6.5, below the entire band).
 CO2_G_PER_T_KM: dict[str, float] = {
-    "SEA": 6.5,
+    "SEA": 8.0,
     "AIR": 500.0,
     "ROAD": 62.0,
     "RAIL": 22.0,

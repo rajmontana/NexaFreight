@@ -134,6 +134,12 @@ def validate_static(refs: dict) -> bool:
         refs["insurance_uplift"]["check"]["abs"],
     )
     all_ok &= _check(
+        "sea CO2 EF g/tkm",
+        __import__("nexafreight.services.financial_engine", fromlist=["CO2_G_PER_T_KM"]).CO2_G_PER_T_KM["SEA"],
+        refs["sea_co2_ef_g_per_tkm"]["value"],
+        refs["sea_co2_ef_g_per_tkm"]["check"]["abs"],
+    )
+    all_ok &= _check(
         "carbon price $/kg",
         FALLBACK_DEFAULTS["carbon.price_usd_per_kg"],
         refs["carbon_price_usd_per_kg"]["value"],

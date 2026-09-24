@@ -70,8 +70,11 @@ FALLBACK_DEFAULTS: dict[str, Any] = {
     "sea.speed.neo_panamax": 21.0,
     "sea.speed.slow_steamed": 17.0,
     "sea.canal_adder.suez_h": 14.0,
-    # Disruptions
-    "disruption.congestion.ratio_p90": 2.5,
+    # Disruptions — congestion tiers (Sim C / Sim C-validated: warn 1.5,
+    # critical 2.5 = today's index vs 90-day baseline average)
+    "disruption.congestion.ratio_warn": 1.5,
+    "disruption.congestion.ratio_critical": 2.5,
+    "disruption.congestion.ratio_p90": 2.5,  # legacy alias of ratio_critical
     "disruption.delay.vessel_h": 24.0,
     "disruption.delay.weather_h": 48.0,
     "disruption.delay.default_h": 24.0,
