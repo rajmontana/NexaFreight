@@ -66,6 +66,7 @@ async def test_all_models_registered_in_metadata():
         "disruptions",
         "alerts",
         "corridor_alternatives",
+        "decision_outcomes",
         "decisions",
         "audit_logs",
         "parameter_policy",

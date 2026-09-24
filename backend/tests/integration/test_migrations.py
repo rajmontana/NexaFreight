@@ -101,6 +101,7 @@ async def test_all_expected_tables_exist_after_upgrade(tmp_path: Path) -> None:
             "alerts",
             "corridor_alternatives",
             "decisions",
+        "decision_outcomes",
             "audit_logs",
             "parameter_policy",
             "parameter_empirical",
