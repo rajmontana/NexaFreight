@@ -77,6 +77,7 @@ from nexafreight.ml.constants import (  # noqa: E402
 )
 from nexafreight.ml.data_source import load_raw  # noqa: E402
 from nexafreight.ml.eta_model import interval_coverage, pinball_loss  # noqa: E402
+from nexafreight.ml.feature_contract import encode_categorical_column  # noqa: E402
 from nexafreight.ml.features import build_features  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -237,8 +238,12 @@ def _align_categoricals(
     cat_cols: list[str],
 ) -> tuple[dict[str, pd.DataFrame], dict[str, list[str]]]:
     """
-    Learn categorical levels from training split ONLY.
-    Unseen val/test levels become NaN (matching inference-time behaviour).
+    Learn categorical levels from training split ONLY, then encode every
+    split through the shared contract (E10): unseen val/test levels map to
+    MISSING_SENTINEL exactly as the serving encoder does. (Historical note:
+    this loop used to leave unseen levels as out-of-category NaN at train
+    time while serving mapped them to the sentinel - a real train/serve
+    skew, now closed by the one shared implementation.)
     """
     out = {k: df.copy() for k, df in splits.items()}
     levels: dict[str, list[str]] = {}
@@ -249,8 +254,7 @@ def _align_categoricals(
         levels[col] = cats
 
         for name in out:
-            raw = out[name][col].fillna(MISSING_SENTINEL).astype(str)
-            out[name][col] = pd.Categorical(raw, categories=cats + [MISSING_SENTINEL])
+            out[name][col] = encode_categorical_column(out[name][col], cats)
 
     return out, levels
 
