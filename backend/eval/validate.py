@@ -145,6 +145,38 @@ def validate_static(refs: dict) -> bool:
         refs["carbon_price_usd_per_kg"]["value"],
         refs["carbon_price_usd_per_kg"]["check"]["abs"],
     )
+
+    # Port dwell (C8/C9, audit F4): pin the on-screen delay-estimate inputs.
+    dwell_refs = {k: v for k, v in refs["port_dwell_p50_hours"].items() if isinstance(v, dict)}
+    worst_ratio_dev = 0.0
+    for locode, dref in sorted(dwell_refs.items()):
+        all_ok &= _check(
+            f"dwell p50 {locode}",
+            FALLBACK_DEFAULTS[f"port.dwell.p50.{locode}"],
+            dref["value"],
+            dref["check"]["abs"],
+        )
+        p90 = FALLBACK_DEFAULTS[f"port.dwell.p90_ext.{locode}"]
+        worst_ratio_dev = max(
+            worst_ratio_dev,
+            abs(p90 / FALLBACK_DEFAULTS[f"port.dwell.p50.{locode}"] - refs["port_dwell_p90_ratio"]["value"]),
+        )
+    all_ok &= _check(
+        "dwell p90/p50 ratio dev from 2.0",
+        worst_ratio_dev,
+        0.0,
+        refs["port_dwell_p90_ratio"]["check"]["abs"],
+    )
+    # One-sided semantic bound: container p50 must sit below the India
+    # all-vessel average turnaround (48.84 h FY26).
+    bound = refs["port_dwell_allvessel_upper_h"]["value"]
+    worst_dwell = max(FALLBACK_DEFAULTS[f"port.dwell.p50.{k}"] for k in dwell_refs)
+    dwell_ok = worst_dwell <= bound
+    print(
+        f"  [{'PASS' if dwell_ok else 'FAIL'}] {'dwell p50 max <= India all-vessel':<44} "
+        f"actual={worst_dwell:<12} bound={bound} (one-sided)"
+    )
+    all_ok &= dwell_ok
     return bool(all_ok)
 
 
