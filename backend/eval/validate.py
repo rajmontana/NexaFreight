@@ -61,13 +61,13 @@ def validate_static(refs: dict) -> bool:
         refs["freight_air_usd_per_tkm"]["check"]["abs"],
     )
     all_ok &= _check(
-        "freight ROAD ₹/tkm",
+        "freight ROAD INR/tkm",
         FREIGHT_RATE_PER_T_KM["ROAD"] * fx,
         refs["freight_road_inr_per_tkm"]["value"],
         refs["freight_road_inr_per_tkm"]["check"]["abs"],
     )
     all_ok &= _check(
-        "freight RAIL ₹/tkm",
+        "freight RAIL INR/tkm",
         FREIGHT_RATE_PER_T_KM["RAIL"] * fx,
         refs["freight_rail_inr_per_tkm"]["value"],
         refs["freight_rail_inr_per_tkm"]["check"]["abs"],
@@ -79,7 +79,7 @@ def validate_static(refs: dict) -> bool:
         refs["freight_sea_usd_per_tkm"]["check"]["abs"],
     )
     all_ok &= _check(
-        "demurrage ₹/box/day",
+        "demurrage INR/box/day",
         DEMURRAGE_DAILY_RATE * fx,
         refs["demurrage_inr_per_box_day"]["value"],
         refs["demurrage_inr_per_box_day"]["check"]["abs"],
@@ -193,7 +193,19 @@ def validate_live(refs: dict) -> bool:
     return bool(ok)
 
 
+def _make_stdout_safe() -> None:
+    """Never crash on console encoding (Windows cp1252 cannot print e.g. ₹).
+
+    Reconfigure stdout to replace unencodable characters instead of raising.
+    """
+    try:
+        sys.stdout.reconfigure(errors="replace")  # Python 3.7+
+    except (AttributeError, ValueError):
+        pass
+
+
 def main() -> int:
+    _make_stdout_safe()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--live", action="store_true", help="also verify searoute distances (network)")
     args = ap.parse_args()
