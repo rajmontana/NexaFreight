@@ -66,6 +66,8 @@ from nexafreight.services.consolidation import (  # noqa: E402
     containers_for_total,
     enum_key,
 )
+from nexafreight.adapters.routing import great_circle_geojson_str  # noqa: E402
+from nexafreight.adapters.routing.sea_route import compute_sea_route  # noqa: E402
 from nexafreight.models.parameter import ParameterEmpirical  # noqa: E402
 from nexafreight.models.shipment import Shipment  # noqa: E402
 from nexafreight.services.planner import get_planner  # noqa: E402
@@ -192,6 +194,46 @@ class WorldDripper:
 
         return _json.dumps({"type": "LineString", "coordinates": coords})
 
+    @staticmethod
+    def _leg_geometry(
+        mode: TransportMode,
+        o_coord: tuple[float, float] | None,
+        d_coord: tuple[float, float] | None,
+    ) -> str | None:
+        """Geometry the position interpolator walks (day-12d upgrade).
+
+        SEA follows REAL marine-lane geometry from the searoute graph — the
+        same adapter that measures the VIA_CAPE corridor factors and the
+        Red Sea drill — so ships visibly sail around land, not through it.
+        AIR gets a great-circle arc (what aircraft actually fly). ROAD/RAIL
+        keep the densified straight approximation until an OSM/ORS
+        path-geometry pass (the documented v2 upgrade). Any adapter failure
+        degrades to the straight line: geometry is presentation, the drip
+        must never break on it.
+        """
+        if o_coord is None or d_coord is None:
+            # Coordinates unknown (stale node cache): leave geometry empty —
+            # the interpolator skips legs without geometry (endpoint fallback).
+            return None
+        try:
+            if mode == TransportMode.SEA:
+                route = compute_sea_route(
+                    o_coord[0],
+                    o_coord[1],
+                    d_coord[0],
+                    d_coord[1],
+                    vessel_class="neo-panamax",
+                )
+                if route.geometry_geojson:
+                    return route.geometry_geojson
+            elif mode == TransportMode.AIR:
+                return great_circle_geojson_str(o_coord[0], o_coord[1], d_coord[0], d_coord[1])
+        except Exception as exc:  # deliberate: presentation fallback only
+            log.warning(
+                "leg geometry fell back to straight line (%s: %s)", type(exc).__name__, exc
+            )
+        return WorldDripper._densified_line(o_coord, d_coord)
+
     def _shipment_state(self, legs: list[Leg], world: datetime) -> ShipmentStatus:
         if all(leg.status == LegStatus.COMPLETED for leg in legs):
             return ShipmentStatus.DELIVERED
@@ -225,7 +267,9 @@ class WorldDripper:
                 planned_arrival=kpi.arrival_at,
                 # Task-7 wire: the position interpolator walks this geometry
                 # to place moving markers (LINESTRING GeoJSON, lon/lat).
-                route_geometry_json=self._densified_line(o_coord, d_coord),
+                # Day-12d: SEA = real searoute marine lanes, AIR = great
+                # circle, ROAD/RAIL = densified straight (documented).
+                route_geometry_json=self._leg_geometry(TransportMode(kpi.mode), o_coord, d_coord),
                 distance_km=round(km, 1) if km else None,
                 co2_kg=round(kpi.co2_kg, 1),
                 provenance=Provenance.SIMULATED,
