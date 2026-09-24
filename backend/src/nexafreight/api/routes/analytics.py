@@ -48,10 +48,9 @@ from nexafreight.services.financial_engine import (
     CO2_G_PER_T_KM,
     DEMURRAGE_DAILY_RATE,
     DEMURRAGE_FREE_DAYS,
-    SLA_PENALTY_PCT_PER_DAY,
     calculate_demurrage,
     calculate_freight_cost,
-    calculate_sla_penalty,
+    calculate_sla_penalty_weekly,
 )
 
 router = APIRouter()
@@ -170,16 +169,20 @@ def _pending_exposure(
                 deadline = deadline.replace(tzinfo=UTC)
             if eta > deadline:
                 days_late = max(1, math.ceil((eta - deadline).total_seconds() / 86400.0))
-                sla_total += calculate_sla_penalty(
+                sla_total += calculate_sla_penalty_weekly(
                     revenue=order.revenue,
-                    penalty_pct=SLA_PENALTY_PCT_PER_DAY,
+                    pct_per_week=params.get_float("sla.penalty_pct_per_week", 0.5) / 100.0,
+                    cap_pct=params.get_float("sla.penalty_cap_pct", 10.0) / 100.0,
                     days_late=days_late,
                 )
         # Demurrage: dwell already past planned arrival
         dwell_days = max(0, (now - eta).days)
         free_days = int(params.get_int("demurrage.free_days", DEMURRAGE_FREE_DAYS))
         demurrage = calculate_demurrage(
-            extra_days=dwell_days, free_days=free_days, daily_rate=DEMURRAGE_DAILY_RATE
+            extra_days=dwell_days,
+            free_days=free_days,
+            daily_rate=params.get_float("demurrage.rate_inr_per_box_day", 5500.0)
+            / params.get_float("fx.usd_inr", 88.0),
         ) * max(1, shipment.container_count)
     # Realized: penalties + demurrage already accounted
     realized = sla_total + demurrage

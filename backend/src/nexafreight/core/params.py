@@ -47,16 +47,18 @@ async def refresh_parameters(session: AsyncSession) -> None:
 
 # Central registry of documented fallback values (derived from calibration table)
 FALLBACK_DEFAULTS: dict[str, Any] = {
-    # Road routing
-    "road.speed.default": 55.0,
-    "road.speed.expressway": 70.0,
-    "road.speed.national_highway": 50.0,
-    "road.speed.state_highway": 40.0,
+    # Road routing — speeds recalibrated to observed Indian values
+    # (E7: was 1.4-1.8x hot; DPIIT-NCAER/Livemint govt study: 47-48 km/h
+    # expressway, 37-38 km/h all-art/city. Regulatory_Tax_Reference.md SS8.)
+    "road.speed.default": 42.0,
+    "road.speed.expressway": 48.0,
+    "road.speed.national_highway": 42.0,
+    "road.speed.state_highway": 38.0,
     "road.circuity.default": 1.35,
     "road.circuity.expressway": 1.15,
     "road.circuity.national_highway": 1.20,
     "road.circuity.state_highway": 1.38,
-    "road.halt_allowance_h_per_4_5h": 0.75,
+    "road.halt_allowance_h_per_4_5h": 0.75,  # driver rest allowance per 4.5h driving (India MTWA 8h/day regime — NOT an EU 561/2006 analog; earlier doc mislabel corrected)
     # Air routing
     "air.taxi_hours": 0.3,
     "air.climb_descent_hours": 0.4,
@@ -76,7 +78,7 @@ FALLBACK_DEFAULTS: dict[str, Any] = {
     # Mode speeds and circuities
     "mode.speed.sea": 41.0,
     "mode.speed.air": 860.0,
-    "mode.speed.road": 55.0,
+    "mode.speed.road": 42.0,  # E7 recalibration (see road.speed.* above)
     "mode.speed.rail": 60.0,
     "mode.circuity.sea": 1.15,
     "mode.circuity.air": 1.05,
@@ -107,11 +109,29 @@ FALLBACK_DEFAULTS: dict[str, Any] = {
     "port.dwell.p90_ext.SGSIN": 24.0,
     # SLA
     "sla.cushion_buffer_hours": 24.0,
+    # SLA penalty — LD (liquidated damages) norms: 0.5% per WEEK of delay,
+    # WEEKLY rounding, capped at 10% of order value (Regulatory doc SS8).
+    # Replaces the old 5%/day constant, which overstated LD norms ~7x and
+    # biased every reroute decision toward REROUTE. Documented behavioral flip.
+    "sla.penalty_pct_per_week": 0.5,
+    "sla.penalty_cap_pct": 10.0,
     # Demurrage (E4 unification: ONE free-days source for reroute scoring AND
     # analytics exposure; India band ₹3–8k/box/day → see Regulatory doc §2)
     "demurrage.free_days": 4.0,
+    "demurrage.rate_inr_per_box_day": 5500.0,  # JNPT band mid (INDUSTRY band Rs3-8k)
+    "demurrage.reefer_inr_per_box_day": 11000.0,
     # Analytics active world (E3: exclude historical/parcel-era shipments)
     "analytics.exclude_provenances": "HISTORICAL",
+    # Cargo insurance (INDUSTRY: ocean 0.3%, air 0.75%, road/rail 0.5% of
+    # insured value; insured value = cargo value x 110% CIF-style uplift)
+    "insurance.pct_of_value.sea": 0.003,
+    "insurance.pct_of_value.air": 0.0075,
+    "insurance.pct_of_value.road": 0.005,
+    "insurance.pct_of_value.rail": 0.005,
+    "insurance.insured_value_uplift": 1.10,
+    # FX and carbon (MARKET as-of 2026-09; REGULATORY CBAM transitory price)
+    "fx.usd_inr": 88.0,
+    "carbon.price_usd_per_kg": 0.08,
 }
 
 
