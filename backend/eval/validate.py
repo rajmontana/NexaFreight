@@ -146,6 +146,22 @@ def validate_static(refs: dict) -> bool:
         refs["carbon_price_usd_per_kg"]["check"]["abs"],
     )
 
+    # Congestion tiers (Sim C design): warn triggers the scan, critical is
+    # the documented severity-escalation level.
+    tiers = refs["disruption_congestion_tiers"]
+    all_ok &= _check(
+        "congestion tier warn",
+        FALLBACK_DEFAULTS["disruption.congestion.ratio_warn"],
+        tiers["warn"]["value"],
+        tiers["warn"]["check"]["abs"],
+    )
+    all_ok &= _check(
+        "congestion tier critical",
+        FALLBACK_DEFAULTS["disruption.congestion.ratio_critical"],
+        tiers["critical"]["value"],
+        tiers["critical"]["check"]["abs"],
+    )
+
     # Port dwell (C8/C9, audit F4): pin the on-screen delay-estimate inputs.
     dwell_refs = {k: v for k, v in refs["port_dwell_p50_hours"].items() if isinstance(v, dict)}
     worst_ratio_dev = 0.0

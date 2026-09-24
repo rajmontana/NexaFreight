@@ -110,6 +110,12 @@ port_dwell_p50_hours:
   SGSIN: {value: 12.0, check: {abs: 2.0}}
   source: "Project C8 registry (WORLD_BANK_CPPI-labelled, docs/parameters.md); bounds from UNCTAD containership median 23.5 h + India all-vessel avg 48.84 h FY26"
 
+disruption_congestion_tiers:
+  warn: {value: 1.5, check: {abs: 0.05}}
+  critical: {value: 2.5, check: {abs: 0.05}}
+  unit: "alert ratio = today index / 90-day baseline average (baseline excludes today)"
+  source: "Sim C design tiers (PortWatch-style ratio; warn triggers the scan, critical reserved for severity escalation)"
+
 port_dwell_allvessel_upper_h:
   value: 48.84
   unit: hours

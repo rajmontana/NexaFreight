@@ -59,3 +59,12 @@ def test_references_yaml_pins_the_same_numbers() -> None:
         assert refs["port_dwell_p50_hours"][locode]["value"] == hours
     assert refs["port_dwell_p90_ratio"]["value"] == P90_TAIL_RATIO
     assert refs["port_dwell_allvessel_upper_h"]["value"] == ALL_VESSEL_UPPER_H
+
+
+def test_congestion_tiers_match_sim_c_design() -> None:
+    assert FALLBACK_DEFAULTS["disruption.congestion.ratio_warn"] == 1.5
+    assert FALLBACK_DEFAULTS["disruption.congestion.ratio_critical"] == 2.5
+    # legacy alias must never diverge from critical
+    assert FALLBACK_DEFAULTS["disruption.congestion.ratio_p90"] == FALLBACK_DEFAULTS[
+        "disruption.congestion.ratio_critical"
+    ]
