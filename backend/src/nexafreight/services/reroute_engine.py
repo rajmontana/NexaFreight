@@ -34,12 +34,12 @@ from nexafreight.services.alert_engine import (
     latest_planned_arrival,
 )
 from nexafreight.services.disruption_detector import TONNES_PER_CONTAINER
+from nexafreight.services.insurance import calculate_insurance_delta
 from nexafreight.services.financial_engine import (
-    SLA_PENALTY_PCT_PER_DAY,
     calculate_co2_cost,
     calculate_co2_kg,
     calculate_freight_cost,
-    calculate_sla_penalty,
+    calculate_sla_penalty_weekly,
 )
 from nexafreight.core import params
 
@@ -113,14 +113,18 @@ def _score_sla(orders: list[Order], revised_eta: datetime | None) -> tuple[float
     """(total SLA penalty, breach count) for an order slate at an ETA."""
     total = 0.0
     breaches = 0
+    # LD norms (calibration batch): 0.5% per week, WEEKLY rounding, cap 10%.
+    pct_wk = params.get_float("sla.penalty_pct_per_week", 0.5) / 100.0
+    cap = params.get_float("sla.penalty_cap_pct", 10.0) / 100.0
     for order in orders:
         late = _days_late(revised_eta, order.sla_deadline)
         if late > 0:
             breaches += 1
-            total += calculate_sla_penalty(
+            total += calculate_sla_penalty_weekly(
                 revenue=order.revenue,
-                penalty_pct=SLA_PENALTY_PCT_PER_DAY,
+                pct_per_week=pct_wk,
                 days_late=late,
+                cap_pct=cap,
             )
     return total, breaches
 
@@ -377,13 +381,19 @@ def _create_modal_option(
     cur_freight = _freight_for(current_mode, remaining_km, weight_t)
     cost_delta = air_freight - cur_freight
 
+    # Insurance line (calibration batch): a modal shift changes the premium
+    # class (ocean 0.3% vs air 0.75% of insured value). Only the delta is
+    # decision-relevant; cargo value proxied by order revenue.
+    cargo_value = float(sum(o.revenue for o in orders))
+    insurance_delta = calculate_insurance_delta(cargo_value, current_mode, "AIR")
+
     air_co2 = _co2_for("AIR", remaining_km, weight_t)
     cur_co2 = _co2_for(current_mode, remaining_km, weight_t)
     co2_delta = air_co2 - cur_co2
     carbon = calculate_co2_cost(co2_delta)
 
     sla_penalty, breaches = _score_sla(orders, revised_eta)
-    total = cost_delta + carbon + sla_penalty
+    total = cost_delta + carbon + sla_penalty + insurance_delta
 
     return RerouteOption(
         option_key="MODAL_SHIFT_AIR",
@@ -404,7 +414,8 @@ def _create_modal_option(
         total_impact_usd=total,
         assumptions=[
             f"Air transit via block-time model + {handling_hours:.0f}h handling.",
-            "Air freight 1.8 USD/t-km vs current-mode nominal rate.",
+            "Air freight $0.9/t-km (NCAER Rs72/tkm anchor / fx 88) vs current-mode rate.",
+            "Insurance premium delta included (air 0.75% vs ocean 0.30% of 110% insured value).",
         ],
         route_template={"legs": [{"mode": "AIR", "to": "DESTINATION"}]},
     )

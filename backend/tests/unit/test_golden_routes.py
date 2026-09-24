@@ -72,7 +72,8 @@ def test_golden_searoute_singapore_to_rotterdam_suez_restricted() -> None:
 def test_golden_road_jnpt_to_nagpur_duration() -> None:
     """JNPT to Nagpur (~820 route-km) duration with halt allowance.
 
-    Acceptance criterion: 16–20h road duration.
+    Acceptance criterion: 20–26h road duration (calibrated 42 km/h observed
+    speeds; govt study actual for this corridor ≈ 24.6h).
     """
     jnpt_lat, jnpt_lon = 18.9490, 72.9519
     nagpur_lat, nagpur_lon = 21.1458, 79.0882
@@ -84,7 +85,7 @@ def test_golden_road_jnpt_to_nagpur_duration() -> None:
     assert 750.0 <= res.distance_km <= 900.0, f"Distance {res.distance_km} km out of expected ~820 km range"
 
     duration_h = res.duration_s / 3600.0
-    assert 16.0 <= duration_h <= 20.0, f"JNPT->Nagpur road duration {duration_h:.1f}h outside 16-20h range"
+    assert 20.0 <= duration_h <= 26.0, f"JNPT->Nagpur road duration {duration_h:.1f}h outside 20-26h range"
 
 
 # ─── Golden Route 4: DEL → BOM Air Block Time ────────────────────────────────

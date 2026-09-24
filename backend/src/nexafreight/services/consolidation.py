@@ -16,7 +16,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from nexafreight.enums import CargoClass, LocationType, ShipmentStatus, TransportMode
+from nexafreight.enums import CargoClass, LocationType, Provenance, ShipmentStatus, TransportMode
 from nexafreight.models.location import Location
 from nexafreight.models.order import Order
 from nexafreight.models.shipment import Shipment
@@ -166,6 +166,7 @@ async def _consolidate_orders_async(
             cargo_class_val = CargoClass(cargo) if isinstance(cargo, str) else cargo
 
             shipment = Shipment(
+                provenance=Provenance.DERIVED,
                 origin_id=orig_id,
                 destination_id=dest_id,
                 primary_transport_mode=transport_mode,

@@ -403,6 +403,21 @@ def train(max_rounds: int = 1000, early_stop: int = 50) -> None:
     X_splits, cat_levels = _align_categoricals(X_splits, cat_cols)
 
     # ------------------------------------------------------------------
+    # Guard (audit E2): the committed v1.0.0 artifact silently shipped
+    # category_levels = [AIR, RAIL] — SEA (≈60% of training rows) was
+    # missing, so the majority of inference rows hit unseen-level NaN.
+    # Fail the run loudly instead of training a majority-blind model.
+    # ------------------------------------------------------------------
+    _required_mode_levels = {"AIR", "RAIL", "SEA"}
+    _missing_modes = _required_mode_levels - set(cat_levels.get("shipping_mode", []))
+    if _missing_modes:
+        raise RuntimeError(
+            f"shipping_mode category_levels missing {sorted(_missing_modes)}; "
+            "training frame is not representative of the mode mix. "
+            "Refusing to save an artifact that would mis-serve those modes."
+        )
+
+    # ------------------------------------------------------------------
     # Step 5: Baseline
     # ------------------------------------------------------------------
     log.info("Step 5/8 — Fitting grouped-quantile baseline ...")

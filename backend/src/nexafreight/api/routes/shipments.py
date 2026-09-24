@@ -623,6 +623,7 @@ async def shipment_financials(
         SLA_PENALTY_PCT_PER_DAY,
         calculate_freight_cost,
         calculate_sla_penalty,
+    calculate_sla_penalty_weekly,
         generate_pnl_snapshot,
     )
 
@@ -649,9 +650,10 @@ async def shipment_financials(
                 deadline = deadline.replace(tzinfo=UTC)
             if eta > deadline:
                 days_late = max(1, math.ceil((eta - deadline).total_seconds() / 86400.0))
-                sla_penalty += calculate_sla_penalty(
+                sla_penalty += calculate_sla_penalty_weekly(
                     revenue=order.revenue,
-                    penalty_pct=SLA_PENALTY_PCT_PER_DAY,
+                    pct_per_week=params.get_float("sla.penalty_pct_per_week", 0.5) / 100.0,
+                    cap_pct=params.get_float("sla.penalty_cap_pct", 10.0) / 100.0,
                     days_late=days_late,
                 )
 
@@ -659,15 +661,15 @@ async def shipment_financials(
     dwell_days = max(0, (now - eta).days) if eta is not None else 0
     if dwell_days > 0:
         from nexafreight.services.financial_engine import (
-            DEMURRAGE_DAILY_RATE,
             DEMURRAGE_FREE_DAYS,
             calculate_demurrage,
         )
 
         demurrage = calculate_demurrage(
             extra_days=dwell_days,
-            free_days=DEMURRAGE_FREE_DAYS,
-            daily_rate=DEMURRAGE_DAILY_RATE,
+            free_days=int(params.get_int("demurrage.free_days", DEMURRAGE_FREE_DAYS)),
+            daily_rate=params.get_float("demurrage.rate_inr_per_box_day", 5500.0)
+            / params.get_float("fx.usd_inr", 88.0),
         ) * max(1, shipment.container_count)
 
     weight_t = max(1, shipment.container_count) * TONNES_PER_CONTAINER

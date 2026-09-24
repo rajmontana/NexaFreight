@@ -18,6 +18,9 @@ class Provenance(StrEnum):
     - CALIBRATED: Real data adjusted for known systematic errors
     - SIMULATED: Synthetic data from simulation engines
     - MOCK: Fake data for development/testing purposes
+    - HISTORICAL: Historical reference data (e.g., 2015–2018 parcel-era
+      ingest) kept for ML training and era-filtered analytics — never part
+      of the active demo world
     """
 
     REAL = "REAL"
@@ -26,6 +29,7 @@ class Provenance(StrEnum):
     CALIBRATED = "CALIBRATED"
     SIMULATED = "SIMULATED"
     MOCK = "MOCK"
+    HISTORICAL = "HISTORICAL"
 
 
 class UserRole(StrEnum):
