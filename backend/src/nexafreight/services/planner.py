@@ -364,14 +364,16 @@ def _dijkstra(
             return -math.log(max(1e-9, leg.reliability))  # minimize -log(reliability) = maximize product
         return leg.cost_usd
 
-    # (objective_value, node_id, arrival_time_ts, path: list[LegKPI])
-    heap: list[tuple[float, int, float, list[LegKPI]]] = [
-        (0.0, origin_id, query_time.timestamp(), [])
+    # (objective_value, node_id, arrival_time_ts, seq, path: list[LegKPI])
+    # `seq` is a monotonic tiebreaker (E23): heapq must never compare paths.
+    _seq = 0
+    heap: list[tuple[float, int, float, int, list[LegKPI]]] = [
+        (0.0, origin_id, query_time.timestamp(), 0, [])
     ]
     visited: dict[int, float] = {}  # node_id → best arrival_time seen
 
     while heap:
-        obj_val, node_id, arr_ts, path = heapq.heappop(heap)
+        obj_val, node_id, arr_ts, _, path = heapq.heappop(heap)
 
         if node_id == dest_id:
             return path
@@ -418,7 +420,11 @@ def _dijkstra(
 
             new_obj = obj_val + _leg_objective(leg)
             new_path = path + [leg]
-            heapq.heappush(heap, (new_obj, edge.to_id, new_arr_ts, new_path))
+            # E23: monotonic tiebreaker — on exact (obj, node, arrival) ties
+            # (routine under deterministic schedules) heapq would otherwise
+            # compare the LegKPI path, which has no ordering (TypeError).
+            _seq += 1
+            heapq.heappush(heap, (new_obj, edge.to_id, new_arr_ts, _seq, new_path))
 
     return None
 
@@ -446,7 +452,8 @@ def _yen_k_shortest(
     Returns up to k distinct paths (may be fewer if graph is small).
     """
     results: list[list[LegKPI]] = []
-    candidates: list[tuple[float, list[LegKPI]]] = []
+    candidates: list[tuple[float, int, list[LegKPI]]] = []  # (cost, seq, path)
+    _cand_seq = 0
 
     # A*: first shortest path
     first = _dijkstra(
@@ -493,12 +500,15 @@ def _yen_k_shortest(
                 total_path = root_path + spur
                 cost = sum(leg.cost_usd for leg in total_path)
                 # Avoid duplicates
-                if not any(p == total_path for _, p in candidates):
-                    heapq.heappush(candidates, (cost, total_path))
+                if not any(p == total_path for *_, p in candidates):
+                    # E23: same tiebreaker contract as _dijkstra's heap —
+                    # equal costs must never fall through to comparing paths.
+                    _cand_seq += 1
+                    heapq.heappush(candidates, (cost, _cand_seq, total_path))
 
         if not candidates:
             break
-        _, best = heapq.heappop(candidates)
+        _, _, best = heapq.heappop(candidates)
         results.append(best)
 
     return results
