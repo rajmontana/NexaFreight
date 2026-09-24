@@ -58,6 +58,16 @@ class Order(Base, TimestampMixin):
     )
 
     # Logistics metadata
+    shipper_id: Mapped[int | None] = mapped_column(
+        ForeignKey("parties.id", ondelete="SET NULL"), nullable=True
+    )
+    consignee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("parties.id", ondelete="SET NULL"), nullable=True
+    )
+    carrier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("parties.id", ondelete="SET NULL"), nullable=True
+    )
+
     shipping_mode: Mapped[TransportMode] = mapped_column(String(20), nullable=False)
     cargo_class: Mapped[CargoClass] = mapped_column(String(20), nullable=False)
 
@@ -85,6 +95,9 @@ class Order(Base, TimestampMixin):
         back_populates="order",
         cascade="all, delete-orphan",
     )
+    shipper: Mapped["Party"] = relationship("Party", foreign_keys=[shipper_id])
+    consignee: Mapped["Party"] = relationship("Party", foreign_keys=[consignee_id])
+    carrier: Mapped["Party"] = relationship("Party", foreign_keys=[carrier_id])
 
 
 class OrderItem(Base):

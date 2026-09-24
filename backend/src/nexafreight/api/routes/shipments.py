@@ -13,7 +13,7 @@ from sqlalchemy.orm import joinedload
 from nexafreight.database import get_db_session
 from nexafreight.dependencies import get_current_user
 from nexafreight.enums import ShipmentStatus, TransportMode
-from nexafreight.models import Alert, AuditLog, Leg, Shipment, User
+from nexafreight.models import Alert, AuditLog, Leg, Order, Shipment, User
 from nexafreight.schemas.common import PaginatedResponse
 from nexafreight.schemas.shipment import (
     LegDetail,
@@ -227,6 +227,9 @@ async def get_shipment_detail(
             joinedload(Shipment.legs).joinedload(Leg.destination),
             joinedload(Shipment.legs).joinedload(Leg.vessel),
             joinedload(Shipment.orders),
+            joinedload(Shipment.orders).joinedload(Order.shipper),
+            joinedload(Shipment.orders).joinedload(Order.consignee),
+            joinedload(Shipment.orders).joinedload(Order.carrier),
         )
     )
 
@@ -275,6 +278,9 @@ async def get_shipment_detail(
             sla_deadline=order.sla_deadline,
             revenue=order.revenue,
             sla_status=order.sla_status,
+            shipper=order.shipper.name if order.shipper else None,
+            consignee=order.consignee.name if order.consignee else None,
+            carrier=order.carrier.name if order.carrier else None,
         )
         for order in shipment.orders
     ]
