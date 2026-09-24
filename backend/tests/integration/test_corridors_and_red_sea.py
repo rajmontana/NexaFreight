@@ -42,6 +42,43 @@ async def test_seed_corridors_upserts_single_measured_row(
 
 
 @pytest.mark.asyncio
+async def test_seed_corridors_fresh_clone_upserts_missing_foreign_ports(
+    db_session, make_location
+) -> None:
+    """Day-12b: a fresh clone lacks NLRTM/SGSIN (UN/LOCODE files are
+    gitignored); seed_corridors must upsert them from the documented
+    PORT_COORDS table instead of raising."""
+    from nexafreight.models.location import Location
+    from nexafreight.services.corridor_seed import PORT_COORDS
+
+    # Fresh-clone world state: only the Indian endpoint locations exist.
+    await make_location(locode="INJNP", name="JNPT", country_code="IN", latitude=18.95, longitude=72.95)
+    await make_location(locode="INMUN", name="Mundra", country_code="IN", latitude=22.74, longitude=69.72)
+
+    lanes = await seed_corridors(db_session)
+    assert set(lanes) == {"INJNP->NLRTM", "INMUN->NLRTM", "SGSIN->NLRTM"}
+
+    for locode in ("NLRTM", "SGSIN"):
+        row = (
+            await db_session.execute(select(Location).where(Location.locode == locode))
+        ).scalar_one()
+        name, country, lat, lon = PORT_COORDS[locode]
+        assert row.name == name and row.country_code == country
+        assert row.latitude == pytest.approx(lat)
+        assert row.longitude == pytest.approx(lon)
+    # Unknown locodes without fallback coordinates must still raise.
+    from nexafreight.services import corridor_seed as cs
+
+    saved = dict(cs.LANES)
+    try:
+        cs.LANES = {"XXNB->NLRTM": ("XXNB", "NLRTM")}
+        with pytest.raises(RuntimeError, match="no fallback coordinates"):
+            await seed_corridors(db_session)
+    finally:
+        cs.LANES = saved
+
+
+@pytest.mark.asyncio
 async def test_red_sea_ratios_within_pinned_bands() -> None:
     measured = measure_ratios()
     assert measured["INJNP->NLRTM"]["ratio"] == pytest.approx(1.70, abs=0.15)

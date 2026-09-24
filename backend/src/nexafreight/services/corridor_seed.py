@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nexafreight.adapters.routing.sea_route import compute_sea_route
-from nexafreight.enums import DisruptionType
+from nexafreight.enums import DisruptionType, LocationType
 from nexafreight.models import CorridorAlternative
 from nexafreight.models.location import Location
 
@@ -26,6 +26,20 @@ LANES: dict[str, tuple[str, str]] = {
 }
 VIA_CAPE_KEY = "VIA_CAPE"
 REPRESENTATIVE_LANE = "INJNP->NLRTM"
+
+#: UN/LOCODE coordinates for corridor endpoints. A FRESH clone's database
+#: lacks the foreign ports: the UN/LOCODE ingest reads gitignored
+#: data/raw files and the world builder only creates its own (Indian)
+#: network nodes. These are the ingested reference coordinates (datahub
+#: UN/LOCODE extract) -- identical to what pinned the cape_diversion
+#: references, so measurements cannot drift. Missing locodes outside
+#: this table still raise.
+PORT_COORDS: dict[str, tuple[str, str, float, float]] = {
+    "INJNP": ("JNPT (Jawaharlal Nehru Port Trust)", "IN", 18.949, 72.9519),
+    "INMUN": ("Mundra Port", "IN", 22.7402, 69.7066),
+    "NLRTM": ("Rotterdam", "NL", 51.916667, 4.5),
+    "SGSIN": ("Singapore", "SG", 1.283333, 103.85),
+}
 
 
 def _measure(
@@ -53,8 +67,32 @@ async def seed_corridors(session: AsyncSession) -> dict[str, dict]:
         for locode in {code for lane in LANES.values() for code in lane}
     }
     missing = [key for key, value in locations.items() if value is None]
+    # Fresh-clone safety (day-12b fix): upsert missing endpoints from the
+    # documented PORT_COORDS table so a fresh clone can seed corridors
+    # without the gitignored UN/LOCODE ingest files.
+    for locode in missing:
+        spec = PORT_COORDS.get(locode)
+        if spec is None:
+            raise RuntimeError(f"Missing locations (no fallback coordinates): {locode}")
+        name, country, lat, lon = spec
+        session.add(
+            Location(
+                locode=locode,
+                name=name,
+                country_code=country,
+                location_type=LocationType.PORT,
+                latitude=lat,
+                longitude=lon,
+            )
+        )
     if missing:
-        raise RuntimeError(f"Missing locations (run ingest/world scripts first): {missing}")
+        await session.flush()
+        locations = {
+            locode: (
+                await session.execute(select(Location).where(Location.locode == locode))
+            ).scalar_one()
+            for locode in missing
+        } | {k: v for k, v in locations.items() if v is not None}
 
     lane_table: dict[str, dict] = {}
     for lane_name, (o_code, d_code) in LANES.items():
