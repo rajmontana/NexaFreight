@@ -215,6 +215,8 @@ async def load_orders_for_consolidation(conn, orders_tbl: Table, limit: int = 0)
         orders_tbl.c["shipping_cost"],
         orders_tbl.c["shipping_mode"],
         orders_tbl.c["cargo_class"],
+        orders_tbl.c["weight_kg"],
+        orders_tbl.c["volume_m3"],
     )
     if limit > 0:
         stmt = stmt.limit(limit)
@@ -246,7 +248,7 @@ async def load_orders_for_consolidation(conn, orders_tbl: Table, limit: int = 0)
     ]
 
     order_views: list[OrderView] = []
-    for idx, (oid, onum, odate, deadline, rev, cost, mode, cargo) in enumerate(rows):
+    for idx, (oid, onum, odate, deadline, rev, cost, mode, cargo, w_kg, v_m3) in enumerate(rows):
         if odate and odate.tzinfo is None:
             odate = odate.replace(tzinfo=UTC)
         if deadline and deadline.tzinfo is None:
@@ -272,6 +274,8 @@ async def load_orders_for_consolidation(conn, orders_tbl: Table, limit: int = 0)
                 sla_deadline=deadline or datetime.now(UTC),
                 revenue=float(rev or 0.0),
                 shipping_cost=float(cost or 0.0),
+                weight_kg=w_kg,
+                volume_m3=v_m3,
             )
         )
     return order_views

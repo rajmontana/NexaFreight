@@ -71,6 +71,11 @@ class Order(Base, TimestampMixin):
     shipping_mode: Mapped[TransportMode] = mapped_column(String(20), nullable=False)
     cargo_class: Mapped[CargoClass] = mapped_column(String(20), nullable=False)
 
+    # Measured shipment load (Task 21 / E13): nullable — DataCo-era rows lack
+    # measurements; consolidation falls back to documented cargo-class nominals.
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    volume_m3: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     # Historical labels and transit days from source dataset (for ML training)
     historical_late_delivery: Mapped[bool | None] = mapped_column(nullable=True)
     real_shipping_days: Mapped[float | None] = mapped_column(Float, nullable=True)

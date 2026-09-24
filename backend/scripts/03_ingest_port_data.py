@@ -67,7 +67,7 @@ try:
     from rapidfuzz import fuzz, process  # type: ignore
 
     _HAS_RAPIDFUZZ = True
-except Exception:
+except Exception:  # E20: intentional broad -- optional-dependency probe
     _HAS_RAPIDFUZZ = False
 
 # Ensure src/ is importable
@@ -102,7 +102,7 @@ def get_db_url() -> str:
 
         settings = get_settings()
         return settings.database_url
-    except Exception:
+    except Exception:  # E20: intentional broad -- boot resilience, env fallback below
         db_path = os.getenv("DATABASE_PATH", "./data/nexafreight.db")
         if (
             not db_path.startswith("./")
@@ -352,7 +352,8 @@ def build_port_matcher(db_ports: list[tuple[int, str, str, str]], wpi_file: Path
                 if p_name and unloc in locode_map:
                     wpi_alias_map[p_name] = locode_map[unloc]
             log.info("Loaded %d World Port Index alias mappings", len(wpi_alias_map))
-        except Exception as exc:
+        # E20: narrowed -- alias parse can only fail on file/shape errors
+        except (ValueError, KeyError, TypeError, OSError) as exc:
             log.warning("Could not parse World Port Index aliases: %s", exc)
 
     def match_port(port_name: str, threshold: float = 0.80) -> tuple[int, str] | None:
@@ -421,7 +422,7 @@ def _resolve_tables():
         from nexafreight.models.port import Port, PortDailyStat  # type: ignore
 
         return Port.__table__, PortDailyStat.__table__
-    except Exception:
+    except Exception:  # E20: intentional broad -- reflection fallback to hand-rolled table
         meta = MetaData()
         port_tbl = Table(
             "ports",

@@ -275,8 +275,10 @@ def _compute_leg_kpis(
         sched_id = None
 
     transit_h = (arrival - departure).total_seconds() / 3600.0
-    cost_rate = params.get_float(edge.cost_param, 0.065)  # USD per km per tonne
-    co2_rate = params.get_float(edge.co2_param, 62.0)  # g CO2 per tonne-km
+    # E18: no inline shadows -- every edge param key is registered in
+    # FALLBACK_DEFAULTS (core/params.py), the single source of truth.
+    cost_rate = params.get_float(edge.cost_param)  # USD per km per tonne
+    co2_rate = params.get_float(edge.co2_param)  # g CO2 per tonne-km
 
     cost_usd = edge.distance_km * cost_rate * cargo_weight_t
     co2_kg = (edge.distance_km * co2_rate * cargo_weight_t) / 1000.0
@@ -301,7 +303,7 @@ def _compute_leg_kpis(
 
 def _get_speed(edge: _Edge) -> float:
     """Return speed in km/h or kn from params for the edge's speed_param key."""
-    raw = params.get_float(edge.speed_param, 50.0)
+    raw = params.get_float(edge.speed_param)  # E18: fallback lives in the registry
     # Convert knots to km/h for sea edges
     if "kn" in edge.speed_param:
         raw = raw * 1.852

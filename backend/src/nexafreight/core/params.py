@@ -74,6 +74,25 @@ FALLBACK_DEFAULTS: dict[str, Any] = {
     # critical 2.5 = today's index vs 90-day baseline average)
     "disruption.congestion.ratio_warn": 1.5,
     "disruption.congestion.ratio_critical": 2.5,
+    # E18 last-resort fallbacks: these mirror the inline shadow defaults the
+    # planner (and demo-world builder) used to carry at their call sites --
+    # registered here so the single source of truth holds. They fire ONLY
+    # when parameter_empirical has no row for the key (fresh/test DBs);
+    # real values come from the seeded parameter rows.
+    "sea.feeder.speed_kn": 50.0,
+    "sea.panamax.speed_kn": 50.0,
+    "rail.dfc.speed_kmh": 50.0,
+    "rail.conventional.speed_kmh": 50.0,
+    "road.speed_kmh": 50.0,
+    "sea.cost_usd_per_nm": 0.065,
+    "rail.cost_usd_per_km": 0.065,
+    "air.cost_usd_per_km": 0.065,
+    "road.cost_usd_per_km": 0.065,
+    "co2.sea_g_per_tonne_km": 62.0,
+    "co2.rail_g_per_tonne_km": 62.0,
+    "co2.air_g_per_tonne_km": 62.0,
+    "co2.road_g_per_tonne_km": 62.0,
+    "co2.road_g_with_toll": 62.0,
     "disruption.congestion.ratio_p90": 2.5,  # legacy alias of ratio_critical
     "disruption.delay.vessel_h": 24.0,
     "disruption.delay.weather_h": 48.0,

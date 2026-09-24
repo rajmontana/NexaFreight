@@ -110,7 +110,10 @@ def _predicted_p85(shipment: Shipment, order: Order, session: AsyncSession) -> d
                     dt = datetime.fromisoformat(rev)
                     if base_eta is None or dt > base_eta:
                         base_eta = dt
-        except Exception:
+        # E20: narrowed from bare Exception -- only parse/shape errors are
+        # skippable here; anything else must surface.
+        except (ValueError, TypeError, AttributeError, KeyError, OSError):
+            logger.debug("Skipping unreadable sla_breach_details on alert %s", getattr(alert, "id", "?"))
             continue
     if base_eta is None:
         base_eta = latest_planned_arrival(shipment)
@@ -151,8 +154,11 @@ def _predicted_p85(shipment: Shipment, order: Order, session: AsyncSession) -> d
         }
         pred = model.predict(features)
         return order_date + timedelta(days=float(pred.p85_eta_days))
+    # E20: intentional broad catch -- availability over correctness. The SLA
+    # scan must not crash on any model/feature failure; it degrades to the
+    # planned-arrival estimate and the failure is logged.
     except Exception as exc:
-        logger.warning(f"Failed to compute p85 for shipment {shipment.id}: {exc}")
+        logger.warning("Failed to compute p85 for shipment %s (%s: %s)", shipment.id, type(exc).__name__, exc)
         return base_eta
 
 
