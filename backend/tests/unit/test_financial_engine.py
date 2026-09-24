@@ -180,14 +180,14 @@ def test_calculate_co2_kg_by_mode() -> None:
     """kg CO2 = g/t-km × km × t / 1000."""
     # AIR: 500 × 5000 × 28 / 1000 = 70000 kg
     assert calculate_co2_kg(5000.0, 28.0, "AIR") == 70_000.0
-    # SEA: 6.5 × 5000 × 28 / 1000 = 910 kg
-    assert calculate_co2_kg(5000.0, 28.0, "SEA") == 910.0
+    # SEA: 8.0 × 5000 × 28 / 1000 = 1120 kg (GLEC band mid)
+    assert calculate_co2_kg(5000.0, 28.0, "SEA") == 1_120.0
 
 
 def test_calculate_co2_cost_uses_carbon_price() -> None:
     """Carbon price is $0.08/kg."""
     assert CARBON_COST_PER_KG == 0.08
-    assert calculate_co2_cost(910.0) == pytest.approx(72.8)
+    assert calculate_co2_cost(1_120.0) == pytest.approx(89.6)
 
 
 def test_calculate_order_financial_impact_full_scenario() -> None:

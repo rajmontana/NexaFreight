@@ -65,8 +65,10 @@ FREIGHT_RATE_PER_T_KM: dict[str, float] = {
 }
 
 #: CO2 emission factors, grams per tonne-km, by transport mode.
+#: SEA: GLEC v3.2 deep-sea container 7.6 (>=8k TEU) - 9.1 (3-8k TEU);
+#: 8.0 = mid for the modeled vessel mix (was 6.5, below the entire band).
 CO2_G_PER_T_KM: dict[str, float] = {
-    "SEA": 6.5,
+    "SEA": 8.0,
     "AIR": 500.0,
     "ROAD": 62.0,
     "RAIL": 22.0,

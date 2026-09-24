@@ -34,7 +34,8 @@ import asyncio
 import argparse
 import logging
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, date
+import random
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -50,6 +51,7 @@ from nexafreight.models.alert import Alert  # noqa: E402
 from nexafreight.models.decision import Decision  # noqa: E402
 from nexafreight.models.disruption import Disruption  # noqa: E402
 from nexafreight.models.leg import Leg  # noqa: E402
+from nexafreight.models.location import Location  # noqa: E402
 from nexafreight.models.network import NetworkEdge, NetworkNode  # noqa: E402
 from nexafreight.models.order import Order  # noqa: E402
 from nexafreight.models.parameter import ParameterEmpirical  # noqa: E402
@@ -263,6 +265,117 @@ async def densify_schedules(days_ahead: int = 21) -> None:
     log.info("Densified schedules: %d services generated across %d edges.", generated, len(edges))
 
 
+async def seed_congestion_story(spike_port: str = "INJNP", ratio: float = 1.8) -> dict:
+    """Seed 90 days of port congestion history + a spike at one port (task 10).
+
+    The congestion scan (workers.disruption_detector.check_port_congestion)
+    needs PortDailyStat rows: today's index vs the 90-day baseline per Port.
+    The demo world had neither (ports table empty) — the scan was a no-op and
+    no alert could ever fire.
+
+    Design (Sim C): quiet baselines everywhere (0.55-0.85 index, seeded RNG),
+    ONE port spikes today to ~1.8x baseline (above the 1.5 warn tier, below
+    the 2.5 critical tier). Idempotent: regenerates the window in place.
+    """
+    from nexafreight.models.port import Port, PortDailyStat
+    from nexafreight.enums import LocationType
+    from sqlalchemy import delete as _delete
+
+    rng = random.Random(42)
+    now = datetime.now(UTC)
+    today = now.date()
+    started = today - timedelta(days=90)
+
+    async with get_session_factory()() as session:
+        port_nodes = (
+            await session.execute(
+                select(NetworkNode).where(NetworkNode.locode.like("IN%"))
+            )
+        ).scalars().all()
+        port_nodes = [n for n in port_nodes if str(n.node_type).split(".")[-1] == "PORT"]  # not AIRPORT
+
+        seeded_ports = 0
+        stats_written = 0
+        spike_info = None
+        for node in port_nodes:
+            locode = node.locode
+            # ensure Location
+            loc_id = (
+                await session.execute(select(Location.id).where(Location.locode == locode))
+            ).scalar_one_or_none()
+            if loc_id is None:
+                loc = Location(
+                    locode=locode,
+                    name=node.name,
+                    country_code=locode[:2],
+                    location_type=LocationType.PORT,
+                    latitude=node.latitude,
+                    longitude=node.longitude,
+                )
+                session.add(loc)
+                await session.flush()
+                loc_id = loc.id
+            # ensure Port row
+            port = (
+                await session.execute(select(Port).where(Port.location_id == loc_id))
+            ).scalars().first()
+            if port is None:
+                port = Port(location_id=loc_id)
+                session.add(port)
+                await session.flush()
+            seeded_ports += 1
+
+            # regenerate the window (demo data, not observations)
+            await session.execute(
+                _delete(PortDailyStat).where(
+                    PortDailyStat.port_id == port.id,
+                    PortDailyStat.stat_date >= started,
+                )
+            )
+
+            # baseline series (weekday-quiet, mild noise)
+            baseline_vals: list[float] = []
+            d = started
+            while d <= today:
+                if d < today:
+                    v = round(rng.uniform(0.55, 0.85), 3)
+                    baseline_vals.append(v)
+                    session.add(
+                        PortDailyStat(port_id=port.id, stat_date=d, congestion_index=v)
+                    )
+                    stats_written += 1
+                d += timedelta(days=1)
+
+            if locode == spike_port:
+                base_avg = sum(baseline_vals) / len(baseline_vals)
+                spike = round(base_avg * ratio, 3)
+                session.add(
+                    PortDailyStat(port_id=port.id, stat_date=today, congestion_index=spike)
+                )
+                stats_written += 1
+                spike_info = (locode, round(base_avg, 3), spike, round(base_avg * ratio / base_avg, 2))
+            else:
+                # quiet today everywhere else
+                session.add(
+                    PortDailyStat(
+                        port_id=port.id,
+                        stat_date=today,
+                        congestion_index=round(rng.uniform(0.55, 0.85), 3),
+                    )
+                )
+                stats_written += 1
+
+        await session.commit()
+
+    log.info(
+        "Congestion story: %d ports, %d stat rows; spike %s (baseline %s -> today %s, ratio %sx)",
+        seeded_ports,
+        stats_written,
+        *spike_info,
+    )
+    return {"ports": seeded_ports, "stats": stats_written, "spike": spike_info}
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--warp", type=float, default=1.0, help="world seconds per real second (default 1.0)")
@@ -277,6 +390,7 @@ async def main() -> int:
 
     kv = await anchor_world(args.warp)
     await densify_schedules()
+    await seed_congestion_story()
 
     log.info("=" * 54)
     log.info("Demo world ready")

@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nexafreight.enums import (
@@ -256,7 +257,12 @@ async def check_port_congestion(
     today: date = now.date()
     baseline_start = today - timedelta(days=BASELINE_DAYS)
 
-    ports = (await session.execute(select(Port))).scalars().all()
+    # E25: port.locode lazy-loads Port.location — without eager loading this
+    # raises MissingGreenlet under asyncio the moment the ports table has rows
+    # (which is why an always-empty table hid it until the demo world).
+    ports = (
+        await session.execute(select(Port).options(selectinload(Port.location)))
+    ).scalars().all()
     candidates: list[DetectionCandidate] = []
 
     for port in ports:
@@ -285,8 +291,11 @@ async def check_port_congestion(
             continue
 
         ratio = today_index / baseline_avg
-        congestion_threshold = params.get_float("disruption.congestion.ratio_p90", 1.5)
-        
+        # Tier contract (task 10): WARN at 1.5x baseline triggers the scan's
+        # attention; CRITICAL (2.5x, legacy ratio_p90 key) remains available
+        # for severity escalation downstream.
+        congestion_threshold = params.get_float("disruption.congestion.ratio_warn", 1.5)
+
         if ratio < congestion_threshold or today_index < min_index:
             continue
 
@@ -318,9 +327,11 @@ async def check_port_congestion(
             cushions = []
             for order in orders:
                 if order.sla_deadline and leg.planned_arrival:
-                    # ensure naive datetime if needed or matched timezone
+                    # E26: normalize BOTH sides — SQLite returns naive
+                    # datetimes; mixing naive/aware raises TypeError.
                     arr = leg.planned_arrival if leg.planned_arrival.tzinfo else leg.planned_arrival.replace(tzinfo=UTC)
-                    c_hours = (order.sla_deadline - arr).total_seconds() / 3600.0
+                    deadline = order.sla_deadline if order.sla_deadline.tzinfo else order.sla_deadline.replace(tzinfo=UTC)
+                    c_hours = (deadline - arr).total_seconds() / 3600.0
                     cushions.append(c_hours)
             if cushions:
                 sla_cushion_hours = min(cushions)
