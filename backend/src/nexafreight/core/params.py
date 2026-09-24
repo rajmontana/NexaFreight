@@ -132,6 +132,12 @@ FALLBACK_DEFAULTS: dict[str, Any] = {
     # FX and carbon (MARKET as-of 2026-09; REGULATORY CBAM transitory price)
     "fx.usd_inr": 88.0,
     "carbon.price_usd_per_kg": 0.08,
+    # Time-World (task 6): disabled by default = world time == real time.
+    # 20_build_demo_world.py sets anchor/boot/warp when it seeds the world.
+    "time_world.enabled": "false",
+    "time_world.anchor_iso": "",
+    "time_world.boot_real_iso": "",
+    "time_world.warp": 1.0,
 }
 
 
@@ -202,3 +208,19 @@ def get_str(key: str, default: str | None = None, *, with_provenance: bool = Fal
     else:
         fallback = ""
     return (fallback, "DEFAULT") if with_provenance else fallback
+
+
+def get_bool(key: str, default: bool = False, *, with_provenance: bool = False) -> bool | tuple[bool, str]:
+    """Boolean parameter getter.
+
+    Accepts true/false in any case plus 1/0; unknown strings fail closed
+    (False) with the raw value preserved in the provenance tuple.
+    """
+    raw = get_str(key, None, with_provenance=with_provenance)  # type: ignore[arg-type]
+    if with_provenance:
+        value, source = raw  # type: ignore[misc]
+    else:
+        value, source = raw, "DEFAULT"  # type: ignore[unreachable]
+    low = (value or "").strip().lower()
+    result = low in ("true", "1", "yes", "on") if low else bool(default)
+    return (result, source) if with_provenance else result
