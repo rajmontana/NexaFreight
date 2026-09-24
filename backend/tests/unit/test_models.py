@@ -169,6 +169,7 @@ async def test_complete_entity_graph_insertion():
 
         # 6. Create shipment
         shipment = Shipment(
+            provenance=Provenance.SIMULATED,
             origin_id=origin.id,
             destination_id=destination.id,
             primary_transport_mode=TransportMode.SEA,
@@ -370,6 +371,7 @@ async def test_unique_constraint_duplicate_active_disruption():
         await session.flush()
 
         shipment = Shipment(
+            provenance=Provenance.SIMULATED,
             origin_id=origin.id,
             destination_id=origin.id,
             primary_transport_mode=TransportMode.SEA,
@@ -444,6 +446,7 @@ async def test_unique_constraint_one_alert_per_disruption():
         await session.flush()
 
         shipment = Shipment(
+            provenance=Provenance.SIMULATED,
             origin_id=origin.id,
             destination_id=origin.id,
             primary_transport_mode=TransportMode.SEA,
@@ -515,6 +518,7 @@ async def test_unique_constraint_one_decision_per_alert():
         await session.flush()
 
         shipment = Shipment(
+            provenance=Provenance.SIMULATED,
             origin_id=origin.id,
             destination_id=origin.id,
             primary_transport_mode=TransportMode.SEA,
@@ -645,6 +649,7 @@ async def test_default_values_behave_correctly():
 
         # Shipment without explicit status or route_version
         shipment = Shipment(
+            provenance=Provenance.SIMULATED,
             origin_id=origin.id,
             destination_id=origin.id,
             primary_transport_mode=TransportMode.SEA,

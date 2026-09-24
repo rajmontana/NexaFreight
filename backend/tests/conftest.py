@@ -299,6 +299,8 @@ async def make_shipment(
     db_session: AsyncSession,
     make_location: Callable[..., Awaitable[Location]],
 ) -> Callable[..., Awaitable[Shipment]]:
+    from nexafreight.enums import Provenance
+
     """Factory for creating test Shipment entities.
 
     Automatically creates origin/destination locations if not provided.
@@ -318,6 +320,7 @@ async def make_shipment(
         status: ShipmentStatus = ShipmentStatus.PLANNED,
         container_count: int = 1,
         route_version: int = 1,
+        provenance: Provenance = Provenance.SIMULATED,
     ) -> Shipment:
         if origin is None:
             origin = await make_location(locode="USNYC", name="New York")
@@ -332,6 +335,7 @@ async def make_shipment(
             status=status,
             container_count=container_count,
             route_version=route_version,
+            provenance=provenance,
         )
         db_session.add(shipment)
         await db_session.commit()

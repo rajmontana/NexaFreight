@@ -41,6 +41,7 @@ from nexafreight.enums import (
     OrderSlaStatus,
     ShipmentStatus,
 )
+from nexafreight.core import params
 from nexafreight.models import Alert, Disruption, Order, Shipment
 from nexafreight.services.financial_engine import (
     DEMURRAGE_DAILY_RATE,
@@ -180,9 +181,10 @@ def estimate_demurrage(shipment: Shipment, estimated_delay_hours: float) -> floa
     Containers sit free for DEMURRAGE_FREE_DAYS, then pay per container.
     """
     delay_days = math.ceil(estimated_delay_hours / 24.0)
+    free_days = int(params.get_int("demurrage.free_days", DEMURRAGE_FREE_DAYS))
     per_container = calculate_demurrage(
         extra_days=delay_days,
-        free_days=DEMURRAGE_FREE_DAYS,
+        free_days=free_days,
         daily_rate=DEMURRAGE_DAILY_RATE,
     )
     return per_container * max(1, shipment.container_count)

@@ -148,6 +148,7 @@ async def seed_vessel_and_in_progress_leg(
     await db_session.refresh(vessel)
 
     shipment = Shipment(
+        provenance=Provenance.SIMULATED,
         origin_id=origin.id,
         destination_id=destination.id,
         primary_transport_mode=TransportMode.SEA,

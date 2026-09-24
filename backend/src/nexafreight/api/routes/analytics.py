@@ -27,9 +27,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from nexafreight.core import params
 from nexafreight.database import get_db_session
 from nexafreight.dependencies import get_current_user
-from nexafreight.enums import AlertStatus, DisruptionStatus, OrderSlaStatus, ShipmentStatus
+from nexafreight.enums import AlertStatus, DisruptionStatus, OrderSlaStatus, Provenance, ShipmentStatus
 from nexafreight.models import Alert, Decision, Shipment, User
 from nexafreight.schemas.ops import (
     AnalyticsEsgResponse,
@@ -46,6 +47,7 @@ from nexafreight.services.alert_engine import latest_planned_arrival
 from nexafreight.services.financial_engine import (
     CO2_G_PER_T_KM,
     DEMURRAGE_DAILY_RATE,
+    DEMURRAGE_FREE_DAYS,
     SLA_PENALTY_PCT_PER_DAY,
     calculate_demurrage,
     calculate_freight_cost,
@@ -175,19 +177,33 @@ def _pending_exposure(
                 )
         # Demurrage: dwell already past planned arrival
         dwell_days = max(0, (now - eta).days)
+        free_days = int(params.get_int("demurrage.free_days", DEMURRAGE_FREE_DAYS))
         demurrage = calculate_demurrage(
-            extra_days=dwell_days, free_days=0, daily_rate=DEMURRAGE_DAILY_RATE
+            extra_days=dwell_days, free_days=free_days, daily_rate=DEMURRAGE_DAILY_RATE
         ) * max(1, shipment.container_count)
     # Realized: penalties + demurrage already accounted
     realized = sla_total + demurrage
     return sla_total, demurrage, realized
 
 
+def _active_world_filter():
+    """Era/world guard (audit E3): analytics windows describe the ACTIVE
+    demo world only. Shipments whose provenance is in the exclusion list
+    (default: HISTORICAL — the 2015–2018 parcel-era ingest) never enter
+    day/week/month deadline windows, which are cumulative by design and
+    would otherwise pin every historical row inside 'day' forever.
+    """
+    excluded_raw = str(params.get_str("analytics.exclude_provenances", "HISTORICAL"))
+    excluded = {p.strip().upper() for p in excluded_raw.split(",") if p.strip()}
+    visible = [p for p in Provenance if p.value not in excluded]
+    return Shipment.provenance.in_(visible)
+
+
 async def _build_aggregates(
     session: AsyncSession, *, now: datetime
 ) -> list[ShipmentFinancialAggregate]:
     """Fetch shipments and roll up aggregates for window math."""
-    result = await session.execute(select(Shipment))
+    result = await session.execute(select(Shipment).where(_active_world_filter()))
     shipments = list(result.scalars().all())
 
     decided_ids: set[str] = set()
@@ -294,7 +310,9 @@ async def summary(
     _user: User = Depends(get_current_user),
 ) -> AnalyticsSummaryResponse:
     """Fleet-state summary (shipments by status, late orders, open alerts)."""
-    shipments = list((await session.execute(select(Shipment))).scalars().all())
+    shipments = list(
+        (await session.execute(select(Shipment).where(_active_world_filter()))).scalars().all()
+    )
     by_status: dict[str, int] = {}
     total_in_transit = 0
     total_delayed = 0
@@ -366,7 +384,9 @@ async def sla_board(
 ) -> AnalyticsSlaResponse:
     """Per-shipment SLA risk rows (in transit, or any non-empty shipment)."""
     now = datetime.now(UTC)
-    shipments = list((await session.execute(select(Shipment))).scalars().all())
+    shipments = list(
+        (await session.execute(select(Shipment).where(_active_world_filter()))).scalars().all()
+    )
     rows: list[AnalyticsSlaRow] = []
     for s in shipments:
         await session.refresh(s, ["orders", "legs", "disruptions"])

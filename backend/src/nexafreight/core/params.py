@@ -107,6 +107,11 @@ FALLBACK_DEFAULTS: dict[str, Any] = {
     "port.dwell.p90_ext.SGSIN": 24.0,
     # SLA
     "sla.cushion_buffer_hours": 24.0,
+    # Demurrage (E4 unification: ONE free-days source for reroute scoring AND
+    # analytics exposure; India band ₹3–8k/box/day → see Regulatory doc §2)
+    "demurrage.free_days": 4.0,
+    # Analytics active world (E3: exclude historical/parcel-era shipments)
+    "analytics.exclude_provenances": "HISTORICAL",
 }
 
 
