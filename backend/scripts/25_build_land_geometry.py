@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Build cached real-path geometry for network edges (day-14).
 
-ROAD edges: OpenRouteService `driving-hgv` (uses ORS_API_KEY from .env;
-free tier 2,000 req/day — only edges WITHOUT geometry are requested, and
-calls are politeness-throttled, so re-runs are cheap).
+ROAD edges: OpenRouteService directions (uses ORS_API_KEY from .env;
+free tier is ~8,000 req/day and 40 req/min per ORS docs — the script
+requests only edges WITHOUT geometry and sleeps 1.5 s between calls,
+so re-runs are cheap). Profile: driving-hgv with automatic driving-car
+fallback (OSM hgv tagging is sparse in India; some intercity hauls are
+hgv-unroutable but car-routable).
 
 RAIL edges: intentionally NOT filled by this script — the rail geometry
 builder (OSM rail-graph extraction) is a follow-up patch; the column and

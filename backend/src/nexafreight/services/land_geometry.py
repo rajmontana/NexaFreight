@@ -32,7 +32,11 @@ from nexafreight.models.network import NetworkNode
 logger = logging.getLogger(__name__)
 
 _ORS_URL = "https://api.openrouteservice.org/v2/directions/{profile}/geojson"
-_POLITE_SLEEP_S = 0.25
+# Public-API rate limit is documented at 40 req/min — 1.5 s between calls
+# stays comfortably inside it (free daily quota is ~8,000/day per ORS docs).
+_POLITE_SLEEP_S = 1.5
+_HGV = "driving-hgv"
+_CAR = "driving-car"
 
 
 def parse_ors_geojson(payload: dict[str, Any]) -> str:
@@ -64,35 +68,66 @@ async def ors_road_route(
     d_coord: tuple[float, float],
     profile: str = "driving-hgv",
 ) -> str | None:
-    """One ORS directions call; returns the LineString JSON or None.
+    """ORS directions with a profile fallback; LineString JSON or None.
 
     (lat, lon) tuples in, GeoJSON (lon, lat) out — same convention as
     the sea adapter. Never raises.
+
+    Day-14b: OSM hgv tagging is sparse outside Europe, so `driving-hgv`
+    can be unroutable on long intercity hauls even though ordinary
+    driving works. When the requested profile fails, retry ONCE with
+    `driving-car` (full OSM road graph). A 429 (rate limit) is retried
+    once after a short backoff on the SAME profile — switching profile
+    cannot help there.
     """
-    try:
-        resp = await client.post(
-            _ORS_URL.format(profile=profile),
-            headers={"Authorization": api_key},
-            json={
-                "coordinates": [
-                    [o_coord[1], o_coord[0]],
-                    [d_coord[1], d_coord[0]],
-                ]
-            },
-            timeout=12.0,
-        )
-        if resp.status_code != 200:
-            logger.warning(
-                "ORS %s %s -> HTTP %d (rate limit? check key/quota)",
-                profile, o_coord, resp.status_code,
+    geo = await _ors_attempt(client, api_key, o_coord, d_coord, profile)
+    if geo is not None:
+        return geo
+    if profile == _HGV:
+        logger.warning("ORS %s unroutable/failed — retrying with %s", _HGV, _CAR)
+        geo = await _ors_attempt(client, api_key, o_coord, d_coord, _CAR)
+        if geo is not None:
+            logger.info("ORS %s fallback succeeded for %s", _CAR, o_coord)
+        return geo
+    return None
+
+
+async def _ors_attempt(
+    client: httpx.AsyncClient,
+    api_key: str,
+    o_coord: tuple[float, float],
+    d_coord: tuple[float, float],
+    profile: str,
+) -> str | None:
+    """One ORS directions call (one 429 backoff retry inside)."""
+    for attempt in (1, 2):
+        try:
+            resp = await client.post(
+                _ORS_URL.format(profile=profile),
+                headers={"Authorization": api_key},
+                json={
+                    "coordinates": [
+                        [o_coord[1], o_coord[0]],
+                        [d_coord[1], d_coord[0]],
+                    ]
+                },
+                timeout=12.0,
             )
+            if resp.status_code == 429 and attempt == 1:
+                await asyncio.sleep(2.0)  # rate window — same profile helps
+                continue
+            if resp.status_code != 200:
+                logger.warning(
+                    "ORS %s %s -> HTTP %d (key/quota/coverage?)",
+                    profile, o_coord, resp.status_code,
+                )
+                return None
+            return parse_ors_geojson(resp.json())
+        except ValueError as exc:
+            logger.warning("ORS response unusable: %s", exc)
             return None
-        return parse_ors_geojson(resp.json())
-    except ValueError as exc:
-        logger.warning("ORS response unusable: %s", exc)
-        return None
-    except Exception as exc:  # noqa: BLE001 — presentation path, never raise
-        logger.warning("ORS call failed (%s: %s)", type(exc).__name__, exc)
+        except Exception as exc:  # noqa: BLE001 — presentation path, never raise
+            logger.warning("ORS call failed (%s: %s)", type(exc).__name__, exc)
         return None
 
 
