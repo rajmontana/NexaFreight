@@ -67,6 +67,7 @@ from nexafreight.services.consolidation import (  # noqa: E402
     enum_key,
 )
 from nexafreight.adapters.routing import great_circle_geojson_str  # noqa: E402
+from nexafreight.models import NetworkEdge  # noqa: E402
 from nexafreight.adapters.routing.sea_route import compute_sea_route  # noqa: E402
 from nexafreight.models.parameter import ParameterEmpirical  # noqa: E402
 from nexafreight.models.shipment import Shipment  # noqa: E402
@@ -96,6 +97,12 @@ class WorldDripper:
         if len(self.in_nodes) < 2:
             raise SystemExit("Need >=2 IN* network nodes (run alembic upgrade head)")
         self.party_pools = await load_party_pools(session)
+        # Day-14: cached edge geometry (network_edges.geometry_json)
+        self.edge_geometry = {
+            e.id: e.geometry_json
+            for e in (await session.execute(select(NetworkEdge))).scalars().all()
+            if e.geometry_json
+        }
 
 
         # Network nodes may carry planning codes absent from the UN/LOCODE
@@ -199,6 +206,7 @@ class WorldDripper:
         mode: TransportMode,
         o_coord: tuple[float, float] | None,
         d_coord: tuple[float, float] | None,
+        edge_geometry_json: str | None = None,
     ) -> str | None:
         """Geometry the position interpolator walks (day-12d upgrade).
 
@@ -211,6 +219,10 @@ class WorldDripper:
         degrades to the straight line: geometry is presentation, the drip
         must never break on it.
         """
+        # Day-14: cached edge geometry (scripts/25, real ORS road paths)
+        # wins over every fallback -- compute once per edge, reuse forever.
+        if edge_geometry_json:
+            return edge_geometry_json
         if o_coord is None or d_coord is None:
             # Coordinates unknown (stale node cache): leave geometry empty —
             # the interpolator skips legs without geometry (endpoint fallback).
@@ -269,7 +281,10 @@ class WorldDripper:
                 # to place moving markers (LINESTRING GeoJSON, lon/lat).
                 # Day-12d: SEA = real searoute marine lanes, AIR = great
                 # circle, ROAD/RAIL = densified straight (documented).
-                route_geometry_json=self._leg_geometry(TransportMode(kpi.mode), o_coord, d_coord),
+                route_geometry_json=self._leg_geometry(
+                    TransportMode(kpi.mode), o_coord, d_coord,
+                    self.edge_geometry.get(kpi.edge_id),
+                ),
                 distance_km=round(km, 1) if km else None,
                 co2_kg=round(kpi.co2_kg, 1),
                 provenance=Provenance.SIMULATED,

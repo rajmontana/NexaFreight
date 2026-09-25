@@ -242,6 +242,14 @@ async def answer_shipment_question(
                 return {"answer": answer, "source": source, "provenance": "DERIVED"}
 
         # All LLM adapters failed or unavailable — fall back to rule answer.
+        # E14-observability: say WHY on the server log (silent fallbacks made
+        # key/model misconfigurations invisible to operators).
+        logger.warning(
+            "Copilot LLM unavailable via %s; serving rules_fallback "
+            "(check GEMINI_API_KEY / GEMINI_MODEL; free-tier keys need the "
+            "Generative Language API enabled)",
+            type(adapter).__name__,
+        )
         answer = _rules_answer(shipment)
         _record_llm_audit(
             session,
