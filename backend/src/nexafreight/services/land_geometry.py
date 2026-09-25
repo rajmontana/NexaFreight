@@ -109,7 +109,8 @@ async def _ors_attempt(
                     "coordinates": [
                         [o_coord[1], o_coord[0]],
                         [d_coord[1], d_coord[0]],
-                    ]
+                    ],
+                    "radiuses": [10000, 10000]
                 },
                 timeout=12.0,
             )
@@ -122,7 +123,14 @@ async def _ors_attempt(
                     profile, o_coord, resp.status_code,
                 )
                 return None
-            return parse_ors_geojson(resp.json())
+            payload = resp.json()
+            features = payload.get("features") or []
+            if features:
+                geom = features[0].get("geometry") or {}
+                coords = geom.get("coordinates") or []
+                if geom.get("type") == "LineString" and len(coords) == 1:
+                    coords.append(coords[0])
+            return parse_ors_geojson(payload)
         except ValueError as exc:
             logger.warning("ORS response unusable: %s", exc)
             return None
