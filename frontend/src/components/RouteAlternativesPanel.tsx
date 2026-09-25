@@ -385,7 +385,7 @@ export default function RouteAlternativesPanel({
       try {
         const params = new URLSearchParams({ shipment_id: id });
         if (planTypeFilter) params.set('plan_type', planTypeFilter);
-        const resp = await window.fetch(`/api/v1/plan?${params.toString()}`, {
+        const resp = await window.fetch(`/api/nexa/v1/plan?${params.toString()}`, {
           credentials: 'include',
         });
         if (!resp.ok) {
