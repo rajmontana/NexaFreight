@@ -2,6 +2,9 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import ProvenanceBadge from './ProvenanceBadge';
+import { apiFetch } from '@/lib/nexafreight/client';
+import { NexaHttpError } from '@/lib/nexafreight/errors';
+import { mapPlanType, mapPlanResponse, mapPlanError } from '@/lib/alternatives';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -383,19 +386,21 @@ export default function RouteAlternativesPanel({
       setLoading(true);
       setError(null);
       try {
-        const params = new URLSearchParams({ shipment_id: id });
-        if (planTypeFilter) params.set('plan_type', planTypeFilter);
-        const resp = await window.fetch(`/api/nexa/v1/plan?${params.toString()}`, {
-          credentials: 'include',
+        const body = {
+          shipment_id: id,
+          ...(mapPlanType(planTypeFilter) && { plan_type: mapPlanType(planTypeFilter) })
+        };
+        const data = await apiFetch<{ routes: RoutePlanResult[] }>('/api/plan', {
+          method: 'POST',
+          body,
         });
-        if (!resp.ok) {
-          const text = await resp.text();
-          throw new Error(`${resp.status}: ${text}`);
-        }
-        const data = await resp.json();
-        setPlans((data as { routes: RoutePlanResult[] }).routes ?? []);
+        setPlans(mapPlanResponse(data));
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        if (err instanceof NexaHttpError) {
+          setError(mapPlanError(err.status, err.message));
+        } else {
+          setError(err instanceof Error ? err.message : String(err));
+        }
       } finally {
         setLoading(false);
       }

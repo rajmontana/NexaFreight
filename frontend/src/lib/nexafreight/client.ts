@@ -94,7 +94,7 @@ interface FetchOptions {
   params?: Record<string, string | number | boolean | null | undefined>
 }
 
-async function apiFetch<T>(path: string, opts: FetchOptions = {}): Promise<T> {
+export async function apiFetch<T>(path: string, opts: FetchOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = 'required', params } = opts
 
   // Build URL

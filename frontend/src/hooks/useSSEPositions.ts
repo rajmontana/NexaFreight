@@ -145,7 +145,7 @@ export function useSSEPositions(
 
   const esRef = useRef<EventSource | null>(null)
   const positionsRef = useRef<Record<string, PositionReport>>(positions)
-  positionsRef.current = positions
+  useEffect(() => { positionsRef.current = positions }, [positions])
 
   useEffect(() => {
     // Only run on the client
