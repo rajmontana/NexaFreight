@@ -74,3 +74,82 @@ def test_fallback_without_edge_geometry_is_densified_line() -> None:
     assert len(json.loads(out)["coordinates"]) >= 20  # arc
     out_road = _dripper_leg_geometry(TransportMode.ROAD, (28.0, 77.0), (26.5, 79.0), None)
     assert len(json.loads(out_road)["coordinates"]) <= 17  # densified straight
+
+
+class _Resp:
+    def __init__(self, status_code, payload=None):
+        self.status_code = status_code
+        self._payload = payload or {}
+
+    def json(self):
+        return self._payload
+
+
+class _StubClient:
+    """Minimal async client double for ors_road_route."""
+
+    def __init__(self, *responses):
+        self._responses = list(responses)
+        self.calls: list[str] = []
+
+    async def post(self, url, headers=None, json=None, timeout=None):
+        self.calls.append(url)
+        return self._responses.pop(0)
+
+
+def _ors_payload():
+    return {
+        "features": [
+            {
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[77.0, 28.0], [78.1, 27.4]],
+                }
+            }
+        ]
+    }
+
+
+def test_hgv_failure_falls_back_to_car_profile() -> None:
+    import asyncio
+
+    from nexafreight.services.land_geometry import ors_road_route
+
+    client = _StubClient(
+        _Resp(404, {"error": {"code": 2010}}),  # hgv unroutable
+        _Resp(200, _ors_payload()),             # car works
+    )
+    out = asyncio.run(ors_road_route(client, "k", (28.0, 77.0), (27.4, 78.1)))
+    assert out is not None and "LineString" in out
+    assert "driving-hgv" in client.calls[0]
+    assert "driving-car" in client.calls[1]
+
+
+def test_hgv_success_makes_single_call() -> None:
+    import asyncio
+
+    from nexafreight.services.land_geometry import ors_road_route
+
+    client = _StubClient(_Resp(200, _ors_payload()))
+    out = asyncio.run(ors_road_route(client, "k", (28.0, 77.0), (27.4, 78.1)))
+    assert out is not None and len(client.calls) == 1
+
+
+def test_bad_shape_body_also_triggers_car_fallback() -> None:
+    import asyncio
+
+    from nexafreight.services.land_geometry import ors_road_route
+
+    client = _StubClient(_Resp(200, {"features": []}), _Resp(200, _ors_payload()))
+    out = asyncio.run(ors_road_route(client, "k", (28.0, 77.0), (27.4, 78.1)))
+    assert out is not None and len(client.calls) == 2
+
+
+def test_double_failure_returns_none() -> None:
+    import asyncio
+
+    from nexafreight.services.land_geometry import ors_road_route
+
+    client = _StubClient(_Resp(404), _Resp(404))
+    out = asyncio.run(ors_road_route(client, "k", (28.0, 77.0), (27.4, 78.1)))
+    assert out is None and len(client.calls) == 2
