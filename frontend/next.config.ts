@@ -5,8 +5,8 @@ const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || 'http://localhos
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  serverExternalPackages: ['ws', 'maplibre-gl'],
-  transpilePackages: ['react-map-gl', 'mapbox-gl'],
+  serverExternalPackages: ['ws'],
+  transpilePackages: ['react-map-gl', 'mapbox-gl', 'maplibre-gl'],
   // Type errors block the build again. They were suppressed while 17 stood
   // unfixed; those are cleared, so the gate can do its job — the AstraPanel
   // crash (createPortal used without an import) shipped precisely because
