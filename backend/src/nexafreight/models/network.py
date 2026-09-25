@@ -97,6 +97,15 @@ class NetworkEdge(Base, TimestampMixin):
         comment="Key in parameter_empirical for CO2 g/tonne-km"
     )
 
+    # Day-14: cached real-path geometry (GeoJSON LineString, lon/lat).
+    # Filled once by scripts/25 (ORS for ROAD; rail builder follows) and
+    # inherited by legs at materialization; NULL -> straight-line fallback.
+    geometry_json: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Cached GeoJSON LineString of the real-world path (lon,lat)",
+    )
+
     # Physical constraints
     capacity_teu: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reliability: Mapped[float] = mapped_column(Float, nullable=False, default=0.95,
