@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 
 
 /* Map pigment constants — were lib/map-palette.ts before Phase 0 removed it.
@@ -776,7 +776,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     const attributeFallbacks: maplibregl.MapOptions['canvasContextAttributes'][] = [
       undefined,
       { powerPreference: 'low-power', failIfMajorPerformanceCaveat: false },
-      { contextType: 'webgl', powerPreference: 'low-power', failIfMajorPerformanceCaveat: false },
+      { contextType: 'webgl2', powerPreference: 'low-power', failIfMajorPerformanceCaveat: false },
     ];
 
     let map: maplibregl.Map | undefined;
@@ -786,7 +786,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
           canvasContextAttributes ? { ...baseOptions, canvasContextAttributes } : baseOptions
         );
         break;
-      } catch (e) {
+      } catch (e: any) {
         // A failed constructor leaves its canvas behind; the next attempt needs a clean container.
         container.innerHTML = '';
         if (canvasContextAttributes === attributeFallbacks[attributeFallbacks.length - 1]) throw e;
@@ -2639,7 +2639,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
           }));
 
         setGeo('conflict-zones', [...zoneFeatures, ...eventFeatures]);
-      } catch (e) {
+      } catch (e: any) {
         // Fallback: if API fails, use minimal known zones
         const FALLBACK_ZONES = [
           { label: 'UKRAINE WAR', severity: 'war', lat: 48.5, lng: 31.2, description: 'Ongoing Russian invasion of Ukraine.', sourceUrl: 'https://liveuamap.com/' },
@@ -2995,7 +2995,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         };
 
         // Wire marker click to open shipment inspector
-        el.addEventListener('click', (e) => {
+        el.addEventListener('click', (e: any) => {
           e.stopPropagation();
           const currentCoord = liveMarkersRef.current.get(rawAssetId)?.currentCoords || [effectiveLng, effectiveLat];
           const latest = liveMarkersRef.current.get(rawAssetId)?.latestPos || pos;
@@ -3136,11 +3136,11 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
             'fog-color': '#04040A',
             'fog-ground-blend': 0.9,
           });
-        } catch (e) { console.warn('[NexaFreight] Suppressed error:', e instanceof Error ? e.message : e); }
+        } catch (e: any) { console.warn('[NexaFreight] Suppressed error:', e instanceof Error ? e.message : e); }
       } else {
         map.easeTo({ pitch: 0, duration: 800 });
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Projection switch failed:', e);
     }
   }, [mapReady, projection]);
@@ -3206,7 +3206,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         // ── DISABLE 3D ──
         if (map.getLayer('NexaFreight-3d-buildings')) map.removeLayer('NexaFreight-3d-buildings');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('[NexaFreight] 3D terrain toggle error:', e);
     }
   }, [mapReady, activeLayers.terrain_3d]);
@@ -3237,7 +3237,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
           map.setLayoutProperty('satellite-layer', 'visibility', 'none');
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Style switch failed:', e);
     }
   }, [mapReady, mapStyle]);
