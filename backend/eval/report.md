@@ -36,9 +36,11 @@ REPORT > ETA P50 RMSE: 1.2974  (naive 1.2961)
   Qualified lanes: 79 / 675
   WAPE:            32.2%
 REPORT > DEMAND MEDIAN MASE: 0.7285
+REPORT > DEMAND MASE pooled: 0.6985
+REPORT > DEMAND lanes MASE<=1: 63 of 79 (79.7%)
   Median MAPE:     52.5%
-  Runtime:         116.9s
-  Model SHA-256:   dc245aaaf1a51023
+  Runtime:         120.4s
+  Model SHA-256:   35cfd698ec45c6bd
 
   BEST 5 lanes:
     Indoor/Outdoor Games__Central America               19.2%

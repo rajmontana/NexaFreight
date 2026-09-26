@@ -365,6 +365,7 @@ def evaluate_holdout(
     weighted_actuals = 0.0
     weighted_errors = 0.0
     bl_weighted_errors = 0.0
+    pooled_denom = 0.0
 
     for uid, group in holdout.groupby(DEMAND_UNIQUE_ID_COL):
         pred_group = preds[preds[DEMAND_UNIQUE_ID_COL] == uid].copy()
@@ -380,6 +381,9 @@ def evaluate_holdout(
         try:
             lane_mase = mase(y_train, actual, predicted, season_length=4)
             per_lane_mase_list.append(lane_mase)
+            
+            lane_denom = float(np.mean(np.abs(y_train[4:] - y_train[:-4])))
+            pooled_denom += n * lane_denom
         except ValueError:
             pass
 
@@ -400,6 +404,8 @@ def evaluate_holdout(
     lift_pct = (1.0 - wape / baseline_wape) * 100 if baseline_wape > 0 else float("nan")
 
     median_mase = float(np.median(per_lane_mase_list)) if per_lane_mase_list else float("nan")
+    pooled_mase = (weighted_errors / pooled_denom) if pooled_denom > 0 else float("nan")
+    lanes_le1 = sum(1 for v in per_lane_mase_list if v <= 1.0)
 
     log.info(
         "  Holdout — WAPE: %.1f%%  |  Baseline WAPE: %.1f%%  |  Lift: %+.1f%%  |  Lanes: %d",
@@ -408,7 +414,8 @@ def evaluate_holdout(
         lift_pct,
         len(per_lane_mape),
     )
-    return per_lane_mape, wape, baseline_wape, lift_pct, median_mase
+    lanes_mase_total = len(per_lane_mase_list)
+    return per_lane_mape, wape, baseline_wape, lift_pct, median_mase, pooled_mase, lanes_le1, lanes_mase_total
 
 
 # ============================================================================
@@ -612,7 +619,7 @@ def train(
     # Step 4: Evaluate holdout MAPE
     # ------------------------------------------------------------------
     log.info("Step 4/5 — Evaluating holdout MAPE (%d-week holdout) ...", holdout_weeks)
-    per_lane_mape, wape, baseline_wape, lift_pct, median_mase = evaluate_holdout(
+    per_lane_mape, wape, baseline_wape, lift_pct, median_mase, pooled_mase, lanes_le1, lanes_mase_total = evaluate_holdout(
         sf_eval, train_df, holdout_df, holdout_weeks, DEMAND_PREDICTION_LEVEL
     )
 
@@ -719,7 +726,10 @@ def train(
             "worst_5_lanes_mape": worst5,
         },
         "forecast_instruments": {
-            "median_mase": round(median_mase, 4)
+            "median_mase": round(median_mase, 4),
+            "pooled_mase": round(pooled_mase, 4),
+            "lanes_mase_le1": lanes_le1,
+            "lanes_total": lanes_mase_total
         },
         "prediction_intervals": {
             "method": "ets_native",
@@ -769,6 +779,9 @@ def train(
     print(f"  Qualified lanes: {len(qualified_ids)} / {total_lanes}")
     print(f"  WAPE:            {wape:.1f}%")
     print(f"REPORT > DEMAND MEDIAN MASE: {median_mase:.4f}")
+    print(f"REPORT > DEMAND MASE pooled: {pooled_mase:.4f}")
+    pct_le1 = (lanes_le1 / lanes_mase_total * 100) if lanes_mase_total > 0 else 0.0
+    print(f"REPORT > DEMAND lanes MASE<=1: {lanes_le1} of {lanes_mase_total} ({pct_le1:.1f}%)")
     print(
         f"  Median MAPE:     {float(np.median(list(per_lane_mape.values()))):.1f}%"
         if per_lane_mape
