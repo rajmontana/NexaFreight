@@ -34,8 +34,17 @@ async def main():
     parser.add_argument("--n", type=int, default=25, help="Number of shipments")
     args = parser.parse_args()
     
-    # 1) Use an in-memory DB and create schema
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    # 1) Resolve and guard DATABASE_URL
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        db_url = "sqlite+aiosqlite:///eval_artifacts_scratch.db"
+        print("DATABASE_URL unset, defaulting to sqlite+aiosqlite:///eval_artifacts_scratch.db")
+    
+    if "sqlite" not in db_url:
+        print("REPORT > SCRIPT 31 REFUSED: DATABASE_URL is not sqlite - dummy-fixture run forbidden on real DB")
+        sys.exit(2)
+        
+    engine = create_async_engine(db_url)
     
     async with engine.begin() as conn:
         from nexafreight.models import Base
