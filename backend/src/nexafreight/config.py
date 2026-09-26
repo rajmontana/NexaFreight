@@ -22,6 +22,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,  # ENV vars are case-insensitive
         extra="ignore",  # ignore unknown env vars (don't fail)
+        populate_by_name=True,
     )
 
     # --- Core App Settings ---
@@ -101,9 +102,29 @@ class Settings(BaseSettings):
     # --- Computed Properties ---
     @property
     def database_url(self) -> str:
-        """Async database URL.  Prefers DATABASE_URL env; falls back to SQLite."""
-        if self.database_url_override:
-            return self.database_url_override
+        """Async database URL.  Prefers DATABASE_URL env; falls back to SQLite.
+
+        A postgres:// or postgresql:// override (as given by Neon and most
+        Postgres hosts) is upgraded to the asyncpg driver and given the
+        exact parameter set our stack needs:
+          - ssl=require            (Neon enforces TLS)
+          - statement_cache_size=0 and prepared_statement_cache_size=0
+            (Neon's pooled endpoint is PgBouncer in transaction mode;
+            asyncpg prepared statements are incompatible - SQLAlchemy
+            asyncpg dialect docs).  Idempotent: any existing query string
+            on the override is replaced, not appended to.
+        """
+        override = self.database_url_override
+        if override:
+            scheme, _, remainder = override.partition("://")
+            if scheme.lower() in ("postgres", "postgresql"):
+                host_part = remainder.split("?", 1)[0]
+                return (
+                    f"postgresql+asyncpg://{host_part}"
+                    "?ssl=require&statement_cache_size=0"
+                    "&prepared_statement_cache_size=0"
+                )
+            return override
         # Local SQLite fallback
         if self.database_path == Path(":memory:"):
             return "sqlite+aiosqlite:///:memory:"
