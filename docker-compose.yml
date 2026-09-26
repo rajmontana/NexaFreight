@@ -17,8 +17,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.backend
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
     environment:
       DATABASE_URL: postgresql+asyncpg://nexa:nexa_password@postgres:5432/nexafreight
     ports:
@@ -29,15 +29,16 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.frontend
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
     environment:
       NEXA_BACKEND_URL: http://backend:8000
       NEXT_PUBLIC_BACKEND_ORIGIN: http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_started
 
 volumes:
   postgres_data:
