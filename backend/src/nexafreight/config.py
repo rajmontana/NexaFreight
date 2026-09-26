@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     )
 
     # --- External APIs (all optional/free-tier) ---
+    nightly_secret: SecretStr | None = Field(
+        default=None,
+        validation_alias="NIGHTLY_SECRET",
+        description="HMAC key for POST /internal/nightly (wave 2). Leave unset to disable the endpoint.",
+    )
+
     # AIS Stream WebSocket & Replay
     enable_ais_listener: bool = Field(
         default=True,

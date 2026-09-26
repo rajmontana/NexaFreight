@@ -15,6 +15,7 @@ from sqlalchemy import text
 from nexafreight.api.router import api_router
 from nexafreight.api.routes import health
 from nexafreight.api.routes.health import HealthResponse
+from nexafreight.api.routes.internal import router as internal_router
 from nexafreight.config import Settings, ensure_directories, get_settings
 from nexafreight.database import (
     create_engine,
@@ -304,6 +305,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Include central API router
     app.include_router(api_router, prefix="/api")
+    app.include_router(internal_router)
 
     # Top-level health check endpoint for /health and /health/
     @app.get(

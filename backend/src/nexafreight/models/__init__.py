@@ -11,6 +11,7 @@ from nexafreight.models.base import Base
 from nexafreight.models.corridor import CorridorAlternative
 from nexafreight.models.decision import Decision
 from nexafreight.models.decision_outcome import DecisionOutcome
+from nexafreight.models.external_event import ExternalEvent
 from nexafreight.models.party import Party
 from nexafreight.models.disruption import Disruption
 from nexafreight.models.leg import Leg
@@ -42,6 +43,7 @@ __all__ = [
     "CorridorAlternative",
     "Decision",
     "DecisionOutcome",
+    "ExternalEvent",
     "Party",
     "AuditLog",
     "ParameterPolicy",

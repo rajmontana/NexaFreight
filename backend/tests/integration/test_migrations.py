@@ -117,6 +117,7 @@ async def test_all_expected_tables_exist_after_upgrade(tmp_path: Path) -> None:
             "route_plans",
             "route_legs",
             "alembic_version",  # Alembic's version tracking table
+            "external_events",
         }
         assert (
             tables == expected_tables
