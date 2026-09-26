@@ -78,6 +78,7 @@ async def test_all_models_registered_in_metadata():
         "transshipment_links",
         "route_plans",
         "route_legs",
+        "external_events",
     }
     # Import models to populate metadata
     import nexafreight.models  # noqa: F401
