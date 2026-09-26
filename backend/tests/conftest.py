@@ -446,3 +446,19 @@ async def make_leg(
         return leg
 
     return _make
+
+@pytest.fixture
+def graph_cache():
+    """Fresh GraphCache instance per test."""
+    from nexafreight.services.planner import GraphCache
+    return GraphCache()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_graph_cache_autouse():
+    from nexafreight.services import planner
+    old = planner._CACHE
+    planner._CACHE = planner.GraphCache()
+    yield
+    planner._CACHE = old
+

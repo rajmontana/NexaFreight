@@ -1,0 +1,31 @@
+From 199a24629a315eef74ae4bf19cc9da7869680495 Mon Sep 17 00:00:00 2001
+From: NexaFreight Rebuild <nexafreight-rebuild@users.noreply.github.com>
+Date: Fri, 25 Sep 2026 08:52:08 +0000
+Subject: [PATCH 2/2] fix(ui): suppressHydrationWarning on <html> (day-14a,
+ console noise)
+
+Browser extensions (e.g. the 'data-qb-installed' attribute seen in the
+field log) inject attributes into <html> before React hydrates; React
+19 dev-mode then reports an attribute mismatch rooted at layout.tsx:184.
+The app is unaffected; the standard guard silences the false positive
+without touching behavior.
+---
+ frontend/src/app/layout.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/frontend/src/app/layout.tsx b/frontend/src/app/layout.tsx
+index 5ac1731..c6f572e 100644
+--- a/frontend/src/app/layout.tsx
++++ b/frontend/src/app/layout.tsx
+@@ -181,7 +181,7 @@ export default function RootLayout({
+   children: React.ReactNode;
+ }>) {
+   return (
+-    <html lang="en" dir="ltr">
++    <html lang="en" dir="ltr" suppressHydrationWarning>
+       <head>
+         <link rel="preconnect" href="https://fonts.googleapis.com" />
+         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+-- 
+2.47.3
+

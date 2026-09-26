@@ -182,6 +182,7 @@ async def _load_network(
     session: AsyncSession,
     query_time: datetime,
     horizon_days: int,
+    cache: GraphCache | None = None,
 ) -> tuple[
     dict[int, _Node],
     dict[int, list[_Edge]],  # adjacency: from_node_id → [edges]
@@ -190,11 +191,10 @@ async def _load_network(
     dict[str, int],  # locode → node_id
 ]:
     """Load entire network into memory (cached) for fast traversal."""
-    import sys
     now = datetime.now(UTC)
-    is_test = "pytest" in sys.modules
-    # Refresh cache if older than 15 minutes, or ALWAYS if running in pytest
-    if is_test or _CACHE.last_loaded is None or (now - _CACHE.last_loaded).total_seconds() > 900:
+    active_cache = cache if cache is not None else _CACHE
+    # Refresh cache if older than 15 minutes
+    if active_cache.last_loaded is None or (now - active_cache.last_loaded).total_seconds() > 900:
         log.info("Refreshing planner network graph cache...")
         node_rows = (await session.execute(select(NetworkNode))).scalars().all()
         nodes: dict[int, _Node] = {}
@@ -252,15 +252,15 @@ async def _load_network(
                 max_dwell_h=t.max_dwell_h, handling_cost_usd=t.handling_cost_usd,
             )
 
-        _CACHE.nodes = nodes
-        _CACHE.edges_by_from = edges_by_from
-        _CACHE.schedules_by_edge = schedules_by_edge
-        _CACHE.transshipments = transshipments
-        _CACHE.locode_to_id = locode_to_id
-        _CACHE.last_loaded = now
+        active_cache.nodes = nodes
+        active_cache.edges_by_from = edges_by_from
+        active_cache.schedules_by_edge = schedules_by_edge
+        active_cache.transshipments = transshipments
+        active_cache.locode_to_id = locode_to_id
+        active_cache.last_loaded = now
         log.info(f"Cache refreshed: {len(nodes)} nodes, {len(edge_rows)} edges, {len(sched_rows)} schedules.")
 
-    return _CACHE.nodes, _CACHE.edges_by_from, _CACHE.schedules_by_edge, _CACHE.transshipments, _CACHE.locode_to_id
+    return active_cache.nodes, active_cache.edges_by_from, active_cache.schedules_by_edge, active_cache.transshipments, active_cache.locode_to_id
 
 
 # ---------------------------------------------------------------------------
@@ -707,6 +707,9 @@ class MultimodalPlanner:
         )
     """
 
+    def __init__(self, cache: GraphCache | None = None):
+        self.cache = cache
+
     async def plan(
         self,
         session: AsyncSession,
@@ -763,7 +766,7 @@ class MultimodalPlanner:
 
         # Load network
         nodes, edges_by_from, schedules_by_edge, transshipments, locode_to_id = await _load_network(
-            session, query_time, horizon_days
+            session, query_time, horizon_days, cache=self.cache
         )
 
         origin_id = locode_to_id.get(origin_locode)

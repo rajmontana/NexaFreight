@@ -1,0 +1,108 @@
+From fef105607b9c5c353182179d04029f3990896c06 Mon Sep 17 00:00:00 2001
+From: NexaFreight Rebuild <nexafreight-rebuild@users.noreply.github.com>
+Date: Thu, 24 Sep 2026 16:28:18 +0000
+Subject: [PATCH] feat(demo-world): ships follow real sea lanes (day-12d)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The dripper wrote every leg as a 16-point densified straight line —
+its own docstring said 'coastal sea lanes will be upgraded to searoute
+geometry as polish later'. Ships were visibly sailing through land.
+
+Upgrade (dripper only; measurement was already real — corridor factors
+and the Red Sea drill use the same searoute graph):
+- SEA legs: real marine-lane geometry from compute_sea_route (JNPT->
+  Rotterdam now a 106-waypoint path around land, 6380 nm — identical
+  to the pinned corridor reference; short coastal hops keep their true
+  2-20 waypoint shapes)
+- AIR legs: great-circle arc via the project's existing helper (what
+  aircraft actually fly)
+- ROAD/RAIL: keep the densified straight approximation — the documented
+  v2 upgrade is OSM/ORS path geometry
+- any adapter failure degrades to the straight line (presentation
+  fallback; the drip must never break on geometry); missing node coords
+  leave geometry NULL (interpolator's endpoint fallback) — also fixes a
+  latent crash: _densified_line indexed None coords
+
+No RNG calls added — party/assignment determinism preserved.
+Gates: 540 unit / 183 integration; fresh-DB drip verified (all SEA legs
+carry searoute geometry).
+---
+ backend/scripts/21_drip_orders.py | 46 ++++++++++++++++++++++++++++++-
+ 1 file changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/backend/scripts/21_drip_orders.py b/backend/scripts/21_drip_orders.py
+index e862e09..0c4b736 100644
+--- a/backend/scripts/21_drip_orders.py
++++ b/backend/scripts/21_drip_orders.py
+@@ -66,6 +66,8 @@ from nexafreight.services.consolidation import (  # noqa: E402
+     containers_for_total,
+     enum_key,
+ )
++from nexafreight.adapters.routing import great_circle_geojson_str  # noqa: E402
++from nexafreight.adapters.routing.sea_route import compute_sea_route  # noqa: E402
+ from nexafreight.models.parameter import ParameterEmpirical  # noqa: E402
+ from nexafreight.models.shipment import Shipment  # noqa: E402
+ from nexafreight.services.planner import get_planner  # noqa: E402
+@@ -192,6 +194,46 @@ class WorldDripper:
+ 
+         return _json.dumps({"type": "LineString", "coordinates": coords})
+ 
++    @staticmethod
++    def _leg_geometry(
++        mode: TransportMode,
++        o_coord: tuple[float, float] | None,
++        d_coord: tuple[float, float] | None,
++    ) -> str | None:
++        """Geometry the position interpolator walks (day-12d upgrade).
++
++        SEA follows REAL marine-lane geometry from the searoute graph — the
++        same adapter that measures the VIA_CAPE corridor factors and the
++        Red Sea drill — so ships visibly sail around land, not through it.
++        AIR gets a great-circle arc (what aircraft actually fly). ROAD/RAIL
++        keep the densified straight approximation until an OSM/ORS
++        path-geometry pass (the documented v2 upgrade). Any adapter failure
++        degrades to the straight line: geometry is presentation, the drip
++        must never break on it.
++        """
++        if o_coord is None or d_coord is None:
++            # Coordinates unknown (stale node cache): leave geometry empty —
++            # the interpolator skips legs without geometry (endpoint fallback).
++            return None
++        try:
++            if mode == TransportMode.SEA:
++                route = compute_sea_route(
++                    o_coord[0],
++                    o_coord[1],
++                    d_coord[0],
++                    d_coord[1],
++                    vessel_class="neo-panamax",
++                )
++                if route.geometry_geojson:
++                    return route.geometry_geojson
++            elif mode == TransportMode.AIR:
++                return great_circle_geojson_str(o_coord[0], o_coord[1], d_coord[0], d_coord[1])
++        except Exception as exc:  # deliberate: presentation fallback only
++            log.warning(
++                "leg geometry fell back to straight line (%s: %s)", type(exc).__name__, exc
++            )
++        return WorldDripper._densified_line(o_coord, d_coord)
++
+     def _shipment_state(self, legs: list[Leg], world: datetime) -> ShipmentStatus:
+         if all(leg.status == LegStatus.COMPLETED for leg in legs):
+             return ShipmentStatus.DELIVERED
+@@ -225,7 +267,9 @@ class WorldDripper:
+                 planned_arrival=kpi.arrival_at,
+                 # Task-7 wire: the position interpolator walks this geometry
+                 # to place moving markers (LINESTRING GeoJSON, lon/lat).
+-                route_geometry_json=self._densified_line(o_coord, d_coord),
++                # Day-12d: SEA = real searoute marine lanes, AIR = great
++                # circle, ROAD/RAIL = densified straight (documented).
++                route_geometry_json=self._leg_geometry(TransportMode(kpi.mode), o_coord, d_coord),
+                 distance_km=round(km, 1) if km else None,
+                 co2_kg=round(kpi.co2_kg, 1),
+                 provenance=Provenance.SIMULATED,
+-- 
+2.47.3
+

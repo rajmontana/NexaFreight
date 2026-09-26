@@ -1,0 +1,72 @@
+From 2898a714ff2d8399e3a1237b4a481ff74662d368 Mon Sep 17 00:00:00 2001
+From: NexaFreight Rebuild <nexafreight-rebuild@users.noreply.github.com>
+Date: Fri, 25 Sep 2026 08:52:08 +0000
+Subject: [PATCH 1/2] fix(copilot): current default Gemini model + loud
+ fallback reason (day-14a)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Field run showed source=rules_fallback with no visible cause: the
+adapter default (gemini-1.5-flash) is retired for newer API keys —
+generate() 404s, the never-raises adapter swallowed it, and the only
+trace was logger.debug on a possible ImportError.
+
+- default GEMINI_MODEL -> gemini-2.0-flash (env override still wins);
+  docstring header updated
+- when the LLM gate fires but every adapter fails, the service now
+  logs a WARNING naming the adapter class and the two settings to
+  check (GEMINI_API_KEY / GEMINI_MODEL; free-tier keys need the
+  Generative Language API enabled) — silent fallbacks made observable
+- rules gate unchanged: factual questions stay deterministic by design
+
+Gates: copilot+routers 9/9; tsc clean; 239 vitest.
+---
+ backend/src/nexafreight/adapters/llm/gemini.py | 7 +++++--
+ backend/src/nexafreight/services/copilot.py    | 8 ++++++++
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/backend/src/nexafreight/adapters/llm/gemini.py b/backend/src/nexafreight/adapters/llm/gemini.py
+index 48ac5db..439ff28 100644
+--- a/backend/src/nexafreight/adapters/llm/gemini.py
++++ b/backend/src/nexafreight/adapters/llm/gemini.py
+@@ -1,4 +1,4 @@
+-"""Gemini 1.5 Flash LLM adapter for the AI copilot (Definitive Plan Phase 7).
++"""Gemini Flash LLM adapter for the AI copilot (Definitive Plan Phase 7).
+ 
+ NEVER raises — returns None on any error so callers fall back to
+ rule-based answers. Needs `google-generativeai` installed at runtime to
+@@ -22,7 +22,10 @@ class GeminiAdapter:
+     def __init__(self, model_name: str | None = None, api_key: str | None = None):
+         """Create adapter from env config; model resolved lazily."""
+         self._api_key = api_key or os.getenv("GEMINI_API_KEY", "")
+-        self._model_name = model_name or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
++        # gemini-2.0-flash: 1.5 models are retired for newer API keys (404 on
++        # generate) — the default tracks a currently served model; override
++        # with GEMINI_MODEL.
++        self._model_name = model_name or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+         self._model = None
+ 
+     @property
+diff --git a/backend/src/nexafreight/services/copilot.py b/backend/src/nexafreight/services/copilot.py
+index ee4153c..5fd4dc4 100644
+--- a/backend/src/nexafreight/services/copilot.py
++++ b/backend/src/nexafreight/services/copilot.py
+@@ -242,6 +242,14 @@ async def answer_shipment_question(
+                 return {"answer": answer, "source": source, "provenance": "DERIVED"}
+ 
+         # All LLM adapters failed or unavailable — fall back to rule answer.
++        # E14-observability: say WHY on the server log (silent fallbacks made
++        # key/model misconfigurations invisible to operators).
++        logger.warning(
++            "Copilot LLM unavailable via %s; serving rules_fallback "
++            "(check GEMINI_API_KEY / GEMINI_MODEL; free-tier keys need the "
++            "Generative Language API enabled)",
++            type(adapter).__name__,
++        )
+         answer = _rules_answer(shipment)
+         _record_llm_audit(
+             session,
+-- 
+2.47.3
+

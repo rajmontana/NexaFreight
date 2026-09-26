@@ -79,6 +79,10 @@ class Settings(BaseSettings):
         default=None,
         description="Path to Parquet files for AIS replay (used when use_live_ais=False)",
     )
+    ais_bounding_boxes: str = Field(
+        default="",
+        description="JSON string defining bounding boxes for AIS Stream (e.g. [[[-90, -180], [90, 180]]])",
+    )
     aisstream_api_key: SecretStr | None = Field(default=None)
     ors_api_key: SecretStr | None = Field(
         default=None,
