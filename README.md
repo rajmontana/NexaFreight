@@ -238,6 +238,9 @@ uvicorn nexafreight.main:app
 ```
 *Note: `DATABASE_URL` always takes precedence over the default SQLite database path.*
 
+Stage A (Render): the repo root render.yaml declares the backend web
+service from the GHCR image; deploy via Render Dashboard > New > Blueprint.
+
 ---
 
 ## Contributing (Windows note)
