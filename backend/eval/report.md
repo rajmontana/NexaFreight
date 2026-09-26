@@ -68,3 +68,22 @@ REPORT > PLANNER beats greenest: 40/40 (100.0%)
 REPORT > PLANNER mean composite: CRITICAL 0.9364 STANDARD 0.9364 ECONOMY 0.9364
 REPORT > PLANNER VERDICT: OK
 ```
+
+## Copilot Faithfulness (wave 3d)
+n = 25
+Answers produced against a sandboxed sqlite fixture DB (rules fallback).
+
+```text
+DATABASE_URL unset, defaulting to sqlite+aiosqlite:///eval_artifacts_scratch.db
+REPORT > COPILOT faithfulness (llm): SKIPPED (no adapter)
+REPORT > COPILOT faithfulness (rules): 75/75 (100.0%)
+REPORT > COPILOT hallucinated numbers: 0
+REPORT > COPILOT VERDICT: MIXED
+```
+
+## CO2 Basis Goldens (wave 3e)
+
+```text
+REPORT > CO2 goldens: 5/5 PASS (declared basis)
+REPORT > CO2 GLEC deviation: road -16.2pct, air -16.7pct (documented, eval/co2_basis.md)
+```
