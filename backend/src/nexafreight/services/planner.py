@@ -167,6 +167,17 @@ class _Transshipment:
 # ---------------------------------------------------------------------------
 
 
+@dataclass
+class GraphCache:
+    nodes: dict[int, _Node] = field(default_factory=dict)
+    edges_by_from: dict[int, list[_Edge]] = field(default_factory=dict)
+    schedules_by_edge: dict[int, list[_Schedule]] = field(default_factory=dict)
+    transshipments: dict[int, _Transshipment] = field(default_factory=dict)
+    locode_to_id: dict[str, int] = field(default_factory=dict)
+    last_loaded: datetime | None = None
+
+_CACHE = GraphCache()
+
 async def _load_network(
     session: AsyncSession,
     query_time: datetime,
@@ -178,67 +189,76 @@ async def _load_network(
     dict[int, _Transshipment],  # node_id → transshipment
     dict[str, int],  # locode → node_id
 ]:
-    """Load entire network into memory for fast traversal."""
-    horizon_end = query_time + timedelta(days=horizon_days)
+    """Load entire network into memory (cached) for fast traversal."""
+    now = datetime.now(UTC)
+    # Refresh cache if older than 15 minutes
+    if _CACHE.last_loaded is None or (now - _CACHE.last_loaded).total_seconds() > 900:
+        log.info("Refreshing planner network graph cache...")
+        node_rows = (await session.execute(select(NetworkNode))).scalars().all()
+        nodes: dict[int, _Node] = {}
+        locode_to_id: dict[str, int] = {}
+        for n in node_rows:
+            try:
+                modes = set(json.loads(n.modes_json))
+            except Exception:
+                modes = set()
+            nodes[n.id] = _Node(id=n.id, locode=n.locode, lat=n.latitude, lon=n.longitude, modes=modes)
+            locode_to_id[n.locode] = n.id
 
-    node_rows = (await session.execute(select(NetworkNode))).scalars().all()
-    nodes: dict[int, _Node] = {}
-    locode_to_id: dict[str, int] = {}
-    for n in node_rows:
-        try:
-            modes = set(json.loads(n.modes_json))
-        except Exception:
-            modes = set()
-        nodes[n.id] = _Node(id=n.id, locode=n.locode, lat=n.latitude, lon=n.longitude, modes=modes)
-        locode_to_id[n.locode] = n.id
-
-    edge_rows = (await session.execute(select(NetworkEdge))).scalars().all()
-    edges_by_from: dict[int, list[_Edge]] = {}
-    for e in edge_rows:
-        edge = _Edge(
-            id=e.id, from_id=e.from_node_id, to_id=e.to_node_id,
-            mode=str(e.mode), distance_km=e.distance_km,
-            speed_param=e.transit_speed_param_key,
-            cost_param=e.base_cost_param_key,
-            co2_param=e.co2_intensity_param_key,
-            capacity_teu=e.capacity_teu, reliability=e.reliability,
-            is_dfc=e.is_dfc,
-        )
-        edges_by_from.setdefault(e.from_node_id, []).append(edge)
-
-    sched_rows = (
-        await session.execute(
-            select(EdgeSchedule).where(
-                EdgeSchedule.departure_at >= query_time,
-                EdgeSchedule.departure_at <= horizon_end,
+        edge_rows = (await session.execute(select(NetworkEdge))).scalars().all()
+        edges_by_from: dict[int, list[_Edge]] = {}
+        for e in edge_rows:
+            edge = _Edge(
+                id=e.id, from_id=e.from_node_id, to_id=e.to_node_id,
+                mode=str(e.mode), distance_km=e.distance_km,
+                speed_param=e.transit_speed_param_key,
+                cost_param=e.base_cost_param_key,
+                co2_param=e.co2_intensity_param_key,
+                capacity_teu=e.capacity_teu, reliability=e.reliability,
+                is_dfc=e.is_dfc,
             )
-        )
-    ).scalars().all()
-    schedules_by_edge: dict[int, list[_Schedule]] = {}
-    for s in sched_rows:
-        dep = s.departure_at if s.departure_at.tzinfo else s.departure_at.replace(tzinfo=UTC)
-        arr = s.arrival_at if s.arrival_at.tzinfo else s.arrival_at.replace(tzinfo=UTC)
-        sched = _Schedule(
-            id=s.id, edge_id=s.edge_id, service_name=s.service_name,
-            departure_at=dep, arrival_at=arr,
-            cutoff_at=s.cutoff_at, capacity_remaining=s.capacity_remaining,
-            provenance=str(s.provenance),
-        )
-        schedules_by_edge.setdefault(s.edge_id, []).append(sched)
+            edges_by_from.setdefault(e.from_node_id, []).append(edge)
 
-    # Sort schedules by departure for efficient next-departure lookup
-    for eid in schedules_by_edge:
-        schedules_by_edge[eid].sort(key=lambda s: s.departure_at)
+        # Cache ALL active schedules (from 7 days ago onwards)
+        start_t = now - timedelta(days=7)
+        sched_rows = (
+            await session.execute(
+                select(EdgeSchedule).where(EdgeSchedule.departure_at >= start_t)
+            )
+        ).scalars().all()
+        schedules_by_edge: dict[int, list[_Schedule]] = {}
+        for s in sched_rows:
+            dep = s.departure_at if s.departure_at.tzinfo else s.departure_at.replace(tzinfo=UTC)
+            arr = s.arrival_at if s.arrival_at.tzinfo else s.arrival_at.replace(tzinfo=UTC)
+            sched = _Schedule(
+                id=s.id, edge_id=s.edge_id, service_name=s.service_name,
+                departure_at=dep, arrival_at=arr,
+                cutoff_at=s.cutoff_at, capacity_remaining=s.capacity_remaining,
+                provenance=str(s.provenance),
+            )
+            schedules_by_edge.setdefault(s.edge_id, []).append(sched)
 
-    trans_rows = (await session.execute(select(TransshipmentLink))).scalars().all()
-    transshipments: dict[int, _Transshipment] = {}
-    for t in trans_rows:
-        transshipments[t.node_id] = _Transshipment(
-            node_id=t.node_id, min_dwell_h=t.min_dwell_h,
-            max_dwell_h=t.max_dwell_h, handling_cost_usd=t.handling_cost_usd,
-        )
+        # Sort schedules by departure for efficient next-departure lookup
+        for eid in schedules_by_edge:
+            schedules_by_edge[eid].sort(key=lambda s: s.departure_at)
 
-    return nodes, edges_by_from, schedules_by_edge, transshipments, locode_to_id
+        trans_rows = (await session.execute(select(TransshipmentLink))).scalars().all()
+        transshipments: dict[int, _Transshipment] = {}
+        for t in trans_rows:
+            transshipments[t.node_id] = _Transshipment(
+                node_id=t.node_id, min_dwell_h=t.min_dwell_h,
+                max_dwell_h=t.max_dwell_h, handling_cost_usd=t.handling_cost_usd,
+            )
+
+        _CACHE.nodes = nodes
+        _CACHE.edges_by_from = edges_by_from
+        _CACHE.schedules_by_edge = schedules_by_edge
+        _CACHE.transshipments = transshipments
+        _CACHE.locode_to_id = locode_to_id
+        _CACHE.last_loaded = now
+        log.info(f"Cache refreshed: {len(nodes)} nodes, {len(edge_rows)} edges, {len(sched_rows)} schedules.")
+
+    return _CACHE.nodes, _CACHE.edges_by_from, _CACHE.schedules_by_edge, _CACHE.transshipments, _CACHE.locode_to_id
 
 
 # ---------------------------------------------------------------------------
