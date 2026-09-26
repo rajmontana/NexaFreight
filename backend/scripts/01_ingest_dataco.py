@@ -16,7 +16,7 @@ Run order contract:
 
 What it does
 ------------
-1. Reads DataCoSupplyChainDataset.csv with pandas.
+1. Reads DataCoSupplyChain.csv with pandas.
 2. Maps `Shipping Mode` -> primary shipping_mode:
         Standard Class -> SEA
         Second Class   -> RAIL
@@ -33,7 +33,7 @@ What it does
 Usage
 -----
     python scripts/01_ingest_dataco.py
-    python scripts/01_ingest_dataco.py --input data/raw/dataco/DataCoSupplyChainDataset.csv
+    python scripts/01_ingest_dataco.py --input data/raw/dataco/DataCoSupplyChain.csv
     python scripts/01_ingest_dataco.py --limit 1000 --dry-run
 """
 
@@ -108,19 +108,19 @@ def get_db_url() -> str:
 def resolve_dataco_file(user_path: str | None) -> Path:
     candidates: list[str | Path] = [
         user_path or "",
-        _REPO_ROOT / "data" / "raw" / "dataco" / "DataCoSupplyChainDataset.csv",
+        _REPO_ROOT / "data" / "raw" / "dataco" / "DataCoSupplyChain.csv",
         _REPO_ROOT.parent.parent
         / "Datasets"
         / "Primary Dataset — DataCo Smart Supply Chain"
-        / "DataCoSupplyChainDataset.csv",
+        / "DataCoSupplyChain.csv",
         _REPO_ROOT.parent
         / "Datasets"
         / "Primary Dataset — DataCo Smart Supply Chain"
-        / "DataCoSupplyChainDataset.csv",
+        / "DataCoSupplyChain.csv",
         _REPO_ROOT
         / "Datasets"
         / "Primary Dataset — DataCo Smart Supply Chain"
-        / "DataCoSupplyChainDataset.csv",
+        / "DataCoSupplyChain.csv",
     ]
     for cand in candidates:
         p = Path(cand)
