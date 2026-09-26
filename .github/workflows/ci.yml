@@ -178,7 +178,7 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./backend
           file: docker/Dockerfile.backend
           platforms: linux/${{ matrix.arch }}
           push: true
@@ -189,7 +189,7 @@ jobs:
       - name: Build frontend image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./frontend
           file: docker/Dockerfile.frontend
           platforms: linux/${{ matrix.arch }}
           push: true
