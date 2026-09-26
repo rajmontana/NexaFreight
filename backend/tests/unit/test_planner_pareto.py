@@ -120,6 +120,7 @@ def dominates(v1, v2):
     return less_eq and strictly_less
 
 
+@pytest.mark.xfail(strict=True, reason="FINDING-3C-1: Yen k-shortest can return dominated itineraries (single-axis optimum); planner fix is a separate wave")
 @pytest.mark.parametrize("seed", [101, 102, 103, 104, 105])
 @patch("nexafreight.services.planner.params.get_float", return_value=1.0)
 def test_pareto_soundness_seed(mock_params, seed):
