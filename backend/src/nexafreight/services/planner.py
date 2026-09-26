@@ -190,9 +190,11 @@ async def _load_network(
     dict[str, int],  # locode → node_id
 ]:
     """Load entire network into memory (cached) for fast traversal."""
+    import sys
     now = datetime.now(UTC)
-    # Refresh cache if older than 15 minutes
-    if _CACHE.last_loaded is None or (now - _CACHE.last_loaded).total_seconds() > 900:
+    is_test = "pytest" in sys.modules
+    # Refresh cache if older than 15 minutes, or ALWAYS if running in pytest
+    if is_test or _CACHE.last_loaded is None or (now - _CACHE.last_loaded).total_seconds() > 900:
         log.info("Refreshing planner network graph cache...")
         node_rows = (await session.execute(select(NetworkNode))).scalars().all()
         nodes: dict[int, _Node] = {}

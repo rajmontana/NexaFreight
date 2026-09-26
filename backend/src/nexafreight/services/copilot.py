@@ -192,11 +192,18 @@ async def answer_shipment_question(
 
     context = load_shipment_context(shipment)
     
-    # 1. Always compute deterministic facts
+    # 1. Deterministic Facts
     base_eta_status = _rules_answer(shipment)
     base_demurrage = _demurrage_answer(shipment)
 
-    # 2. Try LLM first for ALL questions (Hybrid RAG Pattern)
+    # FAST PATH: If question is purely status/demurrage, skip LLM to save latency/cost
+    q_lower = question.lower()
+    if "arrive" in q_lower or "sla" in q_lower or "eta" in q_lower or "status" in q_lower:
+        return {"answer": base_eta_status, "source": "rules", "provenance": "DERIVED"}
+    if "demurrage" in q_lower or "fee" in q_lower:
+        return {"answer": base_demurrage, "source": "rules", "provenance": "DERIVED"}
+
+    # 2. Try LLM first for complex questions (Hybrid RAG Pattern)
     source = "rules_fallback"  # assume fallback until the LLM answers
 
     if adapter is None:
