@@ -37,6 +37,7 @@ def run_alembic_command(db_path: Path, *args: str) -> subprocess.CompletedProces
         CompletedProcess with stdout/stderr
     """
     env = {**os.environ, "DATABASE_PATH": str(db_path)}
+    env.pop("DATABASE_URL", None)
     result = subprocess.run(
         [sys.executable, "-m", "alembic", *args],
         capture_output=True,

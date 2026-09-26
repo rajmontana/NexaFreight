@@ -63,13 +63,17 @@ from nexafreight.models import Leg, Location, Order, Shipment, User
 
 
 @pytest_asyncio.fixture
-async def test_engine() -> AsyncGenerator[AsyncEngine, None]:
-    """Provide a clean in-memory SQLite engine for each test.
+async def test_engine(test_settings: Settings) -> AsyncGenerator[AsyncEngine, None]:
+    """Provide a clean test database engine.
 
     Scope: function (fresh schema per test for complete isolation).
     Cleanup: drops all tables and disposes engine after test completes.
     """
-    engine = create_test_engine("sqlite+aiosqlite:///:memory:")
+    url = test_settings.database_url
+    if url.startswith("sqlite") and "memory" not in url:
+        url = "sqlite+aiosqlite:///:memory:"
+
+    engine = create_test_engine(url)
     await create_all_tables(engine)
     yield engine
     await drop_all_tables(engine)

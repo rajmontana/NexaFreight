@@ -635,10 +635,10 @@ class TestStaleDataCleanup:
         stale_time = NOW - timedelta(hours=25)
         recent_time = NOW - timedelta(minutes=5)
 
-        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+        from nexafreight.database import dialect_insert
 
         await db_session.execute(
-            sqlite_insert(PositionReport).values(
+            dialect_insert(PositionReport).values(
                 leg_id=leg.id,
                 asset_type="ROAD",
                 latitude=1.0,
@@ -650,7 +650,7 @@ class TestStaleDataCleanup:
             )
         )
         await db_session.execute(
-            sqlite_insert(PositionReport).values(
+            dialect_insert(PositionReport).values(
                 leg_id=leg.id,
                 asset_type="ROAD",
                 latitude=1.0,
