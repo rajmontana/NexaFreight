@@ -105,25 +105,22 @@ class Settings(BaseSettings):
         """Async database URL.  Prefers DATABASE_URL env; falls back to SQLite.
 
         A postgres:// or postgresql:// override (as given by Neon and most
-        Postgres hosts) is upgraded to the asyncpg driver and given the
-        exact parameter set our stack needs:
-          - ssl=require            (Neon enforces TLS)
-          - statement_cache_size=0 and prepared_statement_cache_size=0
-            (Neon's pooled endpoint is PgBouncer in transaction mode;
-            asyncpg prepared statements are incompatible - SQLAlchemy
-            asyncpg dialect docs).  Idempotent: any existing query string
-            on the override is replaced, not appended to.
+        Postgres hosts) is upgraded to the asyncpg driver with ssl=require
+        (Neon enforces TLS).  Idempotent: any existing query string on the
+        override is replaced, not appended to.
+
+        NOTE: asyncpg statement-cache disables are NOT set here.  They must
+        be typed INTs (asyncpg rejects the string form of its native
+        statement_cache_size with TypeError at connect), so they live in
+        connect_args at the engine build sites: database.py and
+        migrations/env.py.
         """
         override = self.database_url_override
         if override:
             scheme, _, remainder = override.partition("://")
             if scheme.lower() in ("postgres", "postgresql"):
                 host_part = remainder.split("?", 1)[0]
-                return (
-                    f"postgresql+asyncpg://{host_part}"
-                    "?ssl=require&statement_cache_size=0"
-                    "&prepared_statement_cache_size=0"
-                )
+                return f"postgresql+asyncpg://{host_part}?ssl=require"
             return override
         # Local SQLite fallback
         if self.database_path == Path(":memory:"):
