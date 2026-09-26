@@ -57,3 +57,14 @@ REPORT > DEMAND lanes MASE<=1: 63 of 79 (79.7%)
     Indoor/Outdoor Games__Western Europe               179.0%
 ===========================================================
 ```
+
+## Planner Validation (wave 3c)
+Commit: df46f446864339aadfa07c128a9b4f854a1f4ef5
+
+```text
+REPORT > PLANNER beats cheapest: 40/40 (100.0%)
+REPORT > PLANNER beats fastest: 40/40 (100.0%)
+REPORT > PLANNER beats greenest: 40/40 (100.0%)
+REPORT > PLANNER mean composite: CRITICAL 0.9364 STANDARD 0.9364 ECONOMY 0.9364
+REPORT > PLANNER VERDICT: OK
+```
