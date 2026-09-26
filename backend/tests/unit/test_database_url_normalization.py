@@ -24,7 +24,7 @@ def test_postgres_scheme_upgraded_to_asyncpg_with_param_set() -> None:
     ).database_url
     assert url == (
         "postgresql+asyncpg://neondb_owner:pw@ep-x-pooler.region.aws.neon.tech/neondb"
-        "?ssl=require&statement_cache_size=0&prepared_statement_cache_size=0"
+        "?ssl=require"
     )
 
 
@@ -32,7 +32,7 @@ def test_bare_postgres_scheme_upgraded_without_query() -> None:
     url = _settings("postgres://user:pw@host.example:5432/db").database_url
     assert url == (
         "postgresql+asyncpg://user:pw@host.example:5432/db"
-        "?ssl=require&statement_cache_size=0&prepared_statement_cache_size=0"
+        "?ssl=require"
     )
 
 
@@ -41,7 +41,7 @@ def test_idempotent_existing_query_replaced_not_duplicated() -> None:
     once = _settings(raw).database_url
     assert once.count("ssl=") == 1
     assert "sslmode" not in once
-    assert once.count("statement_cache_size") == 2
+    assert "statement_cache_size" not in once
 
 
 def test_explicit_asyncpg_override_passthrough_unchanged() -> None:

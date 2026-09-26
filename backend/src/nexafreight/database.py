@@ -86,7 +86,15 @@ def create_engine(settings: Settings | None = None, *, echo: bool | None = None)
             pool_pre_ping=True,
         )
 
-    engine = create_async_engine(database_url, **engine_kwargs)
+    # PgBouncer transaction mode (e.g. Neon pooled endpoint) is
+    # incompatible with cached prepared statements.  Values must be
+    # INTs - the URL string form crashes asyncpg at connect.
+    _pg_connect_args = (
+        {"statement_cache_size": 0, "prepared_statement_cache_size": 0}
+        if database_url.startswith("postgresql+asyncpg")
+        else {}
+    )
+    engine = create_async_engine(database_url, connect_args=_pg_connect_args, **engine_kwargs)
 
     if is_sqlite:
         # Register pragma setter on the sync engine (aiosqlite DBAPI events fire on sync_engine)
@@ -113,7 +121,18 @@ def create_test_engine(database_url: str = "sqlite+aiosqlite:///:memory:") -> As
     is_sqlite = database_url.startswith("sqlite")
     is_memory = is_sqlite and ":memory:" in database_url
     
-    connect_args = {"check_same_thread": False} if is_sqlite else {}
+    if is_sqlite:
+        connect_args = {"check_same_thread": False}
+    elif database_url.startswith("postgresql+asyncpg"):
+        # PgBouncer transaction mode (e.g. Neon pooled endpoint) is
+        # incompatible with cached prepared statements.  Values must be
+        # INTs - the URL string form crashes asyncpg at connect.
+        connect_args = {
+            "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
+        }
+    else:
+        connect_args = {}
 
     engine = create_async_engine(
         database_url,

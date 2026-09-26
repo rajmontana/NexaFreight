@@ -85,10 +85,19 @@ async def run_async_migrations() -> None:
     configuration["sqlalchemy.url"] = settings.database_url
 
     # Create async engine with NullPool for migrations
+    # PgBouncer transaction mode (e.g. Neon pooled endpoint) is
+    # incompatible with cached prepared statements.  Values must be
+    # INTs - the URL string form crashes asyncpg at connect.
+    migration_connect_args = (
+        {"statement_cache_size": 0, "prepared_statement_cache_size": 0}
+        if settings.database_url.startswith("postgresql+asyncpg")
+        else {}
+    )
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=migration_connect_args,
     )
 
     # Apply SQLite-specific pragmas on connect (skip for PostgreSQL)
