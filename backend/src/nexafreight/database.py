@@ -75,10 +75,18 @@ def create_engine(settings: Settings | None = None, *, echo: bool | None = None)
     is_sqlite = database_url.startswith("sqlite")
     is_memory = ":memory:" in database_url
 
-    engine = create_async_engine(
-        database_url,
-        echo=echo if echo is not None else settings.debug,
-    )
+    engine_kwargs: dict[str, Any] = {
+        "echo": echo if echo is not None else settings.debug,
+    }
+
+    if not is_sqlite:
+        engine_kwargs.update(
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True,
+        )
+
+    engine = create_async_engine(database_url, **engine_kwargs)
 
     if is_sqlite:
         # Register pragma setter on the sync engine (aiosqlite DBAPI events fire on sync_engine)
@@ -102,18 +110,22 @@ def create_test_engine(database_url: str = "sqlite+aiosqlite:///:memory:") -> As
         Uses StaticPool and check_same_thread=False so the single in-memory
         database persists across async pool connections within a test.
     """
-    is_memory = ":memory:" in database_url
+    is_sqlite = database_url.startswith("sqlite")
+    is_memory = is_sqlite and ":memory:" in database_url
+    
+    connect_args = {"check_same_thread": False} if is_sqlite else {}
 
     engine = create_async_engine(
         database_url,
         echo=False,
         poolclass=StaticPool if is_memory else NullPool,
-        connect_args={"check_same_thread": False},
+        connect_args=connect_args,
     )
 
-    @event.listens_for(engine.sync_engine, "connect")
-    def on_connect(dbapi_conn: Any, connection_record: Any) -> None:
-        _set_sqlite_pragmas(dbapi_conn, connection_record, is_memory=is_memory)
+    if is_sqlite:
+        @event.listens_for(engine.sync_engine, "connect")
+        def on_connect(dbapi_conn: Any, connection_record: Any) -> None:
+            _set_sqlite_pragmas(dbapi_conn, connection_record, is_memory=is_memory)
 
     return engine
 

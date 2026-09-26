@@ -323,6 +323,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> HealthResponse:
         return health_resp
 
+    @app.get("/healthz", tags=["health"], include_in_schema=False)
+    async def healthz_check() -> dict[str, str]:
+        """Liveness probe: no database touch."""
+        return {"status": "ok"}
+
+    @app.get("/readyz", tags=["health"], include_in_schema=False)
+    async def readyz_check() -> JSONResponse:
+        """Readiness probe: checks DB connection with a 2s timeout."""
+        import asyncio
+        from nexafreight.database import get_engine
+        try:
+            engine = get_engine()
+            async with asyncio.timeout(2.0):
+                async with engine.connect() as conn:
+                    await conn.execute(text("SELECT 1"))
+            return JSONResponse(status_code=200, content={"status": "ready"})
+        except Exception as e:
+            logger.error(f"Readiness check failed: {e}")
+            return JSONResponse(status_code=503, content={"status": "not_ready"})
+
     return app
 
 

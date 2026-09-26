@@ -283,7 +283,7 @@ _EDGES_RAW = [
 # ---------------------------------------------------------------------------
 # Parameter seeds
 # ---------------------------------------------------------------------------
-_NOW = "2026-09-21T00:00:00+00:00"
+_NOW = datetime.fromisoformat("2026-09-21T00:00:00+00:00")
 
 _EMPIRICAL_PARAMS = [
     # Rail speeds (empirical, DFC design spec + actual averages)
@@ -573,7 +573,7 @@ def upgrade() -> None:
     # ── 3. Seed network nodes ─────────────────────────────────────────────
 
     node_id_by_locode: dict[str, int] = {}
-    now_str = "2026-09-21T00:00:00+00:00"
+    now_str = datetime.fromisoformat("2026-09-21T00:00:00+00:00")
     for locode, name, node_type, modes_json, lat, lon, country in _NODES:
         res = conn.execute(
             sa.text(
@@ -666,16 +666,16 @@ def upgrade() -> None:
                 "(from_node_id, to_node_id, mode, distance_km, transit_speed_param_key, "
                 "base_cost_param_key, co2_intensity_param_key, capacity_teu, reliability, is_dfc, created_at, updated_at) "
                 "VALUES (:from_id, :to_id, :mode, :dist_km, :speed_key, :cost_key, :co2_key, "
-                ":cap_teu, :reliability, :is_dfc, :now, :now)"
+                ":cap_teu, :reliability, :is_dfc, :now, :now) RETURNING id"
             ),
             {
                 "from_id": from_id, "to_id": to_id, "mode": mode, "dist_km": dist_km,
                 "speed_key": speed_key, "cost_key": cost_key, "co2_key": co2_key,
-                "cap_teu": cap_teu, "reliability": reliability, "is_dfc": int(is_dfc),
+                "cap_teu": cap_teu, "reliability": reliability, "is_dfc": bool(is_dfc),
                 "now": now_str,
             },
         )
-        edge_id = res.lastrowid
+        edge_id = res.scalar_one()
         if edge_id:
             edge_id_by_pair[(from_loc, to_loc, mode)] = edge_id
 
@@ -697,9 +697,9 @@ def upgrade() -> None:
         schedules.append({
             "edge_id": eid,
             "service_name": service_name,
-            "departure_at": dep.isoformat(),
-            "arrival_at": arr.isoformat(),
-            "cutoff_at": cutoff.isoformat(),
+            "departure_at": dep,
+            "arrival_at": arr,
+            "cutoff_at": cutoff,
             "capacity_remaining": cap,
             "provenance": prov,
         })

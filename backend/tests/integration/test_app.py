@@ -13,14 +13,23 @@ from fastapi import APIRouter
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from nexafreight.config import Settings
+from nexafreight.config import Settings, get_settings
+from nexafreight.database import get_engine, get_session_factory
 from nexafreight.exceptions import NexaFreightException
 from nexafreight.main import create_app
 
 
 def run_alembic_upgrade(db_path: Path) -> subprocess.CompletedProcess[str]:
-    """Run alembic upgrade head against a specific database file."""
-    env = {**os.environ, "DATABASE_PATH": str(db_path)}
+    """Run alembic upgrade head against a specific database file.
+
+    Strips DATABASE_URL so this helper always exercises the SQLite migration
+    path (DATABASE_PATH), even inside the CI postgres-suite job which exports
+    DATABASE_URL for the shared Postgres database.  PostgreSQL coverage is
+    provided by the job-level ``alembic upgrade head`` and the conftest
+    fixture-driven tests; this helper verifies the file-based chain.
+    """
+    env = {k: v for k, v in os.environ.items() if k != "DATABASE_URL"}
+    env["DATABASE_PATH"] = str(db_path)
     result = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         capture_output=True,
@@ -36,14 +45,31 @@ def run_alembic_upgrade(db_path: Path) -> subprocess.CompletedProcess[str]:
 
 
 @pytest.fixture
-def test_settings(tmp_path: Path) -> Settings:
-    """Provide test settings with isolated database."""
-    return Settings(
+def test_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Settings:
+    """Provide test settings with isolated database.
+
+    Deletes DATABASE_URL from the environment so these tests exercise the
+    SQLite migration path (DATABASE_PATH) even when the CI postgres-suite
+    job exports DATABASE_URL for the shared Postgres database, and clears
+    the cached global settings/engine/factory so each test's TestClient
+    builds its engine on its own event loop (asyncpg/aiosqlite connections
+    are loop-bound; a cached engine from a previous test's loop raises
+    "Future attached to a different loop").
+    """
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    get_settings.cache_clear()
+    get_engine.cache_clear()
+    get_session_factory.cache_clear()
+    settings = Settings(
         jwt_secret=SecretStr("test-secret-key-for-integration-tests"),
         environment="test",
         database_path=tmp_path / "test_app.db",
         allowed_origins=["http://localhost:3000", "http://localhost:5173"],
     )
+    yield settings
+    get_settings.cache_clear()
+    get_engine.cache_clear()
+    get_session_factory.cache_clear()
 
 
 def test_app_factory_creates_app_successfully(test_settings: Settings) -> None:

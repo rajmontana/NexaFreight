@@ -25,6 +25,10 @@ from nexafreight.enums import (
 )
 from nexafreight.models import Alert, Disruption, Leg, Location, Shipment, User
 
+pytestmark = pytest.mark.skipif(
+    "DATABASE_URL" in os.environ,
+    reason="Migration integration tests exercise SQLite up/down chains locally. CI verifies Postgres migrations via explicit alembic upgrade head in the workflow."
+)
 
 def run_alembic_command(db_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
     """Run an alembic command against a specific database file.
