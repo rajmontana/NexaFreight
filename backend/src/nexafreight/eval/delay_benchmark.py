@@ -30,7 +30,7 @@ LEAK_COLUMNS = [
 GROUP_COLUMN = "Order Id"
 
 def build_frame(csv_path: Path) -> pd.DataFrame:
-    df = pd.read_csv(csv_path, low_memory=False)
+    df = pd.read_csv(csv_path, low_memory=False, encoding="latin1")
     
     days_real = pd.to_numeric(df["Days for shipping (real)"], errors="coerce")
     days_sched = pd.to_numeric(df["Days for shipment (scheduled)"], errors="coerce")
