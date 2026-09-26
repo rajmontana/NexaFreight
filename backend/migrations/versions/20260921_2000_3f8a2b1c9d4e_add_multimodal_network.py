@@ -283,7 +283,7 @@ _EDGES_RAW = [
 # ---------------------------------------------------------------------------
 # Parameter seeds
 # ---------------------------------------------------------------------------
-_NOW = "2026-09-21T00:00:00+00:00"
+_NOW = datetime.fromisoformat("2026-09-21T00:00:00+00:00")
 
 _EMPIRICAL_PARAMS = [
     # Rail speeds (empirical, DFC design spec + actual averages)
@@ -573,7 +573,7 @@ def upgrade() -> None:
     # ── 3. Seed network nodes ─────────────────────────────────────────────
 
     node_id_by_locode: dict[str, int] = {}
-    now_str = "2026-09-21T00:00:00+00:00"
+    now_str = datetime.fromisoformat("2026-09-21T00:00:00+00:00")
     for locode, name, node_type, modes_json, lat, lon, country in _NODES:
         res = conn.execute(
             sa.text(
