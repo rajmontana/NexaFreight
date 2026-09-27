@@ -107,17 +107,6 @@ async def test_nightly_200_runs_all_jobs_and_persists(client: AsyncClient, db_se
     monkeypatch.setattr("nexafreight.jobs.gdacs.get_json", mock_get_json)
     monkeypatch.setattr("nexafreight.jobs.weather.get_json", mock_get_json)
 
-    from sqlalchemy import text
-    import zlib
-    from datetime import datetime, UTC
-    now = datetime.now(UTC)
-    yday = now.timetuple().tm_yday
-    locode = "TEST1"
-    while zlib.crc32(locode.encode()) % 5 != (yday % 5):
-        locode += "X"
-    await db_session.execute(text("INSERT INTO network_nodes (locode, name, node_type, latitude, longitude, country_code, modes_json, created_at, updated_at) VALUES (:locode, 'Test', 'PORT', 10.0, 20.0, 'XX', '[]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"), {"locode": locode})
-    await db_session.commit()
-
     try:
         headers = _auth("s3cret")
         response = await client.post("/internal/nightly", headers=headers)
@@ -141,7 +130,7 @@ async def test_nightly_200_runs_all_jobs_and_persists(client: AsyncClient, db_se
         assert gdacs_events[0].severity == "ORANGE"
         
         meteo_events = (await db_session.execute(select(ExternalEvent).where(ExternalEvent.source == "OPEN-METEO"))).scalars().all()
-        assert len(meteo_events) == 1
+        assert len(meteo_events) == 6
         assert meteo_events[0].severity == "ORANGE"
         
     finally:
@@ -186,19 +175,6 @@ async def test_nightly_weather_below_threshold_stores_nothing(db_session, monkey
         return {"current": {"wind_speed_10m": 12.0, "precipitation": 0.0, "time": "2026-09-26T10:00:00Z"}}
     monkeypatch.setattr("nexafreight.jobs.weather.get_json", mock_get_json)
     
-    from sqlalchemy import text
-    import zlib
-    from datetime import datetime, UTC
-    now = datetime.now(UTC)
-    yday = now.timetuple().tm_yday
-    # Find a locode that will be checked today
-    locode = "TEST1"
-    while zlib.crc32(locode.encode()) % 5 != (yday % 5):
-        locode += "X"
-
-    await db_session.execute(text("INSERT INTO network_nodes (locode, name, node_type, latitude, longitude, country_code, modes_json, created_at, updated_at) VALUES (:locode, 'Test', 'PORT', 10.0, 20.0, 'XX', '[]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"), {"locode": locode})
-    await db_session.commit()
-
     from nexafreight.jobs.weather import run_weather
     
     summary = await run_weather(db_session)

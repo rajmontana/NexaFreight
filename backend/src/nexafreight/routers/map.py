@@ -443,21 +443,11 @@ async def _execute_ports_query(session: AsyncSession) -> GeoJSONFeatureCollectio
             select(
                 PortDailyStat.congestion_index,
             )
-            .where(PortDailyStat.port_id == row.id, PortDailyStat.source == 'CALIBRATED')
+            .where(PortDailyStat.port_id == row.id)
             .order_by(PortDailyStat.stat_date.desc())
             .limit(1)
         )
         stat_row = (await session.execute(stat_stmt)).one_or_none()
-        if not stat_row:
-            stat_stmt = (
-                select(
-                    PortDailyStat.congestion_index,
-                )
-                .where(PortDailyStat.port_id == row.id)
-                .order_by(PortDailyStat.stat_date.desc())
-                .limit(1)
-            )
-            stat_row = (await session.execute(stat_stmt)).one_or_none()
         congestion_index = stat_row.congestion_index if stat_row else None
         stat_provenance = "DERIVED"
 
