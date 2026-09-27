@@ -9,7 +9,7 @@ from nexafreight.jobs.http import get_json
 from nexafreight.models.parameter import ParameterEmpirical
 
 _URL = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=INR"
-_KEY = "fx.usd.inr"
+_KEY = "fx.usd_inr"
 _SOURCE = "Frankfurter (ECB reference rates)"
 _METHOD = "nightly job: USD->INR reference rate, unit INR per 1 USD"
 
@@ -39,4 +39,12 @@ async def run_fx(session: AsyncSession) -> str:
         existing.sample_count = (existing.sample_count or 0) + 1
 
     await session.commit()
-    return f"fx.usd.inr={rate:.4f} (as_of {rate_date})"
+
+    # remove legacy dotted key written by nightly runs before OPS-FIX-1; safe to delete once fx.usd_inr exists.
+    legacy_row = await session.execute(select(ParameterEmpirical).where(ParameterEmpirical.key == "fx.usd.inr"))
+    legacy_obj = legacy_row.scalar_one_or_none()
+    if legacy_obj is not None:
+        await session.delete(legacy_obj)
+        await session.commit()
+
+    return f"fx.usd_inr={rate:.4f} (as_of {rate_date})"

@@ -45,8 +45,8 @@ SLA_PENALTY_CAP_PCT: float = 0.10
 DEMURRAGE_FREE_DAYS: int = 4
 
 #: Demurrage charge per container-day, tier 1 (days 1-7 after free period).
-#: Rs5,500/box/day (JNPT band mid, Regulatory doc SS8) / fx 88 = $62.50.
-DEMURRAGE_DAILY_RATE: float = 62.5
+#: Rs5,500/box/day (JNPT band mid, Regulatory doc SS8) / fx 95.8 = $57.40.
+DEMURRAGE_DAILY_RATE: float = 5500.0 / 95.8
 
 #: Billable days at tier 1 before the rate doubles.
 DEMURRAGE_TIER1_DAYS: int = 7
@@ -56,13 +56,13 @@ DEMURRAGE_TIER2_MULTIPLIER: float = 2.0
 
 #: Nominal freight rates, USD per tonne-km, by transport mode.
 #: Anchors: SEA $0.012 mainline (INDUSTRY); AIR $0.9 = NCAER Rs72/tkm / fx 88
-#: (closes E9, was 1.8 = 2x the national anchor); ROAD Rs3.2/tkm / 88 = 0.036
-#: (DERIVED bottom-up, was 0.06); RAIL Rs1.4/tkm class-avg / 88 = 0.016.
+#: (closes E9, was 1.8 = 2x the national anchor); ROAD Rs3.2/tkm / 95.8 = 0.0334
+#: (DERIVED bottom-up, was 0.06); RAIL Rs1.4/tkm class-avg / 95.8 = 0.0146.
 FREIGHT_RATE_PER_T_KM: dict[str, float] = {
     "SEA": 0.012,
     "AIR": 0.9,
-    "ROAD": 0.036,
-    "RAIL": 0.016,
+    "ROAD": 0.0334,
+    "RAIL": 0.0146,
 }
 
 #: CO2 emission factors, grams per tonne-km, by transport mode.

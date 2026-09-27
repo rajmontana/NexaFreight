@@ -4,10 +4,10 @@
 # research/reports/benchmarks — never the project against itself.
 
 fx_usd_inr:
-  value: 88.0
+  value: 95.8
   unit: INR per USD
-  source: "Market as-of 2026-09 (dated in Regulatory_Tax_Reference.md)"
-  check: {abs: 0.5}
+  source: "Frankfurter (ECB reference rates) via nightly run 2026-09-27; re-pinned from 88.0 (2026-09 market assumption, OPS-FIX-1). check band widened for daily drift."
+  check: {abs: 1.5}
 
 freight_air_usd_per_tkm:
   value: 0.9

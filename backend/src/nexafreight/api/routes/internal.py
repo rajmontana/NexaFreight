@@ -46,4 +46,8 @@ async def trigger_nightly(
         return JSONResponse(status_code=401, content={"detail": "invalid signature"})
         
     report = await run_nightly(session)
+    
+    from nexafreight.core.params import refresh_parameters
+    await refresh_parameters(session)
+
     return JSONResponse(status_code=200, content={"ran_at": server_now.isoformat(), "report": report})
