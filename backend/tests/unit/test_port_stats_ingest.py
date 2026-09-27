@@ -43,7 +43,7 @@ async def temp_db_url(tmp_path):
 
 @pytest.mark.asyncio
 async def test_port_stats_ingestion_and_alias_matching(temp_db_url, activity_csv_path, monkeypatch):
-    monkeypatch.setenv("NEXAFREIGHT_DATABASE_URL", temp_db_url)
+    monkeypatch.setattr(ingest_port_data, "get_db_url", lambda: temp_db_url)
     
     # Setup 2 location rows
     engine = create_async_engine(temp_db_url)
@@ -85,7 +85,7 @@ async def test_port_stats_ingestion_and_alias_matching(temp_db_url, activity_csv
 
 @pytest.mark.asyncio
 async def test_port_stats_ingestion_limit_and_window(temp_db_url, activity_csv_path, monkeypatch):
-    monkeypatch.setenv("NEXAFREIGHT_DATABASE_URL", temp_db_url)
+    monkeypatch.setattr(ingest_port_data, "get_db_url", lambda: temp_db_url)
     
     engine = create_async_engine(temp_db_url)
     from sqlalchemy.ext.asyncio import AsyncSession
