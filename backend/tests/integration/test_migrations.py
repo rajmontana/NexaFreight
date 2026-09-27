@@ -174,8 +174,8 @@ async def test_unique_constraint_duplicate_active_disruption(tmp_path: Path) -> 
         # Create minimal dependencies
         async with session_factory() as session:
             location = Location(
-                locode="USNYC",
-                name="New York",
+                locode="USTEST",
+                name="Test Origin",
                 country_code="US",
                 location_type=LocationType.PORT,
                 latitude=40.7128,
@@ -251,8 +251,8 @@ async def test_unique_constraint_one_alert_per_disruption(tmp_path: Path) -> Non
     try:
         async with session_factory() as session:
             location = Location(
-                locode="USNYC",
-                name="New York",
+                locode="USTEST",
+                name="Test Origin",
                 country_code="US",
                 location_type=LocationType.PORT,
                 latitude=40.7128,
