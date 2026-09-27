@@ -93,9 +93,9 @@ class WorldDripper:
         self.locode_to_location = {loc.locode: loc.id for loc in loc_rows}
         nodes = (await session.execute(select(NetworkNode))).scalars().all()
         self.node_coords = {n.locode: (n.latitude, n.longitude) for n in nodes}
-        self.in_nodes = sorted(n.locode for n in nodes)
+        self.in_nodes = sorted(n.locode for n in nodes if n.locode.startswith("IN"))
         if len(self.in_nodes) < 2:
-            raise SystemExit("Need >=2 network nodes (run alembic upgrade head)")
+            raise SystemExit("Need >=2 IN* network nodes (run alembic upgrade head)")
         self.party_pools = await load_party_pools(session)
         # Day-14: cached edge geometry (network_edges.geometry_json)
         self.edge_geometry = {
