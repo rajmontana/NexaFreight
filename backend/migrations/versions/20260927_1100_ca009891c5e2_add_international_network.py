@@ -8,7 +8,7 @@ Create Date: 2026-09-27 11:00:09.364921+00:00
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timezone
 import math
 
 from alembic import op
@@ -78,7 +78,7 @@ _EDGES_RAW = [
 
 def upgrade() -> None:
     conn = op.get_bind()
-    now_str = datetime.utcnow().isoformat()
+    now_str = datetime.now(timezone.utc)
     
     # 1. Locations
     for locode, name, country, lat, lon in _LOCATIONS:
@@ -148,8 +148,8 @@ def downgrade() -> None:
         )
         
     # Nodes
-    locodes = [loc[0] for loc in _LOCATIONS]
-    conn.execute(
-        sa.text("DELETE FROM network_nodes WHERE locode IN :locodes"),
-        {"locodes": tuple(locodes)}
-    )
+    for locode in (loc[0] for loc in _LOCATIONS):
+        conn.execute(
+            sa.text("DELETE FROM network_nodes WHERE locode = :locode"),
+            {"locode": locode}
+        )
