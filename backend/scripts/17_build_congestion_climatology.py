@@ -11,7 +11,7 @@ untouched.
 
 Usage:
     PYTHONPATH=src python scripts/17_build_congestion_climatology.py \
-        [--min-days 30] [--source simulated]
+        [--min-days 30] [--source simulated] [--input-source all]
 """
 
 from __future__ import annotations
@@ -39,21 +39,23 @@ from nexafreight.models.port import Port, PortDailyStat  # noqa: E402
 OUTPUT_PATH = BACKEND / "models" / "congestion" / "climatology.json"
 
 
-async def load_stats(session) -> "pd.DataFrame":  # noqa: F821
+async def load_stats(session, input_source: str) -> "pd.DataFrame":  # noqa: F821
     import pandas as pd
 
     # Port.locode is a property over the Location relationship (E25): join
     # Location explicitly. Node-type filter excludes the stale AIRPORT-derived
     # Port rows left by the first seeder run (day-6 quirk).
-    rows = (
-        await session.execute(
-            select(Location.locode, PortDailyStat.stat_date, PortDailyStat.congestion_index)
-            .join(Port, Port.location_id == Location.id)
-            .join(PortDailyStat, PortDailyStat.port_id == Port.id)
-            .join(NetworkNode, NetworkNode.locode == Location.locode)
-            .where(NetworkNode.node_type == NodeType.PORT.value)
-        )
-    ).all()
+    query = (
+        select(Location.locode, PortDailyStat.stat_date, PortDailyStat.congestion_index)
+        .join(Port, Port.location_id == Location.id)
+        .join(PortDailyStat, PortDailyStat.port_id == Port.id)
+        .join(NetworkNode, NetworkNode.locode == Location.locode)
+        .where(NetworkNode.node_type == NodeType.PORT.value)
+    )
+    if input_source != "all":
+        query = query.where(PortDailyStat.source == input_source.upper())
+
+    rows = (await session.execute(query)).all()
     return pd.DataFrame(rows, columns=["port_locode", "stat_date", "congestion_index"])
 
 
@@ -62,16 +64,22 @@ async def main() -> int:
     ap.add_argument("--min-days", type=int, default=30)
     ap.add_argument(
         "--source",
-        choices=["simulated", "portwatch"],
+        choices=["simulated", "portwatch", "calibrated"],
         default="simulated",
         help="provenance label for the output table",
+    )
+    ap.add_argument(
+        "--input-source",
+        choices=["simulated", "portwatch", "calibrated", "all"],
+        default="all",
+        help="filter input data by this source (default: all)",
     )
     args = ap.parse_args()
 
     factory = get_session_factory()
     try:
         async with factory() as session:
-            stats = await load_stats(session)
+            stats = await load_stats(session, args.input_source)
     except Exception as exc:
         print(
             f"database unavailable ({exc.__class__.__name__}) - build the demo "
@@ -87,8 +95,10 @@ async def main() -> int:
     payload = {
         "generated_at": datetime.now(UTC).isoformat(),
         "provenance": args.source.upper(),
+        "input_source": args.input_source.upper(),
         "min_days_per_month": args.min_days,
         "observation_rows": int(len(stats)),
+        "input_rows": int(len(stats)),
         "ports": table,
     }
     OUTPUT_PATH.write_text(json.dumps(payload, indent=2))
