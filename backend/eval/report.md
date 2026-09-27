@@ -87,3 +87,14 @@ REPORT > COPILOT VERDICT: MIXED
 REPORT > CO2 goldens: 5/5 PASS (declared basis)
 REPORT > CO2 GLEC deviation: road -16.2pct, air -16.7pct (documented, eval/co2_basis.md)
 ```
+
+## Port Stats Real Ingest (DATA-2)
+Commit: 3a274eb9a73c8ad5c6cb5eb2a98e4ec96c55f607
+```text
+REPORT > PORT STATS: 173981 rows CALIBRATED (581 ports)
+REPORT > UNLOCODE locations ingested: 84295 (global)
+REPORT > Port matching: 578 matched (35.7%), 1042 unmatched
+REPORT > CLIMATOLOGY: input_source=calibrated input_rows=906, 4 ports with empirical p50/p90 (min-days 1)
+REPORT > GLEC CSV cross-check: sea 7.5 vs 8 | rail 25 vs 22 | road 62 vs 62 | air 789 vs 500
+REPORT > GLEC CSV verdict: DEVIATIONS FOUND (sea 7.5 vs 8.0 mix-mid; rail diesel 25 vs 22; air freighter 789 vs 500) - relay decision pending
+```
