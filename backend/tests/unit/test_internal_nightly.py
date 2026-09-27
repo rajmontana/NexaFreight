@@ -121,7 +121,7 @@ async def test_nightly_200_runs_all_jobs_and_persists(client: AsyncClient, db_se
         assert report["gdacs"]["status"] == "ok"
         assert report["weather"]["status"] == "ok"
         
-        fx_row = await db_session.execute(select(ParameterEmpirical).where(ParameterEmpirical.key == "fx.usd.inr"))
+        fx_row = await db_session.execute(select(ParameterEmpirical).where(ParameterEmpirical.key == "fx.usd_inr"))
         fx_param = fx_row.scalar_one()
         assert fx_param.value == "87.4200"
         
@@ -149,7 +149,7 @@ async def test_nightly_fx_upsert_idempotent(db_session, monkeypatch) -> None:
     await run_fx(db_session)
     await run_fx(db_session)
     
-    fx_rows = (await db_session.execute(select(ParameterEmpirical).where(ParameterEmpirical.key == "fx.usd.inr"))).scalars().all()
+    fx_rows = (await db_session.execute(select(ParameterEmpirical).where(ParameterEmpirical.key == "fx.usd_inr"))).scalars().all()
     assert len(fx_rows) == 1
     assert fx_rows[0].sample_count == 2
 
