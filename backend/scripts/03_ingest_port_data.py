@@ -35,6 +35,8 @@ Usage
 
 from __future__ import annotations
 
+import re
+
 import argparse
 import asyncio
 import logging
@@ -491,12 +493,13 @@ async def populate_database(
     batch_size: int = 1000,
 ) -> None:
     db_url = get_db_url()
-    log.info("Connecting to database: %s", db_url)
+    log.info("Connecting to database: %s", re.sub(r"(//[^:/@]+:)[^@]+@", r"\1***@", db_url))
     engine = create_async_engine(
         db_url,
-        connect_args={"check_same_thread": False, "timeout": 30},
+        connect_args=({"check_same_thread": False, "timeout": 30} if db_url.startswith("sqlite") else {}),
     )
-    event.listen(engine.sync_engine, "connect", _set_sqlite_pragmas)
+    if db_url.startswith("sqlite"):
+        event.listen(engine.sync_engine, "connect", _set_sqlite_pragmas)
     port_tbl, daily_tbl = _resolve_tables()
 
     try:
