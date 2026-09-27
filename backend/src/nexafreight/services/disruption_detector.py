@@ -269,9 +269,21 @@ async def check_port_congestion(
                     PortDailyStat.port_id == port.id,
                     PortDailyStat.stat_date >= baseline_start,
                     PortDailyStat.stat_date <= today,
+                    PortDailyStat.source == 'CALIBRATED',
                 )
             )
         ).all()
+        
+        if not rows:
+            rows = (
+                await session.execute(
+                    select(PortDailyStat.stat_date, PortDailyStat.congestion_index).where(
+                        PortDailyStat.port_id == port.id,
+                        PortDailyStat.stat_date >= baseline_start,
+                        PortDailyStat.stat_date <= today,
+                    )
+                )
+            ).all()
         if not rows:
             continue
 
