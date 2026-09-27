@@ -168,10 +168,10 @@ def test_calculate_freight_cost_by_mode() -> None:
     assert calculate_freight_cost(5000.0, 28.0, "AIR") == 126_000.0
     # SEA: 0.012 × 5000 × 28 = 1680  (mainline INDUSTRY anchor)
     assert calculate_freight_cost(5000.0, 28.0, "SEA") == 1_680.0
-    # ROAD: 0.036 × 5000 × 28 = 5040  (Rs3.2/tkm bottom-up / fx 88)
-    assert calculate_freight_cost(5000.0, 28.0, "ROAD") == 5_040.0
-    # RAIL: 0.016 × 5000 × 28 = 2240  (Rs1.4/tkm class-avg / fx 88)
-    assert calculate_freight_cost(5000.0, 28.0, "RAIL") == 2_240.0
+    # ROAD: 0.0334 × 5000 × 28 = 4676  (Rs3.2/tkm bottom-up / fx 95.8)
+    assert calculate_freight_cost(5000.0, 28.0, "ROAD") == 4_676.0
+    # RAIL: 0.0146 × 5000 × 28 = 2044  (Rs1.4/tkm class-avg / fx 95.8)
+    assert calculate_freight_cost(5000.0, 28.0, "RAIL") == 2_044.0
     # Unknown mode falls back to SEA rate
     assert calculate_freight_cost(5000.0, 28.0, "DRONE") == 1_680.0
 

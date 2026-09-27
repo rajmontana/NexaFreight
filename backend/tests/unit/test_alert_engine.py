@@ -176,5 +176,5 @@ def test_estimate_demurrage_scaling() -> None:
         container_count = 2
 
     assert estimate_demurrage(_Sh(), 24.0) == 0.0  # 1 day < 4 free
-    # 5 days → 1 billable day × $62.50 (Rs5,500 / fx 88) × 2 containers = 125
-    assert estimate_demurrage(_Sh(), 24.0 * 5) == pytest.approx(125.0)
+    # 5 days -> 1 billable day x (Rs5,500 / fx 95.8) x 2 containers
+    assert estimate_demurrage(_Sh(), 24.0 * 5) == pytest.approx(5500.0 / 95.8 * 2)

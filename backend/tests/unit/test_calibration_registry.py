@@ -28,17 +28,17 @@ def test_demurrage_jnpt_band() -> None:
     assert FALLBACK_DEFAULTS["demurrage.free_days"] == 4.0
     assert FALLBACK_DEFAULTS["demurrage.rate_inr_per_box_day"] == 5500.0
     assert FALLBACK_DEFAULTS["demurrage.reefer_inr_per_box_day"] == 11000.0
-    # engine constant = ₹5,500 / fx 88
-    assert DEMURRAGE_DAILY_RATE == 62.5
+    # engine constant = ₹5,500 / fx 95.8
+    assert DEMURRAGE_DAILY_RATE == 5500.0 / 95.8
 
 
 def test_freight_anchors() -> None:
     """Air closes E9: $0.9/tkm = NCAER ₹72/tkm ÷ fx 88 (was 1.8 = 2× anchor)."""
-    assert FALLBACK_DEFAULTS["fx.usd_inr"] == 88.0
+    assert FALLBACK_DEFAULTS["fx.usd_inr"] == 95.8
     assert FREIGHT_RATE_PER_T_KM["AIR"] == 0.9
     assert FREIGHT_RATE_PER_T_KM["SEA"] == 0.012
-    assert FREIGHT_RATE_PER_T_KM["ROAD"] == 0.036  # ₹3.2/tkm ÷ 88
-    assert FREIGHT_RATE_PER_T_KM["RAIL"] == 0.016  # ₹1.4/tkm ÷ 88
+    assert FREIGHT_RATE_PER_T_KM["ROAD"] == 0.0334  # ₹3.2/tkm ÷ 95.8
+    assert FREIGHT_RATE_PER_T_KM["RAIL"] == 0.0146  # ₹1.4/tkm ÷ 95.8
 
 
 def test_road_speeds_observed_not_nominal() -> None:
@@ -51,7 +51,7 @@ def test_road_speeds_observed_not_nominal() -> None:
 
 
 def test_fx_and_carbon() -> None:
-    assert FALLBACK_DEFAULTS["fx.usd_inr"] == 88.0
+    assert FALLBACK_DEFAULTS["fx.usd_inr"] == 95.8
     assert FALLBACK_DEFAULTS["carbon.price_usd_per_kg"] == 0.08
 
 

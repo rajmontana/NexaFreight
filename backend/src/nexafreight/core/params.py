@@ -152,7 +152,7 @@ FALLBACK_DEFAULTS: dict[str, Any] = {
     "insurance.pct_of_value.rail": 0.005,
     "insurance.insured_value_uplift": 1.10,
     # FX and carbon (MARKET as-of 2026-09; REGULATORY CBAM transitory price)
-    "fx.usd_inr": 88.0,
+    "fx.usd_inr": 95.8,
     "carbon.price_usd_per_kg": 0.08,
     # Time-World (task 6): disabled by default = world time == real time.
     # 20_build_demo_world.py sets anchor/boot/warp when it seeds the world.
