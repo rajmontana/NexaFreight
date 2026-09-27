@@ -10,7 +10,7 @@ fx USD/INR = 88):
 - SLA penalty: LD norms — 0.5% of order value per WEEK late (WEEKLY rounding),
   capped at 10% (calculate_sla_penalty_weekly). The legacy 5%/day function is
   kept for backward compatibility but overstates LD norms ~7x.
-- Demurrage: 4 free days, then Rs5,500/container/day (= $62.50 at fx 88;
+- Demurrage: 4 free days, then Rs5,500/container/day (= $57.40 at fx 95.8;
   JNPT band Rs3-8k/box/day); after 7 billable days the rate doubles.
 - Freight: per-mode $/tonne-km (SEA 0.012 mainline; AIR 0.9 = NCAER Rs72/tkm
   anchor; ROAD 0.036 = Rs3.2/tkm bottom-up; RAIL 0.016 = Rs1.4/tkm class-avg).

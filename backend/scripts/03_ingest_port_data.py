@@ -59,6 +59,7 @@ from sqlalchemy import (
     UniqueConstraint,
     event,
     select,
+    String,
 )
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -83,7 +84,6 @@ logging.basicConfig(
 )
 log = logging.getLogger("nexafreight.ingest_port_data")
 
-PROVENANCE = "CALIBRATED"
 SOURCE_ACTIVITY = "IMF_PORT_ACTIVITY"
 SOURCE_PERFORMANCE = "KAGGLE_PORT_PERFORMANCE"
 
@@ -356,10 +356,32 @@ def build_port_matcher(db_ports: list[tuple[int, str, str, str]], wpi_file: Path
         except (ValueError, KeyError, TypeError, OSError) as exc:
             log.warning("Could not parse World Port Index aliases: %s", exc)
 
+    # Pre-fuzzy alias override map for native-vs-official names
+    CURATED_ALIAS_OVERRIDES = {
+        "jawaharlal nehru": "INJNP",
+        "nhava sheva": "INJNP",
+        "calcutta": "INCCU",
+        "kolkata": "INCCU",
+        "bombay": "INBOM",
+        "mumbai": "INBOM",
+        "madras": "INMAA",
+        "chennai": "INMAA",
+        "cochin": "INCOK",
+        "kochi": "INCOK",
+        "vizag": "INVTZ",
+        "visakhapatnam": "INVTZ",
+    }
+
     def match_port(port_name: str, threshold: float = 0.80) -> tuple[int, str] | None:
         p_clean = port_name.strip().lower()
         if not p_clean:
             return None
+
+        # 0. Curated alias override
+        if p_clean in CURATED_ALIAS_OVERRIDES:
+            ov = CURATED_ALIAS_OVERRIDES[p_clean]
+            if ov in locode_map:
+                return locode_map[ov]
 
         # 1. Exact locode
         if p_clean.upper() in locode_map:
@@ -445,6 +467,7 @@ def _resolve_tables():
             Column("port_id", Integer, ForeignKey("ports.id", ondelete="CASCADE"), nullable=False),
             Column("stat_date", Date, nullable=False, index=True),
             Column("congestion_index", Float, nullable=False),
+            Column("source", String(40), nullable=False, server_default="SIMULATED"),
             UniqueConstraint("port_id", "stat_date", name="uq_port_daily_stats_port_id_stat_date"),
         )
         return port_tbl, daily_tbl
@@ -464,6 +487,7 @@ async def populate_database(
     matched_port_locations: set[int],
     daily_stats_by_loc_id: list[tuple[int, date, float]],
     stats: ParseStats,
+    source_tag: str,
     batch_size: int = 1000,
 ) -> None:
     db_url = get_db_url()
@@ -519,6 +543,7 @@ async def populate_database(
                         "port_id": pid,
                         "stat_date": s_date,
                         "congestion_index": cong_idx,
+                        "source": source_tag,
                     }
                     for (pid, s_date), cong_idx in chunk
                 ]
@@ -527,7 +552,7 @@ async def populate_database(
                     .values(values)
                     .on_conflict_do_update(
                         index_elements=["port_id", "stat_date"],
-                        set_={"congestion_index": exc["congestion_index"]},
+                        set_={"congestion_index": exc["congestion_index"], "source": exc["source"]},
                     )
                 )
                 await conn.execute(stmt)
@@ -555,6 +580,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--activity",
         default=None,
         help="Path to IMF Daily Port Activity CSV",
+    )
+    p.add_argument(
+        "--source-tag",
+        default="CALIBRATED",
+        help="Source provenance tag for ingested rows (default: CALIBRATED)",
     )
     p.add_argument(
         "--performance",
@@ -687,6 +717,7 @@ async def amain(args: argparse.Namespace) -> int:
         matched_location_ids,
         daily_stats_to_insert,
         stats,
+        source_tag=args.source_tag,
         batch_size=args.batch_size,
     )
 
@@ -694,7 +725,7 @@ async def amain(args: argparse.Namespace) -> int:
         "Ingestion completed: ports=%d, daily_stats=%d, provenance=%s",
         stats.ports_created,
         stats.daily_stats_inserted,
-        PROVENANCE,
+        args.source_tag,
     )
     return 0
 
