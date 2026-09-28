@@ -15,6 +15,7 @@ import {
   type ShipmentPredictResponse,
 } from "@/lib/nexafreight";
 import ProvenanceBadge from "./ProvenanceBadge";
+import { ProvenanceChip } from "./ProvenanceBadge";
 import RouteAlternativesPanel from "./RouteAlternativesPanel";
 
 

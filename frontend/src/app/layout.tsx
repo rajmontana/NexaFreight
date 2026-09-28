@@ -1,7 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Archivo, IBM_Plex_Mono } from 'next/font/google';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/store/useAuthStore';
 import "./globals.css";
+
+const archivo = Archivo({
+  variable: '--font-archivo',
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: '--font-mono',
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+});
 
 const SITE_URL = "https://nexafreight.dev";
 const SITE_NAME = "NexaFreight Control Tower";
@@ -9,11 +24,11 @@ const SITE_TITLE = "NexaFreight Control Tower | Multimodal Freight Intelligence 
 const SITE_DESCRIPTION = "Real-time multimodal freight tracking, predictive ML risk assessment, vessel telemetry, and situational control tower.";
 
 export const viewport: Viewport = {
-  themeColor: "#D4AF37",
+  themeColor: "#2547C8",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  colorScheme: "dark",
+  colorScheme: "light",
 };
 
 export const metadata: Metadata = {
@@ -181,7 +196,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" dir="ltr" suppressHydrationWarning>
+    <html lang="en" dir="ltr" suppressHydrationWarning className={`${archivo.variable} ${ibmPlexMono.variable}`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

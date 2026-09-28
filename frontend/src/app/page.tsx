@@ -24,6 +24,7 @@ import ShipmentInspectorPanel from '@/components/ShipmentInspectorPanel';
 import AlertCenter from '@/components/AlertCenter';
 import RerouteOptions from '@/components/RerouteOptions';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+import { ProvenanceChip } from '@/components/ProvenanceBadge';
 
 const GlobeMap = dynamic(() => import('@/components/GlobeMap'), { ssr: false });
 const LayerPanel = dynamic(() => import('@/components/LayerPanel'));
@@ -301,6 +302,9 @@ function Dashboard() {
           <ActiveEntityCount data={data} />
           <UptimeClock />
           <ZuluClock />
+          <span className="hidden lg:inline" style={{ marginLeft: '12px' }}>
+            <ProvenanceChip provenance="REAL" size="sm" />
+          </span>
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
