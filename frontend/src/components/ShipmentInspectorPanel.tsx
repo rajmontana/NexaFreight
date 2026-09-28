@@ -28,17 +28,17 @@ interface ShipmentInspectorPanelProps {
   viewerRole?: string;
 }
 
-const fmtUsd = (n: number | null | undefined) =>
+const fmtRupee = (n: number | null | undefined) =>
   n == null
     ? "—"
-    : `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    : `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
 /** Severity → accent color */
 const sevColor: Record<string, string> = {
-  CRITICAL: "#FCA5A5",
-  HIGH: "#FDBA74",
-  MEDIUM: "#FDE68A",
-  LOW: "#CBD5E1",
+  CRITICAL: "#B4452F",
+  HIGH: "#B4452F",
+  MEDIUM: "#8B7325",
+  LOW: "#5A5D66",
 };
 
 const COPILOT_PLACEHOLDER =
@@ -206,7 +206,7 @@ export default function ShipmentInspectorPanel({
                   </span>
                   <span className="text-neutral-400 text-xs">{a.status}</span>
                   <span className="ml-auto text-amber-200 text-xs font-semibold">
-                    {fmtUsd(a.financial_exposure)}
+                    {fmtRupee(a.financial_exposure)}
                   </span>
                   <ProvenanceBadge provenance={a.provenance} size="xs" />
                 </li>
@@ -221,9 +221,12 @@ export default function ShipmentInspectorPanel({
             </p>
             {prediction ? (
               <div className="text-sm space-y-1 border border-neutral-800 rounded p-2">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-neutral-400">P50 delay</span>
-                  <span className="font-semibold">{prediction.delay_p50_hours.toFixed(1)} h</span>
+                  <div className="flex items-center gap-2">
+                    <ProvenanceChip provenance={prediction.provenance} size="xs" />
+                    <span className="font-semibold">{prediction.delay_p50_hours.toFixed(1)} h</span>
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-400">SLA risk</span>
@@ -232,17 +235,17 @@ export default function ShipmentInspectorPanel({
                     style={{
                       color:
                         prediction.sla_risk_level === "BREACH"
-                          ? "#FCA5A5"
+                          ? "#B4452F"
                           : prediction.sla_risk_level === "HIGH"
-                            ? "#FDBA74"
-                            : "#34D399",
+                            ? "#8B7325"
+                            : "#3E6B4F",
                     }}
                   >
                     {prediction.sla_risk_level}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <ProvenanceBadge provenance={prediction.provenance} size="xs" />
+                  <span></span>
                   {prediction.model_version && (
                     <span className="text-neutral-500">v{prediction.model_version}</span>
                   )}
@@ -264,29 +267,29 @@ export default function ShipmentInspectorPanel({
               <div className="text-sm space-y-1 border border-neutral-800 rounded p-2">
                 <div className="flex justify-between">
                   <span className="text-neutral-400">Revenue</span>
-                  <span>{fmtUsd(financials.pnl.revenue_usd)}</span>
+                  <span>{fmtRupee(financials.pnl.revenue_usd)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-400">Shipping</span>
-                  <span>{fmtUsd(financials.pnl.shipping_cost_usd)}</span>
+                  <span>{fmtRupee(financials.pnl.shipping_cost_usd)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-400">Freight</span>
-                  <span>{fmtUsd(financials.pnl.freight_cost_usd)}</span>
+                  <span>{fmtRupee(financials.pnl.freight_cost_usd)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-400">SLA penalty</span>
                   <span className={financials.pnl.sla_penalty_usd > 0 ? "text-red-300" : undefined}>
-                    {fmtUsd(financials.pnl.sla_penalty_usd)}
+                    {fmtRupee(financials.pnl.sla_penalty_usd)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-400">Demurrage</span>
-                  <span>{fmtUsd(financials.pnl.demurrage_usd)}</span>
+                  <span>{fmtRupee(financials.pnl.demurrage_usd)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-400">Carbon</span>
-                  <span>{fmtUsd(financials.pnl.carbon_cost_usd)}</span>
+                  <span>{fmtRupee(financials.pnl.carbon_cost_usd)}</span>
                 </div>
                 <div className="flex justify-between border-t border-neutral-800 pt-1 mt-1">
                   <span className="text-neutral-400">Margin</span>
@@ -294,7 +297,7 @@ export default function ShipmentInspectorPanel({
                     className="font-bold"
                     style={{ color: financials.pnl.margin_usd >= 0 ? "#34D399" : "#FCA5A5" }}
                   >
-                    {fmtUsd(financials.pnl.margin_usd)}{" "}
+                    {fmtRupee(financials.pnl.margin_usd)}{" "}
                     {financials.pnl.margin_pct != null &&
                       `(${(financials.pnl.margin_pct * 100).toFixed(1)}%)`}
                   </span>
@@ -308,7 +311,7 @@ export default function ShipmentInspectorPanel({
                     <ul className="pl-4 mt-1 space-y-0.5">
                       {financials.orders.map((o) => (
                         <li key={o.order_number}>
-                          {o.order_number}: {fmtUsd(o.revenue)} — {o.sla_status}
+                          {o.order_number}: {fmtRupee(o.revenue)} — {o.sla_status}
                         </li>
                       ))}
                     </ul>

@@ -250,28 +250,123 @@ button:disabled {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DEFAULT TYPOGRAPHY & SPACING
+   CONFIDENCE & RISK INDICATORS
    ═══════════════════════════════════════════════════════════════ */
 
-h1, h2, h3, h4, h5, h6 {
-  margin: 0;
+.confidence-bar {
+  height: 4px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 2px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.confidence-bar__fill {
+  height: 100%;
+  border-radius: 2px;
+  transform-origin: left;
+  transition: transform 0.15s;
+}
+
+.confidence-bar__fill--standard {
+  background: var(--cobalt);
+}
+
+.confidence-bar__fill--positive {
+  background: var(--moss-positive);
+}
+
+.confidence-bar__fill--risk {
+  background: var(--oxide-risk);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LEDGER & DATA SURFACES
+   ═══════════════════════════════════════════════════════════════ */
+
+.ledger-card {
+  background: var(--paper);
+  border: 1px solid var(--border-hairline);
+  border-radius: 3px;
+  padding: var(--spacing-md);
+}
+
+.ledger-card__divider {
+  height: 1px;
+  background: var(--border-hairline);
+  margin: var(--spacing-sm) 0;
+}
+
+.ledger-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xs) 0;
+  font-size: 13px;
+}
+
+.ledger-card__label {
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.ledger-card__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DOT TIMELINE
+   ═══════════════════════════════════════════════════════════════ */
+
+.dot-timeline {
+  position: relative;
+  padding-left: 24px;
+}
+
+.dot-timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-hairline);
+}
+
+.dot-timeline__item {
+  position: relative;
+  padding-bottom: var(--spacing-md);
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+}
+
+.dot-timeline__dot {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cobalt);
+}
+
+.dot-timeline__dot--positive {
+  background: var(--moss-positive);
+}
+
+.dot-timeline__dot--risk {
+  background: var(--oxide-risk);
+}
+
+.dot-timeline__content {
+  flex: 1;
+  font-size: 12px;
   font-family: var(--font-ui);
   color: var(--ink);
 }
-
-p {
-  margin: 0;
-}
-
-a {
-  color: var(--cobalt);
-  text-decoration: none;
-  transition: color 0.15s;
-}
-
-a:hover {
-  color: var(--cobalt-pressed);
-}
-
-/* ── Remove all Tailwind & old theme code ── */
-/* (Previous Horus/Phantom/Ghost Protocol themes removed entirely) */
