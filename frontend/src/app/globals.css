@@ -370,3 +370,284 @@ button:disabled {
   font-family: var(--font-ui);
   color: var(--ink);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   WAVE 3 — SIGNATURE SURFACES (Globe, Alerts, Planner, Nav, Copilot)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Globe Frame & Viewport ── */
+.globe-frame {
+  position: relative;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.globe-frame::before,
+.globe-frame::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--ink);
+  z-index: 10;
+}
+
+.globe-frame::before {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+}
+
+.globe-frame::after {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+}
+
+.globe-coordinate-overlay {
+  position: absolute;
+  bottom: var(--spacing-md);
+  left: var(--spacing-md);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  z-index: 5;
+  background: rgba(246, 247, 244, 0.9);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-hairline);
+}
+
+/* ── Alert Dispatch-Note Styling ── */
+.alert-dispatch {
+  background: var(--paper);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-md);
+}
+
+.alert-dispatch__severity-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.alert-dispatch__severity-chip::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+.alert-dispatch__severity-chip--critical::before {
+  background: var(--oxide-risk);
+}
+
+.alert-dispatch__severity-chip--high::before {
+  background: #8B3D28;
+}
+
+.alert-dispatch__severity-chip--medium::before {
+  background: var(--text-secondary);
+}
+
+.alert-dispatch__severity-chip--low::before {
+  background: var(--text-secondary);
+}
+
+/* ── Reroute Planner Cards ── */
+.planner-card {
+  background: var(--paper);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-md);
+  transition: border-color 0.15s;
+}
+
+.planner-card--selected {
+  border-left: 2px solid var(--cobalt);
+  border-color: var(--cobalt);
+}
+
+.planner-card__metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xs) 0;
+  font-size: 13px;
+}
+
+.planner-card__label {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.planner-card__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* ── Navigation HUD ── */
+.nav-hud {
+  background: var(--paper);
+  border-bottom: 1px solid var(--border-hairline);
+  padding: var(--spacing-md) var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.nav-hud__icon {
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.nav-hud__instruction {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink);
+  flex: 1;
+}
+
+.nav-hud__distance {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.nav-hud__progress-track {
+  height: 2px;
+  background: var(--border-hairline);
+  border-radius: 1px;
+  overflow: hidden;
+  width: 100%;
+  margin: var(--spacing-sm) 0;
+}
+
+.nav-hud__progress-fill {
+  height: 100%;
+  background: var(--cobalt);
+  transform-origin: left;
+  transition: transform 0.15s;
+}
+
+.nav-hud__button {
+  padding: 6px 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-hud__button:hover {
+  border-color: var(--cobalt);
+  color: var(--cobalt);
+}
+
+.nav-hud__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Copilot Input & Response ── */
+.copilot-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-xs);
+  background: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--ink);
+  transition: border-color 0.15s;
+}
+
+.copilot-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.copilot-input:focus {
+  outline: none;
+  border-color: var(--cobalt);
+}
+
+.copilot-response {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-md);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.copilot-response code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--paper);
+  padding: 2px 4px;
+  border-radius: var(--radius-xs);
+}
+
+/* ── Layer Panel Instrument Control ── */
+.layer-panel {
+  background: var(--paper);
+  border: 1px solid var(--border-hairline);
+}
+
+.layer-panel__header {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-hairline);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.layer-panel__item {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--border-hairline);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--ink);
+  transition: background-color 0.15s;
+}
+
+.layer-panel__item:hover {
+  background-color: var(--bg-subtle);
+}
+
+.layer-panel__item--active {
+  color: var(--cobalt);
+}

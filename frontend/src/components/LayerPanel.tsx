@@ -85,9 +85,9 @@ function ToggleSwitch({ active }: { active: boolean }) {
       <div
         className="absolute inset-0 rounded-full transition-all duration-300"
         style={{
-          background: active ? 'rgba(255,255,255,0.2)' : 'transparent',
-          border: active ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(255,255,255,0.12)',
-          boxShadow: active ? '0 0 8px rgba(255,255,255,0.1)' : 'none',
+          background: active ? 'transparent' : 'transparent',
+          border: active ? '1px solid var(--cobalt)' : '1px solid var(--border-hairline)',
+          boxShadow: 'none',
         }}
       />
       <motion.div
@@ -95,8 +95,8 @@ function ToggleSwitch({ active }: { active: boolean }) {
         style={{
           width: 10,
           height: 10,
-          background: active ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.2)',
-          boxShadow: active ? '0 0 6px rgba(255,255,255,0.4)' : 'none',
+          background: active ? 'var(--cobalt)' : 'var(--text-secondary)',
+          boxShadow: 'none',
         }}
         animate={{ left: active ? 16 : 2 }}
         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
@@ -113,7 +113,8 @@ function SubLayerStem() {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute left-[6px] top-0 h-1/2 w-[8px] rounded-bl-[3px] border-b border-l border-white/[0.14]"
+      className="pointer-events-none absolute left-[6px] top-0 h-1/2 w-[8px] rounded-bl-[3px] border-b border-l"
+      style={{ borderColor: 'var(--border-hairline)' }}
     />
   );
 }
@@ -176,7 +177,7 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
       <div className="flex flex-col gap-5 py-2">
         {visibleGroups.map((group) => (
           <div key={group.label} className="flex flex-col gap-2">
-            <div className="text-[10px] font-mono tracking-[0.2em] uppercase text-white/30 border-b border-white/[0.06] pb-1.5">
+            <div className="text-[10px] font-mono tracking-[0.2em] uppercase pb-1.5" style={{ color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-hairline)' }}>
               {group.fullLabel}
             </div>
             <div className="flex flex-col gap-1">
@@ -189,15 +190,18 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                     key={layer.key}
                     onClick={() => toggle(layer.key)}
                     aria-pressed={!!isLayerActive}
-                    className={`relative w-full flex items-center gap-3 py-2 rounded-md text-left hover:bg-white/[0.04] transition-colors ${layer.parent ? 'pl-[22px] pr-1' : 'px-1'} ${dormant ? 'opacity-40' : ''}`}
+                    className={`relative w-full flex items-center gap-3 py-2 rounded-md text-left transition-colors ${layer.parent ? 'pl-[22px] pr-1' : 'px-1'} ${dormant ? 'opacity-40' : ''}`}
+                    style={{
+                      backgroundColor: isLayerActive ? 'rgba(37, 71, 200, 0.1)' : 'transparent',
+                    }}
                   >
                     {layer.parent && <SubLayerStem />}
                     <ToggleSwitch active={!!isLayerActive} />
-                    <span className={`text-[11px] font-mono uppercase tracking-wider flex-1 transition-colors ${isLayerActive ? 'text-white/80' : 'text-white/40'}`}>
+                    <span className={`text-[11px] font-mono uppercase tracking-wider flex-1 transition-colors`} style={{ color: isLayerActive ? 'var(--ink)' : 'var(--text-secondary)' }}>
                       {layer.label}
                     </span>
                     {count !== null && (
-                      <span className="text-[10px] font-mono tabular-nums text-white/25">
+                      <span className="text-[10px] font-mono tabular-nums" style={{ color: 'var(--text-secondary)' }}>
                         {count.toLocaleString()}
                       </span>
                     )}
@@ -209,35 +213,37 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
         ))}
 
         {/* MOBILE STYLE STUDIO */}
-        <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/[0.06] px-1">
-          <span className="text-[10px] font-mono tracking-[0.2em] text-white/25 uppercase">Style Studio</span>
+        <div className="flex items-center justify-between mt-2 pt-3 px-1" style={{ borderTop: '1px solid var(--border-hairline)' }}>
+          <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--text-secondary)] uppercase">Style Studio</span>
           <button
             onClick={() => setStudioOpen(o => !o)}
             aria-pressed={studioOpen}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
             style={{
-              background: studioOpen ? 'var(--hover-accent)' : 'transparent',
-              boxShadow: studioOpen ? '0 0 12px var(--gold-glow)' : 'none',
+              background: studioOpen ? 'rgba(37, 71, 200, 0.15)' : 'transparent',
+              boxShadow: 'none',
+              border: studioOpen ? '1px solid var(--cobalt)' : '1px solid var(--border-hairline)',
             }}
           >
-            <SlidersHorizontal className="w-4 h-4" style={{ color: studioOpen ? 'var(--gold-primary)' : 'rgba(255,255,255,0.25)' }} />
+            <SlidersHorizontal className="w-4 h-4" style={{ color: studioOpen ? 'var(--cobalt)' : 'var(--text-secondary)' }} />
           </button>
         </div>
           {/* StyleStudio removed */}
 
         {/* MOBILE GHOST TOGGLE */}
         {setTheme && (
-          <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] px-1">
-            <span className="text-[10px] font-mono tracking-[0.2em] text-white/25 uppercase">Ghost Protocol</span>
+          <div className="flex items-center justify-between pt-3 px-1" style={{ borderTop: '1px solid var(--border-hairline)' }}>
+            <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--text-secondary)] uppercase">Ghost Protocol</span>
             <button
               onClick={() => setTheme(theme === 'core' ? 'ghost' : 'core')}
               className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
               style={{
-                background: theme === 'ghost' ? 'rgba(179, 136, 255, 0.15)' : 'transparent',
-                boxShadow: theme === 'ghost' ? '0 0 12px rgba(179, 136, 255, 0.3)' : 'none',
+                background: theme === 'ghost' ? 'rgba(37, 71, 200, 0.15)' : 'transparent',
+                boxShadow: 'none',
+                border: theme === 'ghost' ? '1px solid var(--cobalt)' : '1px solid var(--border-hairline)',
               }}
             >
-              <Ghost className="w-4 h-4" style={{ color: theme === 'ghost' ? '#B388FF' : 'rgba(255,255,255,0.25)' }} />
+              <Ghost className="w-4 h-4" style={{ color: theme === 'ghost' ? 'var(--cobalt)' : 'var(--text-secondary)' }} />
             </button>
           </div>
         )}
@@ -253,9 +259,12 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
       transition={{ type: 'spring', damping: 30, stiffness: 200, delay: 2.8 }}
       className="absolute top-0 left-0 h-full w-[48px] flex flex-col items-center pt-24 pb-6 z-50 pointer-events-auto"
       style={{
-        background: 'rgba(0,0,0,0.15)',
-        backdropFilter: 'blur(24px) saturate(1.2)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
+        background: 'var(--paper)',
+        border: '1px solid var(--border-hairline)',
+        borderLeft: 'none',
+        borderRight: 'none',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
       }}
     >
       <div className="flex-1 flex flex-col items-center gap-1">
@@ -286,11 +295,12 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                 aria-expanded={isOpen}
                 aria-label={`${group.fullLabel}${activeCount ? ` — ${activeCount} active` : ''}`}
                 title={group.fullLabel}
-                className="relative w-10 h-10 flex items-center justify-center cursor-pointer rounded-lg transition-all duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
+                className="relative w-10 h-10 flex items-center justify-center cursor-pointer rounded-lg transition-all duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--cobalt)]"
                 style={{
                   background: isPinned
-                    ? 'rgba(255,255,255,0.10)'
-                    : isHovered ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    ? 'rgba(37, 71, 200, 0.1)'
+                    : isHovered ? 'rgba(37, 71, 200, 0.05)' : 'transparent',
+                  border: isPinned ? '1px solid var(--cobalt)' : '1px solid var(--border-hairline)',
                 }}
               >
                 <Icon
@@ -299,11 +309,11 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                     width: 16,
                     height: 16,
                     color: groupActive
-                      ? 'rgba(255,255,255,0.75)'
+                      ? 'var(--ink)'
                       : isOpen
-                        ? 'rgba(255,255,255,0.45)'
-                        : 'rgba(255,255,255,0.22)',
-                    filter: groupActive ? 'drop-shadow(0 0 4px rgba(255,255,255,0.3))' : 'none',
+                        ? 'var(--text-secondary)'
+                        : 'var(--text-secondary)',
+                    filter: 'none',
                   }}
                 />
 
@@ -313,9 +323,9 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                   <span
                     className="absolute top-1 right-1 min-w-[13px] h-[13px] px-[3px] rounded-full flex items-center justify-center text-[9px] font-mono tabular-nums leading-none"
                     style={{
-                      background: 'rgba(0,229,255,0.9)',
-                      color: '#04040A',
-                      boxShadow: '0 0 6px rgba(0,229,255,0.5)',
+                      background: 'var(--cobalt)',
+                      color: 'white',
+                      boxShadow: 'none',
                     }}
                   >
                     {activeCount}
@@ -331,23 +341,36 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                     animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
                     exit={{ opacity: 0, x: -4, filter: 'blur(2px)' }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
-                    className="absolute left-[52px] top-1/2 -translate-y-1/2 min-w-[220px] rounded-xl p-3 z-[100] pointer-events-auto"
+                    className="absolute left-[52px] top-1/2 -translate-y-1/2 min-w-[220px] rounded-lg p-3 z-[100] pointer-events-auto"
                     style={{
-                      background: 'rgba(0,0,0,0.6)',
-                      backdropFilter: 'blur(40px) saturate(1.5)',
-                      WebkitBackdropFilter: 'blur(40px) saturate(1.5)',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                      background: 'var(--paper)',
+                      backdropFilter: 'none',
+                      WebkitBackdropFilter: 'none',
+                      border: '1px solid var(--border-hairline)',
+                      boxShadow: 'none',
                     }}
                   >
-                    <div className="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-white/[0.04]">
-                      <span className="text-[10px] font-mono tracking-[0.2em] uppercase text-white/35 flex-1">
+                    <div className="flex items-center gap-2 mb-2.5 pb-1.5" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
+                      <span className="text-[10px] font-mono tracking-[0.2em] uppercase flex-1" style={{ color: 'var(--text-secondary)' }}>
                         {group.fullLabel}
                       </span>
                       {/* Batch toggle all layers in group */}
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleGroup(group.layers); }}
-                        className="px-1.5 py-0.5 rounded text-[10px] font-mono tracking-wider text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                        className="px-1.5 py-0.5 rounded text-[10px] font-mono tracking-wider transition-colors"
+                        style={{
+                          color: 'var(--text-secondary)',
+                          border: '1px solid var(--border-hairline)',
+                          background: 'transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.target as HTMLElement).style.borderColor = 'var(--ink)';
+                          (e.target as HTMLElement).style.color = 'var(--ink)';
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.target as HTMLElement).style.borderColor = 'var(--border-hairline)';
+                          (e.target as HTMLElement).style.color = 'var(--text-secondary)';
+                        }}
                       >
                         {activeCount > 0 ? 'NONE' : 'ALL'}
                       </button>
@@ -355,7 +378,20 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                         <button
                           onClick={(e) => { e.stopPropagation(); setPinnedGroup(null); }}
                           aria-label="Close"
-                          className="px-1.5 py-0.5 rounded text-[10px] font-mono text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                          className="px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors"
+                          style={{
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--border-hairline)',
+                            background: 'transparent',
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.target as HTMLElement).style.borderColor = 'var(--ink)';
+                            (e.target as HTMLElement).style.color = 'var(--ink)';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.target as HTMLElement).style.borderColor = 'var(--border-hairline)';
+                            (e.target as HTMLElement).style.color = 'var(--text-secondary)';
+                          }}
                         >
                           ✕
                         </button>
@@ -373,15 +409,18 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                             onClick={() => toggle(layer.key)}
                             aria-pressed={!!isLayerActive}
                             title={dormant ? 'Turn the layer above on to use this' : undefined}
-                            className={`relative w-full flex items-center gap-3 py-1.5 rounded-md hover:bg-white/[0.05] transition-colors cursor-pointer text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 ${layer.parent ? 'pl-[22px] pr-1' : 'px-1'} ${dormant ? 'opacity-40' : ''}`}
+                            className={`relative w-full flex items-center gap-3 py-1.5 rounded-md transition-colors cursor-pointer text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--cobalt)] ${layer.parent ? 'pl-[22px] pr-1' : 'px-1'} ${dormant ? 'opacity-40' : ''}`}
+                            style={{
+                              backgroundColor: isLayerActive ? 'rgba(37, 71, 200, 0.1)' : 'transparent',
+                            }}
                           >
                             {layer.parent && <SubLayerStem />}
                             <ToggleSwitch active={!!isLayerActive} />
-                            <span className={`text-[11px] font-mono uppercase tracking-wider flex-1 transition-colors duration-200 ${isLayerActive ? 'text-white/70' : 'text-white/35'}`}>
+                            <span className={`text-[11px] font-mono uppercase tracking-wider flex-1 transition-colors duration-200`} style={{ color: isLayerActive ? 'var(--ink)' : 'var(--text-secondary)' }}>
                               {layer.label}
                             </span>
                             {count !== null && (
-                              <span className={`text-[10px] font-mono tabular-nums transition-colors ${isLayerActive ? 'text-white/45' : 'text-white/20'}`}>
+                              <span className={`text-[10px] font-mono tabular-nums transition-colors`} style={{ color: isLayerActive ? 'var(--ink)' : 'var(--text-secondary)' }}>
                                 {count.toLocaleString()}
                               </span>
                             )}
@@ -398,14 +437,17 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
       </div>
 
       {/* Subtle separator */}
-      <div className="w-5 h-px bg-white/[0.06] my-2" />
+      <div className="w-5 h-px my-2" style={{ backgroundColor: 'var(--border-hairline)' }} />
 
       {/* Style Studio */}
       <button
         onClick={() => setStudioOpen(o => !o)}
         aria-pressed={studioOpen}
         className="w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-500 cursor-pointer"
-        style={{ background: studioOpen ? 'var(--hover-accent)' : 'transparent' }}
+        style={{
+          background: studioOpen ? 'rgba(37, 71, 200, 0.1)' : 'transparent',
+          border: studioOpen ? '1px solid var(--cobalt)' : '1px solid var(--border-hairline)',
+        }}
         title="Style Studio"
       >
         <SlidersHorizontal
@@ -413,8 +455,8 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
           style={{
             width: 15,
             height: 15,
-            color: studioOpen ? 'var(--gold-primary)' : 'rgba(255,255,255,0.15)',
-            filter: studioOpen ? 'drop-shadow(0 0 6px var(--gold-glow))' : 'none',
+            color: studioOpen ? 'var(--cobalt)' : 'var(--text-secondary)',
+            filter: 'none',
           }}
         />
       </button>
@@ -426,7 +468,8 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
           onClick={() => setTheme(theme === 'core' ? 'ghost' : 'core')}
           className="w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-500 cursor-pointer"
           style={{
-            background: theme === 'ghost' ? 'rgba(179, 136, 255, 0.1)' : 'transparent',
+            background: theme === 'ghost' ? 'rgba(37, 71, 200, 0.1)' : 'transparent',
+            border: theme === 'ghost' ? '1px solid var(--cobalt)' : '1px solid var(--border-hairline)',
           }}
           title="Ghost Protocol"
         >
@@ -435,8 +478,8 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
             style={{
               width: 15,
               height: 15,
-              color: theme === 'ghost' ? '#B388FF' : 'rgba(255,255,255,0.15)',
-              filter: theme === 'ghost' ? 'drop-shadow(0 0 6px rgba(179, 136, 255, 0.5))' : 'none',
+              color: theme === 'ghost' ? 'var(--cobalt)' : 'var(--text-secondary)',
+              filter: 'none',
             }}
           />
         </button>

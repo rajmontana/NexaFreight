@@ -18,11 +18,11 @@ interface MapPalette {
 }
 const MAP_DEFAULTS: MapPalette = {
   cctv: '#00e676',
-  flightCivil: '#00e5ff',
-  flightPrivate: '#ffd700',
-  flightGov: '#ff9500',
-  flightMilitary: '#ff0000',
-  flightUnknown: '#546e7a',
+  flightCivil: '#2547C8',
+  flightPrivate: '#2547C8',
+  flightGov: '#B4452F',
+  flightMilitary: '#B4452F',
+  flightUnknown: '#5A5D66',
 };
 
 
@@ -3695,9 +3695,9 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
 
   return (
-    <>
+    <div className="globe-frame">
       <div ref={containerRef} className="absolute inset-0 w-full h-full" />
-    </>
+    </div>
   );
 }
 

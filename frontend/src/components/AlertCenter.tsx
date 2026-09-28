@@ -112,15 +112,16 @@ export default function AlertCenter({
           top: 60,
           right: 12,
           zIndex: 1060,
-          background: openCount > 0 ? 'rgba(250,204,21,0.95)' : 'rgba(11,18,28,0.85)',
-          color: openCount > 0 ? '#111' : '#006E9E',
-          border: '1px solid rgba(255,255,255,0.3)',
-          borderRadius: 8,
+          background: 'var(--paper)',
+          color: openCount > 0 ? 'var(--oxide-risk)' : 'var(--ink)',
+          border: '1px solid var(--border-hairline)',
+          borderRadius: 'var(--radius-sm)',
           padding: '6px 10px',
           fontSize: 12,
           fontWeight: 700,
+          fontFamily: 'var(--font-ui)',
           cursor: 'pointer',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+          boxShadow: 'none',
         }}
       >
         Alerts {openCount > 0 ? `(${openCount})` : ''}
@@ -138,13 +139,13 @@ export default function AlertCenter({
         bottom: 12,
         width: compact ? 300 : 360,
         zIndex: 1060,
-        background: 'rgba(8,14,24,0.95)',
-        border: '1px solid rgba(148,163,184,0.25)',
-        borderRadius: 10,
-        color: '#E2E8F0',
+        background: 'var(--paper)',
+        border: '1px solid var(--border-hairline)',
+        borderRadius: 'var(--radius-sm)',
+        color: 'var(--ink)',
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+        boxShadow: 'none',
         overflow: 'hidden',
       }}
     >
@@ -154,15 +155,15 @@ export default function AlertCenter({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 10px',
-          borderBottom: '1px solid rgba(148,163,184,0.15)',
-          background: 'rgba(15,23,42,0.6)',
+          borderBottom: '1px solid var(--border-hairline)',
+          background: 'var(--paper)',
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5, color: 'var(--ink)', fontFamily: 'var(--font-ui)' }}>
             Alert Queue
           </span>
-          <span style={{ fontSize: 10, color: '#94A3B8' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>
             {alerts.length} total · {counts.map((c) => `${c.sev} ${c.count}`).join(' · ')}
           </span>
         </div>
@@ -171,7 +172,7 @@ export default function AlertCenter({
           aria-label="Close alert center"
           style={{
             background: 'transparent',
-            color: '#94A3B8',
+            color: 'var(--text-secondary)',
             border: 'none',
             cursor: 'pointer',
             fontSize: 16,
@@ -188,12 +189,13 @@ export default function AlertCenter({
           onChange={(e) => setSeverityFilter(e.target.value as AlertSeverity | 'ALL')}
           aria-label="Filter by severity"
           style={{
-            background: '#0B1220',
-            color: '#E2E8F0',
-            border: '1px solid rgba(148,163,184,0.25)',
-            borderRadius: 4,
+            background: 'var(--paper)',
+            color: 'var(--ink)',
+            border: '1px solid var(--border-hairline)',
+            borderRadius: 'var(--radius-xs)',
             padding: '3px 6px',
             fontSize: 11,
+            fontFamily: 'var(--font-ui)',
           }}
         >
           <option value="ALL">All severities</option>
@@ -208,12 +210,13 @@ export default function AlertCenter({
           onChange={(e) => setStatusFilter(e.target.value as AlertStatus | 'ALL')}
           aria-label="Filter by status"
           style={{
-            background: '#0B1220',
-            color: '#E2E8F0',
-            border: '1px solid rgba(148,163,184,0.25)',
-            borderRadius: 4,
+            background: 'var(--paper)',
+            color: 'var(--ink)',
+            border: '1px solid var(--border-hairline)',
+            borderRadius: 'var(--radius-xs)',
             padding: '3px 6px',
             fontSize: 11,
+            fontFamily: 'var(--font-ui)',
           }}
         >
           <option value="ALL">All statuses</option>
@@ -224,14 +227,25 @@ export default function AlertCenter({
         <button
           onClick={() => void load()}
           style={{
-            background: '#0B1220',
-            color: '#006E9E',
-            border: '1px solid rgba(0,110,158,0.4)',
-            borderRadius: 4,
+            background: 'var(--paper)',
+            color: 'var(--cobalt)',
+            border: '1px solid var(--cobalt)',
+            borderRadius: 'var(--radius-xs)',
             padding: '3px 8px',
             fontSize: 11,
+            fontFamily: 'var(--font-ui)',
+            fontWeight: 600,
             cursor: 'pointer',
             marginLeft: 'auto',
+            transition: 'border-color 0.15s, color 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            (e.target as HTMLElement).style.borderColor = 'var(--cobalt-pressed)';
+            (e.target as HTMLElement).style.color = 'var(--cobalt-pressed)';
+          }}
+          onMouseLeave={(e) => {
+            (e.target as HTMLElement).style.borderColor = 'var(--cobalt)';
+            (e.target as HTMLElement).style.color = 'var(--cobalt)';
           }}
         >
           Refresh
@@ -244,18 +258,19 @@ export default function AlertCenter({
           style={{
             padding: '6px 10px',
             fontSize: 11,
-            color: '#FCA5A5',
-            background: 'rgba(239,68,68,0.08)',
+            color: 'var(--oxide-risk)',
+            background: 'rgba(180, 69, 47, 0.08)',
+            fontFamily: 'var(--font-ui)',
           }}
         >
           Failed to load alerts: {error}
         </div>
       )}
       {loading && !error && (
-        <div style={{ padding: 10, fontSize: 12, color: '#94A3B8' }}>Loading…</div>
+        <div style={{ padding: 10, fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Loading…</div>
       )}
       {!loading && error == null && alerts.length === 0 && (
-        <div style={{ padding: 10, fontSize: 12, color: '#94A3B8' }}>
+        <div style={{ padding: 10, fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>
           No alerts — the fleet is quiet.
         </div>
       )}
@@ -273,11 +288,12 @@ export default function AlertCenter({
           <li
             key={alert.id}
             style={{
-              borderTop: '1px solid rgba(148,163,184,0.12)',
+              borderTop: '1px solid var(--border-hairline)',
               padding: '8px 10px',
               display: 'flex',
               flexDirection: 'column',
               gap: 4,
+              backgroundColor: 'var(--paper)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -286,41 +302,38 @@ export default function AlertCenter({
                   fontSize: 10,
                   fontWeight: 700,
                   padding: '1px 6px',
-                  borderRadius: 3,
-                  background:
-                    alert.severity === 'CRITICAL'
-                      ? 'rgba(239,68,68,0.2)'
-                      : alert.severity === 'HIGH'
-                        ? 'rgba(249,115,22,0.2)'
-                        : alert.severity === 'MEDIUM'
-                          ? 'rgba(250,204,21,0.2)'
-                          : 'rgba(148,163,184,0.2)',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid var(--border-hairline)',
+                  background: 'var(--paper)',
                   color:
                     alert.severity === 'CRITICAL'
-                      ? '#FCA5A5'
+                      ? 'var(--oxide-risk)'
                       : alert.severity === 'HIGH'
-                        ? '#FDBA74'
-                        : alert.severity === 'MEDIUM'
-                          ? '#FDE68A'
-                          : '#CBD5E1',
+                        ? '#8B3D28'
+                        : 'var(--text-secondary)',
+                  fontFamily: 'var(--font-ui)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
                 }}
               >
                 {alert.severity}
               </span>
-              <span style={{ fontSize: 10, color: '#94A3B8' }}>{alert.status}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>{alert.status}</span>
               <span
                 style={{
                   fontSize: 12,
                   fontWeight: 700,
                   marginLeft: 'auto',
-                  color: '#FDE68A',
+                  color: 'var(--ink)',
+                  fontFamily: 'var(--font-mono)',
+                  fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                ${alert.financial_exposure.toLocaleString()}
+                ₹{alert.financial_exposure.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
               </span>
             </div>
             {alert.disruption_type && (
-              <div style={{ fontSize: 11, color: '#CBD5E1' }}>
+              <div style={{ fontSize: 11, color: 'var(--ink)', fontFamily: 'var(--font-ui)' }}>
                 {alert.disruption_type.replaceAll('_', ' ')}
               </div>
             )}
@@ -332,12 +345,23 @@ export default function AlertCenter({
                     onClick={() => onOpenInspector(alert.shipment_id)}
                     style={{
                       background: 'transparent',
-                      color: '#006E9E',
-                      border: '1px solid rgba(0,110,158,0.4)',
-                      borderRadius: 4,
+                      color: 'var(--ink)',
+                      border: '1px solid var(--border-hairline)',
+                      borderRadius: 'var(--radius-xs)',
                       padding: '2px 6px',
                       fontSize: 10,
                       cursor: 'pointer',
+                      fontFamily: 'var(--font-ui)',
+                      fontWeight: 600,
+                      transition: 'border-color 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.target as HTMLElement).style.borderColor = 'var(--cobalt)';
+                      (e.target as HTMLElement).style.color = 'var(--cobalt)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLElement).style.borderColor = 'var(--border-hairline)';
+                      (e.target as HTMLElement).style.color = 'var(--ink)';
                     }}
                   >
                     Inspect
@@ -347,13 +371,24 @@ export default function AlertCenter({
                   <button
                     onClick={() => onOpenOptions(alert.id)}
                     style={{
-                      background: 'rgba(16,185,129,0.12)',
-                      color: '#34D399',
-                      border: '1px solid rgba(16,185,129,0.4)',
-                      borderRadius: 4,
+                      background: 'transparent',
+                      color: 'var(--ink)',
+                      border: '1px solid var(--border-hairline)',
+                      borderRadius: 'var(--radius-xs)',
                       padding: '2px 6px',
                       fontSize: 10,
                       cursor: 'pointer',
+                      fontFamily: 'var(--font-ui)',
+                      fontWeight: 600,
+                      transition: 'border-color 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.target as HTMLElement).style.borderColor = 'var(--moss-positive)';
+                      (e.target as HTMLElement).style.color = 'var(--moss-positive)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLElement).style.borderColor = 'var(--border-hairline)';
+                      (e.target as HTMLElement).style.color = 'var(--ink)';
                     }}
                   >
                     Options
@@ -364,14 +399,27 @@ export default function AlertCenter({
                     onClick={() => void acknowledge(alert.id)}
                     disabled={ackBusyId === alert.id}
                     style={{
-                      background: 'rgba(0,110,158,0.15)',
-                      color: '#5AC8FA',
-                      border: '1px solid rgba(0,110,158,0.4)',
-                      borderRadius: 4,
+                      background: 'transparent',
+                      color: 'var(--ink)',
+                      border: '1px solid var(--border-hairline)',
+                      borderRadius: 'var(--radius-xs)',
                       padding: '2px 6px',
                       fontSize: 10,
                       cursor: ackBusyId === alert.id ? 'wait' : 'pointer',
                       opacity: ackBusyId === alert.id ? 0.5 : 1,
+                      fontFamily: 'var(--font-ui)',
+                      fontWeight: 600,
+                      transition: 'border-color 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (ackBusyId !== alert.id) {
+                        (e.target as HTMLElement).style.borderColor = 'var(--cobalt)';
+                        (e.target as HTMLElement).style.color = 'var(--cobalt)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLElement).style.borderColor = 'var(--border-hairline)';
+                      (e.target as HTMLElement).style.color = 'var(--ink)';
                     }}
                   >
                     {ackBusyId === alert.id ? 'Ack…' : 'Ack'}
