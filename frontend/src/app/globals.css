@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* ═══════════════════════════════════════════════════════════════
    CHARTROOM — Enterprise Logistics Control Tower
    Light, document-forward aesthetic inspired by nautical charts
@@ -375,9 +377,11 @@ button:disabled {
    WAVE 3 — SIGNATURE SURFACES (Globe, Alerts, Planner, Nav, Copilot)
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Globe Frame & Viewport ── */
 .globe-frame {
-  position: relative;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-sm);
   background: var(--paper);

@@ -797,6 +797,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
     map.on('load', () => {
       mapRef.current = map;
+      map.resize();
       
       // Theme colors
       const isGhost = theme === 'ghost';

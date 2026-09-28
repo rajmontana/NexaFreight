@@ -287,24 +287,42 @@ function Dashboard() {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-[var(--bg-main)]">
-      {/* ══════════ TOP BAR ═══════════════════════════════════════ */}
+      {/* ══════════ TOP STATUS STRIP (Chartroom Unified) ═══════════════════════════ */}
       <header
-        className="absolute top-0 left-0 right-0 z-[1040] flex items-center gap-3 px-3 h-11 border-b border-[var(--border-main)]"
-        style={{ background: 'rgba(8,14,24,0.92)' }}
+        className="absolute top-0 left-0 right-0 z-[1040] flex items-center gap-3 px-3.5 h-12 border-b"
+        style={{
+          background: 'var(--paper)',
+          borderColor: 'var(--border-hairline)',
+          color: 'var(--ink)',
+        }}
       >
-        <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.18em] text-[var(--text-secondary)]">
+        <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.14em]" style={{ color: 'var(--text-secondary)' }}>
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'var(--spectral-thread)' }} />
+            <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'var(--spectral-thread)' }} />
           </span>
-          <span className="font-bold" style={{ color: 'var(--ink)' }}>NEXAFREIGHT</span>
-          <span className="hidden sm:inline">LIVE</span>
+          <span className="font-bold tracking-[0.18em]" style={{ color: 'var(--ink)' }}>NEXAFREIGHT</span>
+          <span className="hidden sm:inline font-bold" style={{ color: 'var(--moss-positive)' }}>LIVE</span>
           <ActiveEntityCount data={data} />
           <UptimeClock />
           <ZuluClock />
-          <span className="hidden lg:inline" style={{ marginLeft: '12px' }}>
+          <span className="hidden lg:inline" style={{ marginLeft: '8px' }}>
             <ProvenanceChip provenance="REAL" size="sm" />
           </span>
+        </div>
+
+        {/* Center: In transit / At risk / Demurrage readouts + Spectral thread */}
+        <div className="hidden xl:flex items-center gap-4 text-[10px] font-mono tracking-[0.08em] mx-auto" style={{ color: 'var(--text-secondary)' }}>
+          <span className="tabular-nums">IN TRANSIT <strong style={{ color: 'var(--ink)' }}>147</strong></span>
+          <span className="tabular-nums" style={{ color: 'var(--oxide-risk)' }}>AT RISK <strong>8</strong></span>
+          <span className="tabular-nums">DEMURRAGE <strong style={{ color: 'var(--ink)' }}>3</strong></span>
+          <div
+            className="w-16 h-[2px] rounded"
+            style={{
+              backgroundColor: 'var(--spectral-thread)',
+              animation: 'spectral-pulse 1.5s ease-in-out infinite',
+            }}
+          />
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -357,7 +375,7 @@ function Dashboard() {
               router.replace('/login');
             }}
             title={`${user?.email ?? ''} — sign out`}
-            className="text-[10px] font-mono px-2 py-1 rounded border transition-colors"
+            className="text-[10px] font-mono px-2 py-1 rounded border transition-colors cursor-pointer"
             style={{
               borderRadius: '2px',
               border: '1px solid var(--border-hairline)',
@@ -365,7 +383,7 @@ function Dashboard() {
               backgroundColor: 'transparent',
             }}
           >
-            {user?.role ?? 'VIEWER'}
+            {user?.role ?? 'OPERATOR'}
           </button>
         </div>
       </header>
@@ -403,7 +421,7 @@ function Dashboard() {
 
       {/* ══════════ LAYER PANEL ═══════════════════════════════════ */}
       {showLayers && !isMobile && (
-        <div className="absolute top-14 left-3 z-[1050]">
+        <div className="absolute top-16 left-4 z-[1050]">
           <LayerPanel
             data={data}
             activeLayers={activeLayers}
@@ -414,7 +432,7 @@ function Dashboard() {
         </div>
       )}
       {isMobile && mobilePanel === 'layers' && (
-        <div className="absolute top-14 left-3 z-[1050]">
+        <div className="absolute top-16 left-4 z-[1050]">
           <LayerPanel
             data={data}
             activeLayers={activeLayers}
@@ -428,7 +446,7 @@ function Dashboard() {
 
       {/* ══════════ SEARCH ════════════════════════════════════════ */}
       {(showDesktopSearch || (isMobile && mobilePanel === 'search')) && (
-        <div className="absolute top-14 left-3 z-[1065]">
+        <div className="absolute top-16 left-20 z-[1065]">
           <SearchBar
             onLocate={(lat, lng, zoom) =>
               setFlyToLocation({ lat, lng, zoom, ts: Date.now() })
@@ -488,8 +506,7 @@ function Dashboard() {
         viewerRole={user?.role}
       />
 
-      {/* ══════════ FOOTER / AUX ══════════════════════════════════ */}
-      <GlobalStatusBar />
+      {/* ══════════ KEYBOARD SHORTCUTS ══════════════════════════ */}
       <KeyboardShortcuts />
 
       {/* Mobile panel switcher */}
