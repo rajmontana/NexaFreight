@@ -150,3 +150,105 @@ export default function ProvenanceBadge({
     </span>
   );
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   CHARTROOM PROVENANCE CHIP
+   Light theme: outlined chips with semantic dot colors
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface ProvenanceChipConfig {
+  label: string;
+  dotColor: string;
+  textColor: string;
+  borderStyle: string; // 'solid' or 'dashed'
+}
+
+/**
+ * Get Chartroom light-theme chip config for provenance values.
+ * - REAL → moss dot, solid border
+ * - CALIBRATED → cobalt dot, solid border
+ * - DERIVED → gray dot, solid border
+ * - SIMULATED → oxide dot, dashed border
+ */
+export function getProvenanceChipConfig(provenance?: ProvenanceType): ProvenanceChipConfig {
+  const norm = String(provenance || '').trim().toUpperCase();
+
+  if (norm === 'REAL') {
+    return {
+      label: norm,
+      dotColor: 'var(--moss-positive)',
+      textColor: 'var(--ink)',
+      borderStyle: 'solid',
+    };
+  }
+
+  if (norm === 'CALIBRATED') {
+    return {
+      label: norm,
+      dotColor: 'var(--cobalt)',
+      textColor: 'var(--ink)',
+      borderStyle: 'solid',
+    };
+  }
+
+  if (norm === 'DERIVED') {
+    return {
+      label: norm,
+      dotColor: 'var(--text-secondary)',
+      textColor: 'var(--ink)',
+      borderStyle: 'solid',
+    };
+  }
+
+  // SIMULATED
+  return {
+    label: norm || 'SIMULATED',
+    dotColor: 'var(--oxide-risk)',
+    textColor: 'var(--ink)',
+    borderStyle: 'dashed',
+  };
+}
+
+export interface ProvenanceChipProps {
+  provenance?: ProvenanceType;
+  size?: 'xs' | 'sm' | 'md';
+}
+
+/**
+ * Chartroom ProvenanceChip: outlined monospace chip with semantic dot.
+ * Border is ALWAYS hairline (var(--border-hairline)); only the dot carries color.
+ */
+export function ProvenanceChip({ provenance, size = 'sm' }: ProvenanceChipProps) {
+  const config = getProvenanceChipConfig(provenance);
+  const sizeMap = { xs: '10px', sm: '11px', md: '12px' };
+
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        padding: '4px 8px',
+        fontFamily: 'var(--font-mono)',
+        fontSize: sizeMap[size],
+        fontWeight: 500,
+        color: config.textColor,
+        border: `1px ${config.borderStyle} var(--border-hairline)`,
+        borderRadius: '3px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+      }}
+    >
+      <span
+        style={{
+          display: 'inline-block',
+          width: '4px',
+          height: '4px',
+          borderRadius: '50%',
+          background: config.dotColor,
+        }}
+      />
+      {config.label}
+    </span>
+  );
+}

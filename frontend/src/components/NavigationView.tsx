@@ -40,13 +40,13 @@ interface NavigationViewProps {
 
 function ManeuverIcon({ type, className }: { type: string; className?: string }) {
   const c = className ?? 'w-8 h-8';
-  if (type === 'arrive') return <Flag className={`${c} text-[var(--alert-green)]`} />;
-  if (type === 'depart') return <MapPin className={`${c} text-[var(--alert-green)]`} />;
-  if (type === 'roundabout') return <RotateCw className={`${c} text-white`} />;
-  if (type === 'merge') return <Merge className={`${c} text-white`} />;
-  if (type.includes('right')) return <CornerUpRight className={`${c} text-white`} />;
-  if (type.includes('left')) return <CornerUpLeft className={`${c} text-white`} />;
-  return <ArrowUp className={`${c} text-white`} />;
+  if (type === 'arrive') return <Flag className={`${c}`} style={{ color: 'var(--moss-positive)' }} />;
+  if (type === 'depart') return <MapPin className={`${c}`} style={{ color: 'var(--moss-positive)' }} />;
+  if (type === 'roundabout') return <RotateCw className={`${c}`} style={{ color: 'var(--ink)' }} />;
+  if (type === 'merge') return <Merge className={`${c}`} style={{ color: 'var(--ink)' }} />;
+  if (type.includes('right')) return <CornerUpRight className={`${c}`} style={{ color: 'var(--ink)' }} />;
+  if (type.includes('left')) return <CornerUpLeft className={`${c}`} style={{ color: 'var(--ink)' }} />;
+  return <ArrowUp className={`${c}`} style={{ color: 'var(--ink)' }} />;
 }
 
 /** Guidance distances read better rounded than exact. */
@@ -168,21 +168,26 @@ export default function NavigationView({
     <div className="flex flex-col gap-1.5">
       {/* ── maneuver banner ── */}
       <div
-        className="glass-panel overflow-hidden !border-[var(--border-active)]"
-        style={{ boxShadow: '0 18px 56px rgba(0,0,0,0.75)' }}
+        className="border"
+        style={{
+          borderColor: 'var(--border-hairline)',
+          backgroundColor: 'var(--paper)',
+          borderRadius: 'var(--radius-sm)',
+          boxShadow: 'none',
+        }}
       >
-        <div className={`px-4 py-3 flex items-center gap-4 ${arrived ? 'bg-[rgba(0,230,118,0.10)]' : 'bg-[rgba(66,133,244,0.10)]'}`}>
+        <div className="px-4 py-3 flex items-center gap-4" style={{ backgroundColor: 'var(--paper)' }}>
           {arrived
-            ? <Flag className="w-8 h-8 text-[var(--alert-green)] flex-shrink-0" />
+            ? <Flag className="w-8 h-8 flex-shrink-0" style={{ color: 'var(--moss-positive)' }} />
             : <ManeuverIcon type={step?.type ?? 'straight'} />}
 
           <div className="flex-1 min-w-0">
             {!arrived && progress && (
-              <div className="text-[22px] leading-none text-[var(--gold-primary)] tabular-nums mb-1">
+              <div className="text-[22px] leading-none tabular-nums mb-1" style={{ color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
                 {navDistance(progress.distanceToStep)}
               </div>
             )}
-            <div className={`text-[11px] leading-snug ${arrived ? 'text-[var(--alert-green)]' : 'text-[var(--text-primary)]'}`}>
+            <div className="text-[13px] leading-snug" style={{ color: arrived ? 'var(--moss-positive)' : 'var(--ink)', fontFamily: 'var(--font-ui)' }}>
               {arrived ? `You have arrived at ${destinationLabel}` : step?.instruction ?? 'Starting…'}
             </div>
           </div>
@@ -195,7 +200,18 @@ export default function NavigationView({
                 onClick={onRecenter}
                 title="Recenter on me and resume follow"
                 aria-label="Recenter on me and resume follow"
-                className="p-1.5 rounded-md text-[#4285F4] bg-[rgba(66,133,244,0.14)] hover:bg-[rgba(66,133,244,0.24)] transition-colors animate-pulse"
+                className="p-1.5 rounded transition-colors"
+                style={{
+                  color: 'var(--cobalt)',
+                  backgroundColor: 'rgba(37, 71, 200, 0.1)',
+                  border: '1px solid var(--cobalt)',
+                }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLElement).style.backgroundColor = 'rgba(37, 71, 200, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLElement).style.backgroundColor = 'rgba(37, 71, 200, 0.1)';
+                }}
               >
                 <LocateFixed className="w-4 h-4" />
               </button>
@@ -204,7 +220,20 @@ export default function NavigationView({
               onClick={() => { setMuted((m) => !m); window.speechSynthesis?.cancel(); }}
               aria-pressed={muted}
               title={muted ? 'Unmute voice guidance' : 'Mute voice guidance'}
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              className="p-1.5 rounded transition-colors"
+              style={{
+                color: muted ? 'var(--oxide-risk)' : 'var(--text-secondary)',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--border-hairline)',
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLElement).style.borderColor = 'var(--ink)';
+                (e.target as HTMLElement).style.color = 'var(--ink)';
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLElement).style.borderColor = 'var(--border-hairline)';
+                (e.target as HTMLElement).style.color = muted ? 'var(--oxide-risk)' : 'var(--text-secondary)';
+              }}
             >
               {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
@@ -212,7 +241,20 @@ export default function NavigationView({
               onClick={onExit}
               title="End navigation"
               aria-label="End navigation"
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--alert-red)] transition-colors"
+              className="p-1.5 rounded transition-colors"
+              style={{
+                color: 'var(--text-secondary)',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--border-hairline)',
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLElement).style.borderColor = 'var(--oxide-risk)';
+                (e.target as HTMLElement).style.color = 'var(--oxide-risk)';
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLElement).style.borderColor = 'var(--border-hairline)';
+                (e.target as HTMLElement).style.color = 'var(--text-secondary)';
+              }}
             >
               <X className="w-4 h-4" />
             </button>
@@ -220,34 +262,40 @@ export default function NavigationView({
         </div>
 
         {/* progress along the route */}
-        <div className="h-[3px] bg-[rgba(255,255,255,0.06)]">
+        <div className="h-[2px]" style={{ backgroundColor: 'var(--border-hairline)' }}>
           <div
-            className="h-full bg-[var(--gold-primary)] transition-[width] duration-700"
-            style={{ width: `${Math.round((progress?.fraction ?? 0) * 100)}%` }}
+            className="h-full transition-[width] duration-700"
+            style={{
+              backgroundColor: 'var(--cobalt)',
+              width: `${Math.round((progress?.fraction ?? 0) * 100)}%`,
+              transformOrigin: 'left',
+              transform: `scaleX(${(progress?.fraction ?? 0)})`,
+              transition: 'transform 0.7s',
+            }}
           />
         </div>
 
         {/* ── trip status ── */}
-        <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+        <div className="px-4 py-2.5 flex items-center justify-between gap-3" style={{ backgroundColor: 'var(--paper)' }}>
           {rerouting ? (
-            <span className="flex items-center gap-2 text-[11px] text-[var(--alert-orange)]">
+            <span className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--oxide-risk)', fontFamily: 'var(--font-ui)' }}>
               <Loader2 className="w-3 h-3 animate-spin" /> Recalculating route…
             </span>
           ) : progress?.offRoute ? (
-            <span className="flex items-center gap-2 text-[11px] text-[var(--alert-orange)]">
+            <span className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--oxide-risk)', fontFamily: 'var(--font-ui)' }}>
               <AlertTriangle className="w-3 h-3" /> Off route
             </span>
           ) : (
-            <span className="text-[11px] text-[var(--text-muted)] truncate">
+            <span className="text-[11px] truncate" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>
               to {destinationLabel}
             </span>
           )}
 
           {progress && !arrived && (
             <span className="flex items-baseline gap-2.5 flex-shrink-0 tabular-nums">
-              <span className="text-[12px] text-[var(--text-primary)]">{navDuration(progress.durationRemaining)}</span>
-              <span className="text-[11px] text-[var(--text-secondary)]">{navDistance(progress.distanceRemaining)}</span>
-              <span className="text-[11px] text-[var(--text-muted)]">
+              <span className="text-[12px]" style={{ color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{navDuration(progress.durationRemaining)}</span>
+              <span className="text-[11px]" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{navDistance(progress.distanceRemaining)}</span>
+              <span className="text-[11px]" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                 {new Date(now + progress.durationRemaining * 1000)
                   .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
@@ -258,10 +306,14 @@ export default function NavigationView({
 
       {/* ── the turn after this one ── */}
       {progress && !arrived && route.steps[progress.stepIndex + 1] && (
-        <div className="glass-panel px-4 py-2 flex items-center gap-3">
-          <span className="text-[9px] uppercase tracking-[0.15em] text-[var(--text-muted)] flex-shrink-0">Then</span>
+        <div className="px-4 py-2 flex items-center gap-3" style={{
+          backgroundColor: 'var(--paper)',
+          border: '1px solid var(--border-hairline)',
+          borderRadius: 'var(--radius-sm)',
+        }}>
+          <span className="text-[9px] uppercase tracking-[0.15em] flex-shrink-0" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>Then</span>
           <ManeuverIcon type={route.steps[progress.stepIndex + 1].type} className="w-4 h-4" />
-          <span className="text-[11px] text-[var(--text-secondary)] truncate">
+          <span className="text-[11px] truncate" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>
             {route.steps[progress.stepIndex + 1].instruction}
           </span>
         </div>

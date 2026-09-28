@@ -21,8 +21,10 @@ export interface RerouteOptionsProps {
   showMockOutcome?: boolean;
 }
 
-const fmtUsd = (n: number) =>
-  `${n >= 0 ? '' : '-'}$${Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+const fmtRupee = (n: number) =>
+  n == null
+    ? "—"
+    : `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
 const fmtDate = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'n/a';
@@ -97,7 +99,7 @@ export default function RerouteOptions({
         position: 'absolute',
         inset: 0,
         zIndex: 1070,
-        background: 'rgba(2,6,23,0.55)',
+        background: 'rgba(246, 247, 244, 0.05)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -106,13 +108,13 @@ export default function RerouteOptions({
     >
       <div
         style={{
-          background: 'rgba(8,14,24,0.98)',
-          border: '1px solid rgba(148,163,184,0.3)',
-          borderRadius: 12,
+          background: 'var(--paper)',
+          border: '1px solid var(--border-hairline)',
+          borderRadius: 'var(--radius-sm)',
           width: 'min(920px, calc(100vw - 32px))',
           maxHeight: 'calc(100vh - 48px)',
           overflowY: 'auto',
-          color: '#E2E8F0',
+          color: 'var(--ink)',
           padding: 14,
         }}
         onClick={(e) => e.stopPropagation()}
@@ -127,10 +129,10 @@ export default function RerouteOptions({
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ fontSize: 14, fontWeight: 700 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-ui)', color: 'var(--ink)' }}>
               Reroute options
             </span>
-            <span style={{ fontSize: 11, color: '#94A3B8' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>
               Alert {alertId.slice(0, 8)}…
               {alert?.disruption && (
                 <>
@@ -143,7 +145,7 @@ export default function RerouteOptions({
               {alert && ' · severity ' + alert.severity}
             </span>
             {fallbackMissing && (
-              <span style={{ fontSize: 11, color: '#FCA5A5' }}>
+              <span style={{ fontSize: 11, color: 'var(--oxide-risk)', fontFamily: 'var(--font-ui)' }}>
                 Options unavailable (mock-mode delivery — connection degraded): {error}
               </span>
             )}
@@ -154,7 +156,7 @@ export default function RerouteOptions({
               aria-label="Close reroute options"
               style={{
                 background: 'transparent',
-                color: '#94A3B8',
+                color: 'var(--text-secondary)',
                 border: 'none',
                 fontSize: 20,
                 cursor: 'pointer',
@@ -166,9 +168,9 @@ export default function RerouteOptions({
           )}
         </header>
 
-        {loading && <div style={{ fontSize: 12, color: '#94A3B8' }}>Generating scored options…</div>}
+        {loading && <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Generating scored options…</div>}
         {error && !fallbackMissing && (
-          <div role="alert" style={{ fontSize: 12, color: '#FCA5A5' }}>
+          <div role="alert" style={{ fontSize: 12, color: 'var(--oxide-risk)', fontFamily: 'var(--font-ui)' }}>
             {error}
           </div>
         )}
@@ -177,11 +179,12 @@ export default function RerouteOptions({
             role="status"
             style={{
               fontSize: 12,
-              color: '#34D399',
+              color: 'var(--moss-positive)',
               padding: '6px 8px',
-              background: 'rgba(16,185,129,0.1)',
-              borderRadius: 6,
+              background: 'rgba(62, 107, 79, 0.1)',
+              borderRadius: 'var(--radius-sm)',
               marginBottom: 8,
+              fontFamily: 'var(--font-ui)',
             }}
           >
             Decision executed{approvedKey ? ` — ${approvedKey}` : ''}. Map route redrawn at the
@@ -200,30 +203,27 @@ export default function RerouteOptions({
             <article
               key={opt.option_key}
               style={{
-                border: opt.recommended
-                  ? '1px solid rgba(52,211,153,0.6)'
-                  : '1px solid rgba(148,163,184,0.25)',
-                borderRadius: 10,
+                border: opt.recommended ? '2px solid var(--cobalt)' : '1px solid var(--border-hairline)',
+                borderRadius: 'var(--radius-sm)',
                 padding: 10,
-                background: opt.recommended
-                  ? 'rgba(16,185,129,0.07)'
-                  : 'rgba(15,23,42,0.55)',
+                background: 'var(--paper)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 6,
               }}
             >
               <header style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 700 }}>{opt.display_name}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-ui)', color: opt.recommended ? 'var(--cobalt)' : 'var(--ink)' }}>{opt.display_name}</span>
                 {opt.recommended && (
                   <span
                     style={{
                       fontSize: 9,
                       fontWeight: 800,
                       padding: '1px 6px',
-                      borderRadius: 3,
-                      background: 'rgba(52,211,153,0.25)',
-                      color: '#34D399',
+                      borderRadius: 'var(--radius-xs)',
+                      background: 'rgba(37, 71, 200, 0.1)',
+                      color: 'var(--cobalt)',
+                      fontFamily: 'var(--font-ui)',
                     }}
                   >
                     RECOMMENDED
@@ -234,14 +234,16 @@ export default function RerouteOptions({
                     marginLeft: 'auto',
                     fontSize: 13,
                     fontWeight: 800,
-                    color: '#FDE68A',
+                    color: 'var(--ink)',
+                    fontFamily: 'var(--font-mono)',
+                    fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  {fmtUsd(opt.total_impact_usd)}
+                  {fmtRupee(opt.total_impact_usd)}
                 </span>
               </header>
 
-              <p style={{ fontSize: 11, color: '#CBD5E1', margin: 0 }}>{opt.description}</p>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, fontFamily: 'var(--font-ui)' }}>{opt.description}</p>
 
               <dl
                 style={{
@@ -253,35 +255,36 @@ export default function RerouteOptions({
                   margin: 0,
                 }}
               >
-                <dt style={{ color: '#94A3B8' }}>Revised ETA</dt>
-                <dd style={{ margin: 0, color: '#E2E8F0' }}>{fmtDate(opt.revised_eta)}</dd>
-                <dt style={{ color: '#94A3B8' }}>Freight Δ</dt>
-                <dd style={{ margin: 0, color: '#FCD34D' }}>{fmtUsd(opt.cost_delta_usd)}</dd>
-                <dt style={{ color: '#94A3B8' }}>SLA penalty</dt>
-                <dd style={{ margin: 0, color: '#FCD34D' }}>{fmtUsd(opt.sla_penalty_usd)}</dd>
-                <dt style={{ color: '#94A3B8' }}>Demurrage</dt>
-                <dd style={{ margin: 0, color: '#FCD34D' }}>{fmtUsd(opt.demurrage_usd)}</dd>
-                <dt style={{ color: '#94A3B8' }}>Carbon</dt>
-                <dd style={{ margin: 0, color: '#FCD34D' }}>{fmtUsd(opt.carbon_cost_usd)}</dd>
-                <dt style={{ color: '#94A3B8' }}>CO2 Δ</dt>
-                <dd style={{ margin: 0, color: '#E2E8F0' }}>
+                <dt style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Revised ETA</dt>
+                <dd style={{ margin: 0, color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{fmtDate(opt.revised_eta)}</dd>
+                <dt style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Freight Δ</dt>
+                <dd style={{ margin: 0, color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{fmtRupee(opt.cost_delta_usd)}</dd>
+                <dt style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>SLA penalty</dt>
+                <dd style={{ margin: 0, color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{fmtRupee(opt.sla_penalty_usd)}</dd>
+                <dt style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Demurrage</dt>
+                <dd style={{ margin: 0, color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{fmtRupee(opt.demurrage_usd)}</dd>
+                <dt style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Carbon</dt>
+                <dd style={{ margin: 0, color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{fmtRupee(opt.carbon_cost_usd)}</dd>
+                <dt style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>CO2 Δ</dt>
+                <dd style={{ margin: 0, color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
                   {opt.co2_delta_kg >= 0 ? '+' : ''}
                   {opt.co2_delta_kg.toLocaleString(undefined, { maximumFractionDigits: 0 })} kg
                 </dd>
-                <dt style={{ color: '#94A3B8' }}>SLA breaches</dt>
-                <dd style={{ margin: 0, color: '#E2E8F0' }}>{opt.sla_breaches}</dd>
-                <dt style={{ color: '#94A3B8' }}>Action</dt>
-                <dd style={{ margin: 0, color: '#E2E8F0' }}>{opt.action}</dd>
+                <dt style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>SLA breaches</dt>
+                <dd style={{ margin: 0, color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{opt.sla_breaches}</dd>
+                <dt style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Action</dt>
+                <dd style={{ margin: 0, color: 'var(--ink)', fontFamily: 'var(--font-ui)' }}>{opt.action}</dd>
               </dl>
 
               {opt.assumptions.length > 0 && (
                 <ul
                   style={{
                     fontSize: 9,
-                    color: '#64748B',
+                    color: 'var(--text-secondary)',
                     margin: 0,
                     paddingLeft: 14,
                     lineHeight: 1.4,
+                    fontFamily: 'var(--font-ui)',
                   }}
                 >
                   {opt.assumptions.map((a, i) => (
@@ -309,17 +312,27 @@ export default function RerouteOptions({
                   aria-label={`Approve option ${opt.display_name}`}
                   style={{
                     marginLeft: 'auto',
-                    background: opt.recommended
-                      ? 'rgba(16,185,129,0.9)'
-                      : 'rgba(0,110,158,0.9)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
+                    background: 'transparent',
+                    color: opt.recommended ? 'var(--moss-positive)' : 'var(--ink)',
+                    border: opt.recommended ? '1px solid var(--moss-positive)' : '1px solid var(--border-hairline)',
+                    borderRadius: 'var(--radius-xs)',
                     padding: '6px 12px',
                     fontSize: 11,
                     fontWeight: 700,
+                    fontFamily: 'var(--font-ui)',
                     cursor: approvingKey !== null || hasDecision ? 'not-allowed' : 'pointer',
                     opacity: approvingKey !== null || hasDecision ? 0.55 : 1,
+                    transition: 'border-color 0.15s, color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (approvingKey === null && !hasDecision) {
+                      (e.target as HTMLElement).style.borderColor = opt.recommended ? 'var(--moss-positive)' : 'var(--cobalt)';
+                      (e.target as HTMLElement).style.color = opt.recommended ? 'var(--moss-positive)' : 'var(--cobalt)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.target as HTMLElement).style.borderColor = opt.recommended ? 'var(--moss-positive)' : 'var(--border-hairline)';
+                    (e.target as HTMLElement).style.color = opt.recommended ? 'var(--moss-positive)' : 'var(--ink)';
                   }}
                 >
                   {hasDecision && approvedKey === opt.option_key
@@ -334,7 +347,7 @@ export default function RerouteOptions({
         </div>
 
         {showMockOutcome && (
-          <p style={{ marginTop: 10, fontSize: 9, color: '#64748B' }}>
+          <p style={{ marginTop: 10, fontSize: 9, color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>
             Dev only: mock outcome hooks — approval status is read from the Decision row the
             executor writes, regardless of what the UI remembered.
           </p>

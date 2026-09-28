@@ -24,6 +24,7 @@ import ShipmentInspectorPanel from '@/components/ShipmentInspectorPanel';
 import AlertCenter from '@/components/AlertCenter';
 import RerouteOptions from '@/components/RerouteOptions';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+import { ProvenanceChip } from '@/components/ProvenanceBadge';
 
 const GlobeMap = dynamic(() => import('@/components/GlobeMap'), { ssr: false });
 const LayerPanel = dynamic(() => import('@/components/LayerPanel'));
@@ -59,7 +60,7 @@ const ZuluClock = () => {
     return () => clearInterval(iv);
   }, []);
   return (
-    <span className="text-[var(--cyan-primary)] font-bold tabular-nums">
+    <span className="font-bold tabular-nums" style={{ color: 'var(--text-secondary)' }}>
       {time || 'ZULU --:--:--Z'}
     </span>
   );
@@ -81,7 +82,7 @@ const UptimeClock = () => {
   }, []);
   return (
     <span className="hidden lg:inline">
-      UPTIME: <span className="text-[var(--gold-primary)]">{uptime}</span>
+      UPTIME: <span className="font-bold tabular-nums" style={{ color: 'var(--ink)' }}>{uptime}</span>
     </span>
   );
 };
@@ -95,7 +96,7 @@ const ActiveEntityCount = ({ data }: { data: Record<string, unknown[]> }) => {
         0,
       );
   return (
-    <span className="text-[var(--alert-green)] font-bold tabular-nums">
+    <span className="font-bold tabular-nums" style={{ color: 'var(--moss-positive)' }}>
       {count.toLocaleString()}
     </span>
   );
@@ -296,11 +297,14 @@ function Dashboard() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
-          <span className="text-[var(--gold-light)] font-bold">NEXAFREIGHT</span>
+          <span className="font-bold" style={{ color: 'var(--ink)' }}>NEXAFREIGHT</span>
           <span className="hidden sm:inline">LIVE</span>
           <ActiveEntityCount data={data} />
           <UptimeClock />
           <ZuluClock />
+          <span className="hidden lg:inline" style={{ marginLeft: '12px' }}>
+            <ProvenanceChip provenance="REAL" size="sm" />
+          </span>
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -353,7 +357,13 @@ function Dashboard() {
               router.replace('/login');
             }}
             title={`${user?.email ?? ''} — sign out`}
-            className="text-[10px] font-mono px-2 py-1 rounded border border-[var(--border-main)] text-[var(--text-secondary)] hover:text-white"
+            className="text-[10px] font-mono px-2 py-1 rounded border transition-colors"
+            style={{
+              borderRadius: '2px',
+              border: '1px solid var(--border-hairline)',
+              color: 'var(--text-secondary)',
+              backgroundColor: 'transparent',
+            }}
           >
             {user?.role ?? 'VIEWER'}
           </button>
@@ -375,10 +385,16 @@ function Dashboard() {
       />
 
       {/* Bottom-left: coord readout + scale */}
-      <div className="absolute bottom-8 left-3 z-[1030] flex flex-col gap-1 text-[10px] font-mono text-[var(--text-secondary)]">
+      <div className="absolute bottom-8 left-3 z-[1030] flex flex-col gap-1 text-[10px] font-mono" style={{ color: 'var(--text-secondary)' }}>
         <div
           ref={coordsDisplayRef}
-          className="px-1.5 py-0.5 rounded bg-black/50 border border-white/10"
+          className="px-1.5 py-0.5 rounded"
+          style={{
+            borderRadius: '2px',
+            border: '1px solid var(--border-hairline)',
+            backgroundColor: 'rgba(246, 247, 244, 0.95)',
+            color: 'var(--ink)',
+          }}
         >
           —, —
         </div>
@@ -481,19 +497,37 @@ function Dashboard() {
         <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1045] flex gap-2">
           <button
             onClick={() => setMobilePanel((p) => (p === 'layers' ? null : 'layers'))}
-            className="px-3 py-1.5 rounded-full text-[10px] font-mono bg-black/70 border border-white/15 text-white"
+            className="px-3 py-1.5 rounded text-[10px] font-mono transition-colors"
+            style={{
+              borderRadius: '2px',
+              border: '1px solid var(--border-hairline)',
+              backgroundColor: 'var(--paper)',
+              color: 'var(--ink)',
+            }}
           >
             <Layers className="inline w-3 h-3 mr-1" /> LAYERS
           </button>
           <button
             onClick={() => setMobilePanel((p) => (p === 'search' ? null : 'search'))}
-            className="px-3 py-1.5 rounded-full text-[10px] font-mono bg-black/70 border border-white/15 text-white"
+            className="px-3 py-1.5 rounded text-[10px] font-mono transition-colors"
+            style={{
+              borderRadius: '2px',
+              border: '1px solid var(--border-hairline)',
+              backgroundColor: 'var(--paper)',
+              color: 'var(--ink)',
+            }}
           >
             <Search className="inline w-3 h-3 mr-1" /> SEARCH
           </button>
           <button
             onClick={() => setShowAlertCenter((p) => !p)}
-            className="px-3 py-1.5 rounded-full text-[10px] font-mono bg-black/70 border border-white/15 text-white"
+            className="px-3 py-1.5 rounded text-[10px] font-mono transition-colors"
+            style={{
+              borderRadius: '2px',
+              border: '1px solid var(--border-hairline)',
+              backgroundColor: 'var(--paper)',
+              color: 'var(--ink)',
+            }}
           >
             <Bell className="inline w-3 h-3 mr-1" /> ALERTS
           </button>
@@ -502,12 +536,12 @@ function Dashboard() {
 
       {/* ══════════ SPLASH ════════════════════════════════════════ */}
       {showSplash && (
-        <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-[var(--bg-main)]">
+        <div className="absolute inset-0 z-[2000] flex items-center justify-center" style={{ backgroundColor: 'var(--paper)' }}>
           <div className="text-center">
-            <div className="text-[var(--gold-light)] font-mono font-bold tracking-[0.35em] text-xl">
+            <div className="font-mono font-bold tracking-[0.35em] text-xl" style={{ color: 'var(--ink)' }}>
               NEXAFREIGHT
             </div>
-            <div className="text-[var(--text-secondary)] font-mono text-[10px] tracking-[0.25em] mt-2">
+            <div className="font-mono text-[10px] tracking-[0.25em] mt-2" style={{ color: 'var(--text-secondary)' }}>
               MULTIMODAL CONTROL TOWER
             </div>
           </div>
@@ -535,11 +569,17 @@ function ToolbarButton({
       onClick={onClick}
       title={title}
       aria-pressed={active}
-      className={`p-1.5 rounded border transition-colors ${
+      className={`p-1.5 rounded transition-colors ${
         active
-          ? 'border-[var(--border-active)] bg-[var(--gold-primary)]/10 text-[var(--gold-light)]'
-          : 'border-transparent text-[var(--text-secondary)] hover:text-white'
+          ? 'border border-[var(--cobalt)] bg-[var(--cobalt)]/10 text-[var(--cobalt)]'
+          : 'border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--ink)]'
       }`}
+      style={{
+        borderRadius: '2px',
+        backgroundColor: active ? 'rgba(37, 71, 200, 0.08)' : 'transparent',
+        borderColor: active ? 'var(--cobalt)' : 'var(--border-hairline)',
+        color: active ? 'var(--cobalt)' : 'var(--text-secondary)',
+      }}
     >
       <Icon className="w-3.5 h-3.5" />
     </button>
