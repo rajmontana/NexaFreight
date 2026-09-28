@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    NexaFreight — Scale Bar
-   Dynamic map scale indicator — professional cartographic style
+   Nautical chart distance rule with hairline divisions
    ═══════════════════════════════════════════════════════════════ */
 
 interface ScaleBarProps {
@@ -34,6 +34,11 @@ export function scaleFor(zoom: number, latitude: number): { barWidth: number; la
   return { barWidth, label };
 }
 
+/**
+ * Wave 4: ScaleBar reskinned as authentic nautical chart distance rule.
+ * Hairline divisions, IBM Plex Mono with tabular-nums for km/m labels,
+ * Chartroom palette (text-secondary), no background.
+ */
 export default function ScaleBar({ zoom, latitude }: ScaleBarProps) {
   const scaleInfo = useMemo(() => scaleFor(zoom, latitude), [zoom, latitude]);
 
@@ -43,13 +48,21 @@ export default function ScaleBar({ zoom, latitude }: ScaleBarProps) {
         {/* Scale line with ticks */}
         <div className="relative" style={{ width: scaleInfo.barWidth }}>
           {/* Ticks */}
-          <div className="absolute left-0 top-0 w-px h-[5px] bg-[var(--text-muted)] opacity-50" />
-          <div className="absolute right-0 top-0 w-px h-[5px] bg-[var(--text-muted)] opacity-50" />
+          <div className="absolute left-0 top-0 w-px h-[5px]" style={{ backgroundColor: 'var(--text-secondary)' }} />
+          <div className="absolute right-0 top-0 w-px h-[5px]" style={{ backgroundColor: 'var(--text-secondary)' }} />
           {/* Bar */}
-          <div className="mt-[4px] h-px bg-[var(--text-muted)] opacity-60 w-full" />
+          <div className="mt-[4px] h-px w-full" style={{ backgroundColor: 'var(--text-secondary)' }} />
         </div>
       </div>
-      <span className="text-[9px] font-mono text-[var(--text-muted)] tracking-widest opacity-70 leading-none">
+      <span
+        className="text-[9px] font-mono tracking-widest leading-none"
+        style={{
+          color: 'var(--text-secondary)',
+          fontFamily: 'var(--font-mono)',
+          fontVariantNumeric: 'tabular-nums',
+          fontWeight: 500,
+        }}
+      >
         {scaleInfo.label}
       </span>
     </div>

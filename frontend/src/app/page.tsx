@@ -82,7 +82,7 @@ const UptimeClock = () => {
   }, []);
   return (
     <span className="hidden lg:inline">
-      UPTIME: <span className="text-[var(--gold-primary)]">{uptime}</span>
+      UPTIME: <span className="font-bold tabular-nums" style={{ color: 'var(--ink)' }}>{uptime}</span>
     </span>
   );
 };
@@ -96,7 +96,7 @@ const ActiveEntityCount = ({ data }: { data: Record<string, unknown[]> }) => {
         0,
       );
   return (
-    <span className="text-[var(--alert-green)] font-bold tabular-nums">
+    <span className="font-bold tabular-nums" style={{ color: 'var(--moss-positive)' }}>
       {count.toLocaleString()}
     </span>
   );

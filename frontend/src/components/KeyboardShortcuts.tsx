@@ -15,6 +15,11 @@ const SHORTCUTS = [
   { key: 'ESC', desc: 'Close panels / popups' },
 ];
 
+/**
+ * Wave 4: Keyboard shortcuts reskinned as technical ledger card.
+ * Chartroom palette, hairline borders, Archivo/Mono typography,
+ * no glass effects or glow, collapsible with Framer Motion.
+ */
 export default function KeyboardShortcuts() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -38,31 +43,43 @@ export default function KeyboardShortcuts() {
           className="fixed inset-0 z-[500] flex items-center justify-center pointer-events-auto"
           onClick={() => setIsOpen(false)}
         >
-          <div className="absolute inset-0 bg-[var(--bg-void)]/80 backdrop-blur-sm" />
+          <div className="absolute inset-0" style={{ backgroundColor: 'rgba(246, 247, 244, 0.4)' }} />
           <motion.div
             onClick={e => e.stopPropagation()}
-            className="relative glass-panel p-6 w-[320px] NexaFreight-glow"
+            className="keyboard-shortcuts-modal relative"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Keyboard className="w-4 h-4 text-[var(--gold-primary)]" />
-                <span className="text-sm font-mono font-bold text-[var(--text-heading)] tracking-wider">SHORTCUTS</span>
+            <div className="keyboard-shortcuts-modal__header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                <Keyboard className="w-4 h-4" style={{ color: 'var(--cobalt)' }} />
+                <span>SHORTCUTS</span>
               </div>
-              <button onClick={() => setIsOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+              <button
+                onClick={() => setIsOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                aria-label="Close shortcuts"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="keyboard-shortcuts-modal__list">
               {SHORTCUTS.map(s => (
-                <div key={s.key} className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-[var(--text-secondary)]">{s.desc}</span>
-                  <kbd className="px-2 py-0.5 rounded text-[9px] font-mono font-bold text-[var(--gold-primary)] bg-[var(--bg-void)] border border-[var(--border-primary)]">
+                <div key={s.key} className="keyboard-shortcuts-modal__item">
+                  <span className="keyboard-shortcuts-modal__description">{s.desc}</span>
+                  <kbd className="keyboard-shortcuts-modal__key">
                     {s.key}
                   </kbd>
                 </div>
               ))}
             </div>
-            <div className="mt-4 text-center text-[9px] font-mono text-[var(--text-muted)] tracking-widest">
+            <div className="keyboard-shortcuts-modal__footer">
               PRESS [?] OR [ESC] TO CLOSE
             </div>
           </motion.div>
