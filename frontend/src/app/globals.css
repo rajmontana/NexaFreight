@@ -1125,3 +1125,61 @@ textarea:focus-visible {
   color: var(--ink);
   box-shadow: none;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Chartroom — map popups as paper waybills
+   Neutralises maplibre's default popup chrome so the waybill card supplies
+   the entire surface: no white shell, no rounded corner, no drop shadow.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.maplibregl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* The tip triangle is drawn in paper with a hairline edge. */
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--border-hairline);
+}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--border-hairline);
+}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--border-hairline);
+}
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--border-hairline);
+}
+
+/* Close control: ink on paper, square, no hover flare. */
+.maplibregl-popup-close-button {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 5px;
+  border-radius: 0;
+  background: transparent;
+}
+.maplibregl-popup-close-button:hover {
+  background: var(--border-hairline);
+  color: var(--ink);
+}
+
+/* Waybill cards never animate in — a document does not fade. */
+[data-waybill] {
+  animation: none !important;
+}
+
+/* KPI band: tabular numerals so figures do not jitter as they poll. */
+[data-kpi] {
+  font-variant-numeric: tabular-nums;
+}
+[data-kpi]:last-of-type {
+  border-right: none;
+}
