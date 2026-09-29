@@ -18,6 +18,7 @@ import ScaleBar from '@/components/ScaleBar';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
 import GlobalStatusBar from '@/components/GlobalStatusBar';
+import KpiBand from '@/components/KpiBand';
 import LiveAlerts from '@/components/LiveAlerts';
 import FeedHealthIndicator from '@/components/FeedHealthIndicator';
 import ShipmentInspectorPanel from '@/components/ShipmentInspectorPanel';
@@ -387,6 +388,11 @@ function Dashboard() {
           </button>
         </div>
       </header>
+
+      {/* ══════════ HEADLINE KPI BAND ═════════════════════════════ */}
+      {/* Fed by /api/analytics/{sla,financial,esg,summary}. Tiles print the
+          provenance token they came from and NO DATA when a call fails. */}
+      <KpiBand window="month" />
 
       {/* ══════════ MAP ═══════════════════════════════════════════ */}
       <GlobeMap
