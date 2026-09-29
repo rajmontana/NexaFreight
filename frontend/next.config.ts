@@ -34,7 +34,12 @@ const nextConfig: NextConfig = {
           },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          // SAMEORIGIN by default. Set ALLOW_IFRAME_EMBED=1 only when the
+          // dashboard is being embedded deliberately — a wall display, a
+          // wiki page, a sandboxed preview. Never set it in production.
+          ...(process.env.ALLOW_IFRAME_EMBED === '1'
+            ? []
+            : [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }]),
           { key: 'X-XSS-Protection', value: '1; mode=block' },
         ],
       },
