@@ -12,7 +12,7 @@ const archivo = Archivo({
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
-  variable: '--font-mono',
+  variable: '--font-plex-mono',
   subsets: ['latin'],
   weight: ['400', '500', '600'],
   display: 'swap',
@@ -39,36 +39,15 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    // OSINT Tools - Primary focus
-    "OSINT tools", "free OSINT tools", "online OSINT toolkit", "OSINT framework",
-    "nmap online", "nmap scanner online", "free nmap scan", "port scanner online",
-    "DNS lookup tool", "WHOIS lookup", "reverse DNS", "DNS records",
-    "SSL certificate checker", "certificate transparency", "cert lookup",
-    "BGP routing lookup", "ASN lookup", "IP geolocation",
-    "threat intelligence", "threat intel lookup", "IP reputation check",
-    "network reconnaissance", "recon tools", "penetration testing tools",
-    "cybersecurity tools", "infosec tools", "security scanner",
-    "linux OSINT tools", "kali linux tools online", "OSINT browser tools",
-    
-    // Intelligence Platform
-    "OSINT", "open source intelligence", "intelligence platform", "global intelligence",
-    "geospatial intelligence", "GEOINT", "SIGINT", "real-time tracking",
-    "palantir alternative", "open source palantir", "intelligence dashboard",
-    
-    // Tracking & Data
-    "flight tracker", "aircraft tracking", "ADS-B tracker", "live flight radar",
-    "satellite tracking", "ISS tracker", "space station tracker",
-    "CCTV cameras live", "security cameras worldwide", "live cameras",
-    "earthquake monitor", "seismic activity", "USGS earthquake",
-    "wildfire tracker", "NASA FIRMS", "active fires",
-    "nuclear facilities map", "nuclear power plants",
-    "severe weather alerts", "weather radar",
-    "cyber threats dashboard", "CVE tracker",
-    "space weather", "solar storm", "GPS jamming",
-    "defense stocks", "commodities tracker",
-    
+    // Freight & Logistics
+    "multimodal freight", "freight tracking", "logistics control tower", "supply chain visibility",
+    "vessel tracking", "ocean freight", "air cargo tracking", "container tracking",
+    "freight intelligence", "predictive logistics", "ML freight delay", "demurrage tracker",
+    "SLA risk management", "freight optimization", "port congestion", "route disruption",
+    "cargo telemetry", "shipment visibility", "freight dashboard", "logistics platform",
+    "ESG carbon accounting", "shipping emissions", "CO2 freight",
     // Brand
-    "nexafreight", "control tower", "freight intelligence",
+    "nexafreight", "nexafreight control tower", "nexafreight platform",
   ],
   authors: [{ name: "NexaFreight", url: SITE_URL }],
   creator: "NexaFreight",

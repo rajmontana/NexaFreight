@@ -256,13 +256,11 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
     <motion.div
       initial={{ x: -60, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      transition={{ type: 'spring', damping: 30, stiffness: 200, delay: 2.8 }}
+      transition={{ type: 'spring', damping: 30, stiffness: 200, delay: 0.2 }}
       className="absolute top-0 left-0 h-full w-[48px] flex flex-col items-center pt-24 pb-6 z-50 pointer-events-auto"
       style={{
         background: 'var(--paper)',
-        border: '1px solid var(--border-hairline)',
-        borderLeft: 'none',
-        borderRight: 'none',
+        borderRight: '1px solid var(--border-hairline)',
         backdropFilter: 'none',
         WebkitBackdropFilter: 'none',
       }}
@@ -341,8 +339,9 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                     animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
                     exit={{ opacity: 0, x: -4, filter: 'blur(2px)' }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
-                    className="absolute left-[52px] top-1/2 -translate-y-1/2 min-w-[220px] rounded-lg p-3 z-[100] pointer-events-auto"
+                    className="absolute left-[52px] top-1/2 -translate-y-1/2 min-w-[220px] p-3 z-[100] pointer-events-auto"
                     style={{
+                      borderRadius: 4,
                       background: 'var(--paper)',
                       backdropFilter: 'none',
                       WebkitBackdropFilter: 'none',
@@ -443,8 +442,9 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
       <button
         onClick={() => setStudioOpen(o => !o)}
         aria-pressed={studioOpen}
-        className="w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-500 cursor-pointer"
+        className="w-10 h-10 flex items-center justify-center transition-all duration-200 cursor-pointer"
         style={{
+          borderRadius: 4,
           background: studioOpen ? 'rgba(37, 71, 200, 0.1)' : 'transparent',
           border: studioOpen ? '1px solid var(--cobalt)' : '1px solid var(--border-hairline)',
         }}
@@ -466,8 +466,9 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
       {setTheme && (
         <button
           onClick={() => setTheme(theme === 'core' ? 'ghost' : 'core')}
-          className="w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-500 cursor-pointer"
+          className="w-10 h-10 flex items-center justify-center transition-all duration-200 cursor-pointer"
           style={{
+            borderRadius: 4,
             background: theme === 'ghost' ? 'rgba(37, 71, 200, 0.1)' : 'transparent',
             border: theme === 'ghost' ? '1px solid var(--cobalt)' : '1px solid var(--border-hairline)',
           }}

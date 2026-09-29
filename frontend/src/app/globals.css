@@ -27,8 +27,8 @@
   --bg-subtle: #FAFBF9;
 
   /* ── Typography ── */
-  --font-ui: var(--font-archivo), -apple-system, sans-serif;
-  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-ui: var(--font-archivo), 'Archivo', -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
 
   /* ── Spacing ── */
   --spacing-xs: 4px;
@@ -160,6 +160,7 @@ body {
    SIDEBAR
    ═══════════════════════════════════════════════════════════════ */
 
+/* Sidebar classes kept for reference but not used in fullscreen map layout */
 .sidebar {
   position: fixed;
   left: 0;
@@ -197,13 +198,6 @@ body {
   background-color: transparent;
 }
 
-/* ── Main content area adjustment ── */
-body > main,
-body > [data-role="main"] {
-  margin-left: 200px;
-  margin-top: 48px;
-}
-
 /* ═══════════════════════════════════════════════════════════════
    LOGIN PAGE — INTERACTIVE STATES
    ═══════════════════════════════════════════════════════════════ */
@@ -216,7 +210,8 @@ input[type="password"]:focus {
   outline-offset: 2px;
 }
 
-button:not(:disabled):hover {
+/* Scoped to explicit primary CTA buttons only — NOT all buttons */
+.btn-primary:not(:disabled):hover {
   background-color: var(--cobalt-pressed);
 }
 

@@ -286,7 +286,7 @@ function Dashboard() {
   if (!isHydrated || !isAuthenticated) return null;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[var(--bg-main)]">
+    <div className="fixed inset-0 overflow-hidden" style={{ background: 'var(--paper)' }}>
       {/* ══════════ TOP STATUS STRIP (Chartroom Unified) ═══════════════════════════ */}
       <header
         className="absolute top-0 left-0 right-0 z-[1040] flex items-center gap-3 px-3.5 h-12 border-b"
@@ -298,8 +298,8 @@ function Dashboard() {
       >
         <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.14em]" style={{ color: 'var(--text-secondary)' }}>
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'var(--spectral-thread)' }} />
-            <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'var(--spectral-thread)' }} />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'var(--moss-positive)' }} />
+            <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'var(--moss-positive)' }} />
           </span>
           <span className="font-bold tracking-[0.18em]" style={{ color: 'var(--ink)' }}>NEXAFREIGHT</span>
           <span className="hidden sm:inline font-bold" style={{ color: 'var(--moss-positive)' }}>LIVE</span>

@@ -321,8 +321,152 @@ Layout Structure:
 
 ---
 
+### Screen 8: Executive Analytics, Predictive Forecast & ESG Ledger (The Analytics Suite)
+
+**Prompt for Stitch (`generate_screen_from_text`):**
+```text
+An enterprise-grade operational analytics dashboard for "NEXAFREIGHT", styled as a high-density nautical chartroom ledger. Light matte paper canvas (#F6F7F4), crisp ink text (#16181D), cobalt accent (#2547C8), and oxide red (#B4452F) for risk. Absolutely flat design — zero box-shadows, zero gradients on surfaces, strictly 1px hairline borders (#D4D5D0). All numeric figures in IBM Plex Mono with tabular figure alignment. All section headings in Archivo weight 300–500. Corner registration ticks [ ] on major panels.
+
+OVERALL LAYOUT:
+- Full-viewport panel (700px wide, anchored top-left beneath the 48px status strip).
+- Header bar at top (48px), then a scrollable content body.
+
+HEADER BAR (48px, background #FFFFFF, border-bottom 1px #D4D5D0):
+- Left: Title "OPERATIONAL ANALYTICS" in Archivo weight 500 (13px, ink #16181D), followed by a muted ProvenanceBadge chip "● DERIVED" in 10px IBM Plex Mono with a 1px hairline border (oxide/moss dot).
+- Center: Four tab selector buttons in IBM Plex Mono 11px uppercase: [SCORECARD] [FLEET] [SLA RISK] [ESG]. Active tab has solid cobalt (#2547C8) bottom border (2px) and cobalt ink. Inactive tabs are secondary ink (#5A5D66).
+- Right: Compact text "● REPLAY  ● CALIBRATED" provenance status in 10px mono and a close [✕] button in hairline square.
+
+═══════════════════════════════════════════
+TAB 1: SCORECARD — P&L Financial Scorecard
+═══════════════════════════════════════════
+
+SECTION A — Three Projection Horizon Cards (3-column grid, each card 1px hairline border, 3px radius, #FFFFFF background, corner ticks [ ]):
+  Card 1 "NEXT 24H":
+    - Headline: "NEXT 24H · 42 SHIPMENTS" in 11px uppercase mono.
+    - Data pairs (IBM Plex Mono tabular, 10px, left label in #5A5D66 / right value in #16181D):
+      Revenue:                  $2,84,000
+      Shipping Cost:            $1,91,200
+      Decided Margin:           $92,800  (moss ink #3E6B4F)
+      Undecided Revenue:        $44,000
+      Pending SLA Est:         -$12,400  (oxide ink #B4452F)
+      Pending Demurrage Est:   -$8,100   (oxide ink #B4452F)
+      Total Pending Est:       -$20,500  (oxide ink #B4452F)
+  Card 2 "NEXT 7D":
+    - Same structure, larger figures (~7× scale).
+  Card 3 "NEXT 30D":
+    - Same structure, largest figures (~30× scale).
+
+SECTION B — Revenue vs Total Costs Bar Chart (full width, 200px height):
+  - Chartroom hairline grid lines (1px #D4D5D0), no chart background fill.
+  - Grouped bars per shipment (15 shipments on x-axis, abbreviated IDs in 9px mono).
+  - Bar A "REVENUE" in solid cobalt #2547C8.
+  - Bar B "TOTAL COSTS" in solid oxide #B4452F.
+  - Y-axis tick labels in IBM Plex Mono: "$0k / $50k / $100k / $150k".
+  - Legend in 10px mono below chart: [■ Revenue] [■ Total Costs].
+  - No tooltip background gradients — tooltip card is flat white with 1px hairline.
+
+SECTION C — P&L Shipment Margin Ledger (full-width table, dense 10.5px):
+  - Table header row (11px uppercase IBM Plex Mono, #5A5D66, border-bottom 1px hairline):
+    SHIPMENT · MODE · STATUS · REVENUE · COST · FREIGHT · SLA PEN · DEMURRAGE · MARGIN · MARGIN%
+  - 8 data rows, alternating row background (#F6F7F4 / #FFFFFF).
+  - SHIPMENT column in cobalt #2547C8 mono (e.g. "SHP-8821…").
+  - MARGIN column: positive values in moss #3E6B4F, negative in oxide #B4452F.
+  - Each row is clickable (subtle hover: cobalt-tinted row highlight, no shadow).
+
+═══════════════════════════════════════════
+TAB 2: FLEET — Operations & Demand Forecast
+═══════════════════════════════════════════
+
+SECTION A — Fleet KPI Stat Grid (2 rows × 3 columns, 1px hairline cards):
+  Card 1: "TOTAL FLEET"         Value: 1,248   (large IBM Plex Mono 22px)
+  Card 2: "IN TRANSIT"          Value: 847     (cobalt #2547C8)
+  Card 3: "DELIVERED"           Value: 312     (moss #3E6B4F)
+  Card 4: "DELAYED"             Value: 89      (oxide #B4452F)
+  Card 5: "SLA BREACHES"        Value: 14      (oxide #B4452F, bold)
+  Card 6: "OPEN ALERTS"         Value: 31      (oxide #B4452F)
+  Each card: 11px uppercase mono label at top, large tabular number below, corner registration ticks [ ].
+
+SECTION B — Fleet Status Distribution (horizontal pill row, 1px hairline border bar):
+  Label: "STATUS DISTRIBUTION" in 10px uppercase mono.
+  Segmented hairline bar (no gradient, flat fills):
+    [IN TRANSIT 67.9%: cobalt fill] [DELIVERED 25.0%: moss fill] [DELAYED 7.1%: oxide fill]
+  Pill legend below bar in 10px mono.
+
+SECTION C — 90-Day Demand Forecast Sparklines (3 lanes, stacked, 1px hairline separator each):
+  Title row: "PROPHET DEMAND FORECAST · 90-DAY HORIZON" in 11px uppercase mono with [● CALIBRATED] chip.
+  Lane 1: "COMPUTERS · W. AFRICA"
+    - Inline SVG sparkline (220×40px): solid cobalt line for historical segment, dashed teal (#5AC8FA) for 90-day forecast extension.
+    - Right: "TREND ↑ +12.4%" in 10px mono (moss ink).
+  Lane 2: "CLOTHES · W. EUROPE"
+    - Same sparkline style. Right: "TREND → +2.1%".
+  Lane 3: "GARDEN TOOLS · C. AMERICA"
+    - Same sparkline style. Right: "TREND ↓ -4.8%" (oxide ink).
+  Note below sparklines: "DOTTED SEGMENT = ML FORECAST EXTRAPOLATION · [● CALIBRATED]" in 9px uppercase mono #5A5D66.
+
+═══════════════════════════════════════════
+TAB 3: SLA RISK — Penalty Ledger
+═══════════════════════════════════════════
+
+SECTION A — SLA Summary Strip (horizontal, 1px hairline-bordered strip, 44px height):
+  [AT RISK: 14  ●] [LATE: 8  ●] [ON TIME: 826  ●]  — dots colored oxide / oxide / moss.
+  All values in IBM Plex Mono 14px bold, labels in 10px mono #5A5D66.
+
+SECTION B — SLA Risk Ledger Table (full-width, dense 10.5px):
+  Header row (11px uppercase IBM Plex Mono, 1px border-bottom):
+    SHIPMENT · STATUS BADGE · DAYS TO DEADLINE · DELAY DAYS · DISRUPTION EVENT
+  Data rows (8 rows visible, scrollable):
+    Row 1: SHP-4421 | [LATE] (oxide pill, 2px radius, oxide background tint) | 0 days | +4.2 days | "JNPT berth congestion · tidal delay"
+    Row 2: SHP-8821 | [AT_RISK] (amber/oxide-light pill) | 1.5 days | +1.8 days | "Suez Canal slow transit"
+    Row 3: SHP-0012 | [ON_TIME] (moss pill) | 6.2 days | 0 days | "—"
+    Row 4: SHP-3391 | [LATE] (oxide pill) | 0 days | +7.1 days | "Rotterdam port congestion"
+    Row 5: SHP-7714 | [AT_RISK] (oxide-light pill) | 0.8 days | +0.9 days | "Weather deviation Indian Ocean"
+    Row 6: SHP-2200 | [ON_TIME] (moss pill) | 12 days | 0 days | "—"
+    Row 7: SHP-5509 | [LATE] (oxide pill) | 0 days | +2.4 days | "AIS transponder outage"
+    Row 8: SHP-9108 | [AT_RISK] (oxide-light pill) | 2.1 days | +1.1 days | "Customs hold INMAA"
+  STATUS BADGE pills: 2px radius, 10px IBM Plex Mono uppercase, flat fill (oxide #B4452F for LATE, oxide-20% tint for AT_RISK, moss #3E6B4F for ON_TIME).
+  Disruption event text in #5A5D66 italic.
+
+═══════════════════════════════════════════
+TAB 4: ESG — Carbon Accounting Ledger
+═══════════════════════════════════════════
+
+SECTION A — ESG Summary Header (1px hairline card, #FFFFFF background, corner ticks [ ]):
+  Title: "CARBON ACCOUNTING LEDGER · ACTIVE FLEET" in Archivo 500 13px.
+  Subtitle: "IMO 2024 Marine Fuel Spec · [● CALIBRATED]" in 10px mono.
+  Two summary figures side by side:
+    "TOTAL CO₂e:  4,812 kg"  in IBM Plex Mono 20px bold ink.
+    "vs AIR BASELINE:  -61.4%"  in IBM Plex Mono 20px bold moss #3E6B4F (indicating massive savings over air freight).
+
+SECTION B — Route CO₂ Breakdown Table (full-width, 1px hairline rows):
+  Header row (11px uppercase IBM Plex Mono, 1px border-bottom):
+    ROUTE · CO₂ kg · CO₂/CONTAINER · vs AIR CO₂ SAVINGS% · vs AIR COST DELTA%
+  Data rows (6 routes):
+    Row 1: INNSA → NLRTM | 1,842 kg | 18.4 kg/ctr | -62.1% (moss) | -44.8% (moss)
+    Row 2: SGSIN → INMAA | 1,204 kg | 24.1 kg/ctr | -58.3% (moss) | -51.2% (moss)
+    Row 3: CNSHA → USLAX | 988 kg  | 14.1 kg/ctr | -71.4% (moss) | -63.0% (moss)
+    Row 4: DEHAM → INBOM | 512 kg  | 12.8 kg/ctr | -59.7% (moss) | -48.1% (moss)
+    Row 5: AEDXB → GBFXT | 198 kg  | 9.9 kg/ctr  | -55.2% (moss) | -41.6% (moss)
+    Row 6: JPTYO → MXLZC | 68 kg   | 6.8 kg/ctr  | -73.8% (moss) | -66.4% (moss)
+  All CO₂ values in IBM Plex Mono tabular. Percentage savings in moss #3E6B4F.
+
+SECTION C — CO₂ Comparison Note (subtle 1px hairline info card, #FAFBF9 background):
+  "AIR FREIGHT BASELINE: ~48 kg CO₂/container per 1,000 km · SEA FREIGHT: ~8–25 kg CO₂/container per 1,000 km"
+  In 9px uppercase IBM Plex Mono #5A5D66.
+
+DESIGN RULES (apply globally across all tabs):
+- Font pairing: Archivo (UI, headings) + IBM Plex Mono (all numbers, codes, labels).
+- Color tokens: paper #F6F7F4, surface-raised #FFFFFF, surface-subtle #FAFBF9, ink #16181D, secondary #5A5D66, hairline #D4D5D0, cobalt #2547C8, oxide #B4452F, moss #3E6B4F.
+- Zero box-shadows. Zero border-radius > 4px. Zero gradients on panel fills.
+- 1px hairline (#D4D5D0) dividers between all rows, sections, and cards.
+- Corner registration L-ticks [ ] on every major panel boundary.
+- Currency: USD primary display (e.g. $2,84,000) with Indian Rupee dual-display (₹) where indicated.
+- All status chips/pills: flat filled, 2px border-radius, 10px IBM Plex Mono uppercase text.
+```
+
+---
+
 ## 3. Workflow for Running These in Stitch
 
 1. **Step 1 (Initialize Design System)**: Run `upload_design_md` or `create_design_system` in Stitch using Section 1 above.
-2. **Step 2 (Generate Screens)**: Call `generate_screen_from_text` sequentially for Screen 1 through Screen 7 using the exact prompts in Section 2.
+2. **Step 2 (Generate Screens)**: Call `generate_screen_from_text` sequentially for Screen 1 through Screen 8 using the exact prompts in Section 2.
 3. **Step 3 (Audit & Variants)**: Generate variants for mobile and tablet breakpoints with `generate_variants`.
