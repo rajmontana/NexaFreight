@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-02T15:34:23.822479+00:00",
-  "git_sha": "4900bc4",
+  "generated_at": "2026-09-27T17:59:24.344960+00:00",
+  "git_sha": "5e58cf5",
   "label_column": "historical_late_delivery",
   "time_axis_column": "sla_deadline",
   "split_dates": {
@@ -54,7 +54,7 @@
     "sla_month": "int64",
     "sla_weekday": "int64",
     "sla_quarter": "int64",
-    "total_distance_km": "float64",
+    "total_distance_km": "int64",
     "leg_count": "int64"
   },
   "categorical_levels": {

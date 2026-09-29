@@ -19,6 +19,7 @@ import CopilotVerdictCard from '@/components/CopilotVerdictCard';
 import ProvenanceBadge from "./ProvenanceBadge";
 import { ProvenanceChip } from "./ProvenanceBadge";
 import RouteAlternativesPanel from "./RouteAlternativesPanel";
+import ShipmentMilestoneTracker from "./ShipmentMilestoneTracker";
 
 
 interface ShipmentInspectorPanelProps {
@@ -428,46 +429,16 @@ export default function ShipmentInspectorPanel({
             </div>
           </section>
 
-          <div>
-            <p className="text-xs" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Route version</p>
-            <p className="text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--font-ui)' }}>{shipment.route_version ?? 1}</p>
-          </div>
-
-          {shipment.legs && shipment.legs.length > 0 && (
-            <div>
-              <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Route plan</p>
-              <ul className="space-y-1 text-xs">
-                {shipment.legs.map((leg) => (
-                  <li
-                    key={String(leg.id)}
-                    className="rounded p-2"
-                    style={{
-                      border: '1px solid var(--border-hairline)',
-                      backgroundColor: 'var(--paper)',
-                    }}
-                  >
-                    <p className="font-medium" style={{ color: 'var(--ink)', fontFamily: 'var(--font-ui)' }}>{leg.mode}</p>
-                    <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                      {leg.planned_departure
-                        ? new Date(leg.planned_departure).toLocaleString()
-                        : "TBD"}
-                      {" → "}
-                      {leg.planned_arrival
-                        ? new Date(leg.planned_arrival).toLocaleString()
-                        : "TBD"}
-                    </p>
-                    <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>
-                      {leg.origin} → {leg.destination}
-                    </p>
-                    <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>
-                      {leg.distance_km ? `${leg.distance_km.toFixed(0)} km · ` : ""}
-                      {leg.status}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* ─── Project44-style Multimodal Milestone Tracker ─── */}
+          <section aria-label="Route milestones" style={{ borderTop: '1px solid var(--border-hairline)', paddingTop: 12 }}>
+            <ShipmentMilestoneTracker
+              legs={shipment.legs || []}
+              alerts={alerts}
+              origin={shipment.origin}
+              destination={shipment.dest ?? shipment.destination}
+              status={shipment.status}
+            />
+          </section>
 
           {/* ─── Route alternatives (multimodal planner) ─── */}
           <section

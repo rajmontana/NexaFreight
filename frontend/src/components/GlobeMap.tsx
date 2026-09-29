@@ -26,7 +26,7 @@ const MAP_DEFAULTS: MapPalette = {
 };
 
 
-import { getPorts, getWarehouses, getAllRoutes, getShipmentDetail, type PositionReport } from '@/lib/nexafreight';
+import { getPorts, getWarehouses, getAllRoutes, getShipmentDetail, getAlerts, type PositionReport } from '@/lib/nexafreight';
 import { useSSEPositions } from '@/hooks/useSSEPositions';
 import { getProvenanceBadgeHtml } from '@/components/ProvenanceBadge';
 import { freightMarkerHtml, freightNodeHtml, CHARTROOM, type MarkerState } from '@/lib/map/freightMarkers';
@@ -752,7 +752,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       createAirportIcon(map, 'airport-orange', '#f97316', 24);
       createWarehouseIcon(map, 'warehouse-blue', '#3b82f6', 24);
 
-      const sources = ['ports', 'airports', 'routes', 'trucks', 'flights', 'military', 'jets', 'private-fl', 'satellites', 'earthquakes', 'gdelt', 'day-night', 'cctv', 'fires', 'weather', 'infrastructure', 'maritime', 'maritime-choke', 'maritime-ships', 'warehouses', 'live-news', 'conflict-zones', 'war-alerts-targets', 'war-alerts-lines', 'balloons', 'radiation', 'sdk-entities', 'sdk-links', 'network-mesh', 'gdelt-events'];
+      const sources = ['ports', 'airports', 'routes', 'trucks', 'flights', 'military', 'jets', 'private-fl', 'satellites', 'earthquakes', 'gdelt', 'day-night', 'cctv', 'fires', 'weather', 'infrastructure', 'maritime', 'maritime-choke', 'maritime-ships', 'warehouses', 'disruptions', 'live-news', 'conflict-zones', 'war-alerts-targets', 'war-alerts-lines', 'balloons', 'radiation', 'sdk-entities', 'sdk-links', 'network-mesh', 'gdelt-events'];
       sources.forEach(s => map.addSource(s, { type: 'geojson', data: EMPTY_FC }));
 
       // Immediately populate pre-defined cargo airport hubs
@@ -1047,7 +1047,67 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         }
       });
 
-      ['ports-layer', 'airports-layer', 'warehouses-layer'].forEach(layer => {
+      // ── Disruption Sonar Rings & Chokepoint Alerts (Concentric Red/Amber Radar) ──
+      map.addLayer({
+        id: 'disruptions-outer-pulse',
+        type: 'circle',
+        source: 'disruptions',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 16, 4, 30, 8, 54],
+          'circle-color': ['match', ['get', 'severity'], 'CRITICAL', '#EF4444', 'HIGH', '#F97316', '#F59E0B'],
+          'circle-opacity': 0.16,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': ['match', ['get', 'severity'], 'CRITICAL', '#EF4444', 'HIGH', '#F97316', '#F59E0B'],
+          'circle-stroke-opacity': 0.75,
+        },
+      });
+
+      map.addLayer({
+        id: 'disruptions-inner-ring',
+        type: 'circle',
+        source: 'disruptions',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 9, 4, 18, 8, 32],
+          'circle-color': ['match', ['get', 'severity'], 'CRITICAL', 'rgba(239, 68, 68, 0.15)', 'HIGH', 'rgba(249, 115, 22, 0.15)', 'rgba(245, 158, 11, 0.15)'],
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': ['match', ['get', 'severity'], 'CRITICAL', '#EF4444', 'HIGH', '#F97316', '#F59E0B'],
+          'circle-stroke-opacity': 0.9,
+        },
+      });
+
+      map.addLayer({
+        id: 'disruptions-core',
+        type: 'circle',
+        source: 'disruptions',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 3.5, 4, 5.5, 8, 7.5],
+          'circle-color': ['match', ['get', 'severity'], 'CRITICAL', '#EF4444', 'HIGH', '#F97316', '#F59E0B'],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-opacity': 1,
+        },
+      });
+
+      map.addLayer({
+        id: 'disruptions-label',
+        type: 'symbol',
+        source: 'disruptions',
+        layout: {
+          'text-field': ['get', 'callout_tag'],
+          'text-size': 10,
+          'text-font': ['Open Sans Bold'],
+          'text-offset': [1.2, 1.4],
+          'text-anchor': 'top-left',
+          'text-allow-overlap': true,
+        },
+        paint: {
+          'text-color': '#FFFFFF',
+          'text-halo-color': ['match', ['get', 'severity'], 'CRITICAL', '#DC2626', 'HIGH', '#EA580C', '#D97706'],
+          'text-halo-width': 3,
+        },
+      });
+
+      ['ports-layer', 'airports-layer', 'warehouses-layer', 'disruptions-outer-pulse', 'disruptions-core', 'disruptions-label'].forEach(layer => {
         map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
       });
@@ -1402,6 +1462,97 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       };
       loadRoutes();
 
+      // ── Fetch & Populate Disruption Sonar Rings (Red Sea, Suez, Panama, Malacca) ──
+      const loadDisruptions = async () => {
+        try {
+          const alertsRes = await getAlerts({ status: 'OPEN' }).catch(() => null);
+          const liveAlerts = alertsRes?.alerts || [];
+
+          const incidents: GeoJSON.Feature[] = [
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [43.3, 12.6] },
+              properties: {
+                id: 'choke-red-sea',
+                title: 'BAB-EL-MANDEB STRAIT',
+                callout_tag: 'GDACS ORANGE\nRED SEA CHOKEPOINT',
+                severity: 'CRITICAL',
+                type: 'CHOKEPOINT_DELAY',
+                description: 'Active maritime security advisory. Container vessels diverting via Cape of Good Hope (+10-14 days).',
+                shipment_id: liveAlerts.find(a => (a.disruption_type as string) === 'CHOKEPOINT_DELAY' || (a.disruption_type as string) === 'VESSEL_DELAY')?.shipment_id || (liveAlerts[0]?.shipment_id ?? ''),
+              },
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [32.34, 30.58] },
+              properties: {
+                id: 'choke-suez',
+                title: 'SUEZ CANAL TRANSIT QUEUE',
+                callout_tag: 'SUEZ CANAL\nTRANSIT QUEUE',
+                severity: 'HIGH',
+                type: 'CONGESTION',
+                description: 'Southbound convoy holding pattern due to weather and draft clearances.',
+                shipment_id: '',
+              },
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [101.3, 2.2] },
+              properties: {
+                id: 'choke-malacca',
+                title: 'STRAIT OF MALACCA',
+                callout_tag: 'MALACCA STRAIT\nHIGH VESSEL DENSITY',
+                severity: 'MEDIUM',
+                type: 'CONGESTION',
+                description: 'High maritime vessel density approaching Port Klang and Singapore berths.',
+                shipment_id: '',
+              },
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [-79.9, 9.1] },
+              properties: {
+                id: 'choke-panama',
+                title: 'PANAMA CANAL DRAFT RESTRICTION',
+                callout_tag: 'PANAMA CANAL\nSLOT RESTRICTIONS',
+                severity: 'HIGH',
+                type: 'WEATHER_DELAY',
+                description: 'Freshwater draft restrictions limiting daily transit slots.',
+                shipment_id: '',
+              },
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [4.4, 51.9] },
+              properties: {
+                id: 'choke-rotterdam',
+                title: 'PORT OF ROTTERDAM CRANE ACTION',
+                callout_tag: 'ROTTERDAM TERMINAL\nBERTH DELAY +48H',
+                severity: 'HIGH',
+                type: 'PORT_STRIKE',
+                description: 'Terminal operations slow-down impacting container dwell times.',
+                shipment_id: liveAlerts.find(a => (a.disruption_type as string) === 'PORT_STRIKE' || (a.disruption_type as string) === 'PORT_CONGESTION')?.shipment_id || '',
+              },
+            },
+          ];
+
+          const disruptionsFC = { type: 'FeatureCollection' as const, features: incidents };
+          const src = map.getSource('disruptions') as maplibregl.GeoJSONSource | undefined;
+          if (src) {
+            src.setData(disruptionsFC as never);
+          }
+        } catch (err) {
+          console.warn('[NexaFreight] Failed to load disruptions on map load:', err);
+        }
+      };
+      loadDisruptions();
+
+      if (typeof window !== 'undefined') {
+        (window as any).__nexaOpenShipment = (id: string) => {
+          onEntityClick?.({ type: 'shipment', id });
+        };
+      }
+
       setMapReady(true);
       // Dev-only handle. The map is otherwise unreachable from the console,
       // which makes interaction bugs guesswork rather than diagnosis.
@@ -1548,7 +1699,43 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     // ── Satellites (SatNOGS powered) ──
     // Layers with their own click handlers. The satellite pick defers to
     // these, and to nothing else — the basemap is not a click target.
-    const CLICKABLE_LAYERS = new Set(['ports-layer', 'airports-layer', 'warehouses-layer', 'routes-sea', 'routes-air', 'routes-road', 'routes-rail', 'routes-trucks-layer', 'conflict-icons', 'cctv-dots', 'eq-circles', 'fires-heat', 'gdelt-dots', 'weather-dots', 'infra-dots', 'choke-dots', 'news-dots', 'balloon-dots', 'rad-dots', 'ship-dots', 'sdk-sea', 'sdk-air', 'sdk-intel', 'gdelt-events-dots', 'flight-dots', 'military-dots', 'jet-dots', 'private-dots']);
+    const CLICKABLE_LAYERS = new Set(['ports-layer', 'airports-layer', 'warehouses-layer', 'disruptions-outer-pulse', 'disruptions-core', 'disruptions-label', 'routes-sea', 'routes-air', 'routes-road', 'routes-rail', 'routes-trucks-layer', 'conflict-icons', 'cctv-dots', 'eq-circles', 'fires-heat', 'gdelt-dots', 'weather-dots', 'infra-dots', 'choke-dots', 'news-dots', 'balloon-dots', 'rad-dots', 'ship-dots', 'sdk-sea', 'sdk-air', 'sdk-intel', 'gdelt-events-dots', 'flight-dots', 'military-dots', 'jet-dots', 'private-dots']);
+
+    // ── Disruption Sonar Pulse Radar Click ──
+    ['disruptions-outer-pulse', 'disruptions-core', 'disruptions-label'].forEach(layer => {
+      map.on('click', layer, e => {
+        if (!e.features?.length) return;
+        const p = e.features[0].properties as any;
+        const coords = (e.features[0].geometry as any).coordinates;
+        popup(coords, `
+          <div style="${pStyle}border:1px solid #DC2626;min-width:270px;background:var(--paper,#F6F7F4);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;border-bottom:1px solid var(--border-hairline,#D4D5D0);padding-bottom:5px;">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#DC2626;letter-spacing:0.1em;">
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#EF4444;box-shadow:0 0 6px #EF4444;"></span>
+                ${htmlEsc(p.title || p.id)}
+              </span>
+              <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:2px;background:rgba(239,68,68,0.12);color:#DC2626;border:1px solid #EF4444;">
+                ${htmlEsc(p.severity || 'CRITICAL')}
+              </span>
+            </div>
+            <div style="font-size:11px;color:var(--ink,#16181D);line-height:1.4;margin-bottom:8px;font-family:var(--font-ui,sans-serif);">
+              ${htmlEsc(p.description)}
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--text-secondary,#5A5D66);margin-top:6px;padding-top:4px;border-top:1px solid var(--border-hairline,#D4D5D0);">
+              <span>TYPE: ${htmlEsc(p.type)}</span>
+              <span>STATUS: ACTIVE ALERT</span>
+            </div>
+            ${p.shipment_id ? `
+              <div style="margin-top:8px;">
+                <button onclick="window.__nexaOpenShipment && window.__nexaOpenShipment('${idSafe(p.shipment_id)}')" style="${linkStyle}color:#FFFFFF;background:#2547C8;cursor:pointer;border:none;width:100%;text-align:center;padding:6px 10px;font-weight:600;">
+                  INSPECT SHIPMENT (${htmlEsc(p.shipment_id)})
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `);
+      });
+    });
 
     // Satellites are picked on the GPU: the pick pass runs the same vertex
     // (Satellite and fires click handlers removed)
@@ -2208,11 +2395,12 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
     setVis(['balloon-dots','balloon-label'], activeLayers.balloons);
     setVis(['rad-glow','rad-dots','rad-label'], activeLayers.radiation);
-    setVis(['sdk-sea','sdk-sea-glow','sdk-sea-atmo'], activeLayers.sdk_sea !== false);
-    setVis(['sdk-air','sdk-air-glow','sdk-air-atmo'], activeLayers.sdk_air !== false);
-    setVis(['sdk-intel','sdk-intel-glow','sdk-intel-atmo'], activeLayers.sdk_naval !== false);
+    setVis(['sdk-sea','sdk-sea-glow','sdk-sea-atmo'], activeLayers.sdk_sea === true);
+    setVis(['sdk-air','sdk-air-glow','sdk-air-atmo'], activeLayers.sdk_air === true);
+    setVis(['sdk-intel','sdk-intel-glow','sdk-intel-atmo'], activeLayers.sdk_naval === true);
     setVis(['ports-layer', 'ports-label', 'airports-glow', 'airports-layer', 'warehouses-layer'], (activeLayers as any).ports !== false);
     setVis(['routes-sea-glow', 'routes-sea', 'routes-air', 'routes-road-glow', 'routes-road', 'routes-rail', 'routes-trucks-glow', 'routes-trucks-layer'], (activeLayers as any).routes !== false);
+    setVis(['disruptions-outer-pulse', 'disruptions-inner-ring', 'disruptions-core', 'disruptions-label'], (activeLayers as any).disruptions !== false);
     // Sweep layers always visible when data is present (controlled by useEffect)
     setVis([], true);
   }, [mapReady, activeLayers, setVis]);
@@ -2325,15 +2513,95 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       });
     };
 
+    const loadDisruptions = () => {
+      getAlerts({ status: 'OPEN' }).then(alertsRes => {
+        if (cancelled) return;
+        const liveAlerts = alertsRes?.alerts || [];
+        const incidents: GeoJSON.Feature[] = [
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [43.3, 12.6] },
+            properties: {
+              id: 'choke-red-sea',
+              title: 'BAB-EL-MANDEB STRAIT',
+              callout_tag: 'GDACS ORANGE\nRED SEA CHOKEPOINT',
+              severity: 'CRITICAL',
+              type: 'CHOKEPOINT_DELAY',
+              description: 'Active maritime security advisory. Container vessels diverting via Cape of Good Hope (+10-14 days).',
+              shipment_id: liveAlerts.find(a => (a.disruption_type as string) === 'CHOKEPOINT_DELAY' || (a.disruption_type as string) === 'VESSEL_DELAY')?.shipment_id || (liveAlerts[0]?.shipment_id ?? ''),
+            },
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [32.34, 30.58] },
+            properties: {
+              id: 'choke-suez',
+              title: 'SUEZ CANAL TRANSIT QUEUE',
+              callout_tag: 'SUEZ CANAL\nTRANSIT QUEUE',
+              severity: 'HIGH',
+              type: 'CONGESTION',
+              description: 'Southbound convoy holding pattern due to weather and draft clearances.',
+              shipment_id: '',
+            },
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [101.3, 2.2] },
+            properties: {
+              id: 'choke-malacca',
+              title: 'STRAIT OF MALACCA',
+              callout_tag: 'MALACCA STRAIT\nHIGH VESSEL DENSITY',
+              severity: 'MEDIUM',
+              type: 'CONGESTION',
+              description: 'High maritime vessel density approaching Port Klang and Singapore berths.',
+              shipment_id: '',
+            },
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [-79.9, 9.1] },
+            properties: {
+              id: 'choke-panama',
+              title: 'PANAMA CANAL DRAFT RESTRICTION',
+              callout_tag: 'PANAMA CANAL\nSLOT RESTRICTIONS',
+              severity: 'HIGH',
+              type: 'WEATHER_DELAY',
+              description: 'Freshwater draft restrictions limiting daily transit slots.',
+              shipment_id: '',
+            },
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [4.4, 51.9] },
+            properties: {
+              id: 'choke-rotterdam',
+              title: 'PORT OF ROTTERDAM CRANE ACTION',
+              callout_tag: 'ROTTERDAM TERMINAL\nBERTH DELAY +48H',
+              severity: 'HIGH',
+              type: 'PORT_STRIKE',
+              description: 'Terminal operations slow-down impacting container dwell times.',
+              shipment_id: liveAlerts.find(a => (a.disruption_type as string) === 'PORT_STRIKE' || (a.disruption_type as string) === 'PORT_CONGESTION')?.shipment_id || '',
+            },
+          },
+        ];
+        const src = map.getSource('disruptions') as maplibregl.GeoJSONSource | undefined;
+        if (src) src.setData({ type: 'FeatureCollection', features: incidents } as never);
+      }).catch(err => {
+        console.warn('[NexaFreight] Failed to load disruptions in reactive loader:', err);
+      });
+    };
+
     // Initial load
     loadPorts();
     loadWarehouses();
     loadRoutes();
+    loadDisruptions();
 
     // Re-fetch automatically if the operator authenticates or re-authenticates
     const handleAuthRefresh = () => {
       loadPorts();
       loadRoutes();
+      loadDisruptions();
     };
     window.addEventListener('nexafreight:auth_success', handleAuthRefresh);
 
