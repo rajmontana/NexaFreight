@@ -35,12 +35,12 @@ export function getProvenanceConfig(provenance?: ProvenanceType): ProvenanceConf
 
   if (norm === 'CALIBRATED') {
     return {
-      label: 'CALIBRATED',
+      label: 'LIVE',
       provenance: norm,
       bg: 'transparent',
-      text: 'var(--ink)',
+      text: '#10B981',
       border: '1px solid var(--border-hairline)',
-      dotColor: 'var(--cobalt)',
+      dotColor: '#10B981',
       cssClass: 'provenance-live',
       title: 'Calibrated data source',
     };
@@ -48,12 +48,12 @@ export function getProvenanceConfig(provenance?: ProvenanceType): ProvenanceConf
 
   if (norm === 'REAL' || norm === 'LIVE') {
     return {
-      label: 'REAL',
+      label: 'LIVE',
       provenance: norm,
       bg: 'transparent',
-      text: 'var(--ink)',
+      text: '#10B981',
       border: '1px solid var(--border-hairline)',
-      dotColor: 'var(--moss-positive)',
+      dotColor: '#10B981',
       cssClass: 'provenance-live',
       title: 'Real data source',
     };
@@ -61,12 +61,12 @@ export function getProvenanceConfig(provenance?: ProvenanceType): ProvenanceConf
 
   if (norm === 'REPLAYED' || norm === 'DERIVED' || norm === 'REPLAY') {
     return {
-      label: 'DERIVED',
+      label: 'REPLAY',
       provenance: norm || 'DERIVED',
       bg: 'transparent',
-      text: 'var(--ink)',
+      text: '#94A3B8',
       border: '1px solid var(--border-hairline)',
-      dotColor: 'var(--text-secondary)',
+      dotColor: '#94A3B8',
       cssClass: 'provenance-replay',
       title: 'Historical Replayed AIS Data (Not Live)',
     };
@@ -74,12 +74,12 @@ export function getProvenanceConfig(provenance?: ProvenanceType): ProvenanceConf
 
   // SIMULATED, MOCK, or default fallback
   return {
-    label: 'SIMULATED',
+    label: 'SIM',
     provenance: norm || 'SIMULATED',
     bg: 'transparent',
-    text: 'var(--ink)',
+    text: '#F59E0B',
     border: '1px dashed var(--border-hairline)',
-    dotColor: 'var(--oxide-risk)',
+    dotColor: '#F59E0B',
     cssClass: 'provenance-sim',
     title: 'Simulated Dynamic Trajectory (Synthetic Demo Feed)',
   };
