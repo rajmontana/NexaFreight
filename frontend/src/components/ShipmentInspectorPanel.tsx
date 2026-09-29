@@ -14,6 +14,8 @@ import {
   type ShipmentFinancialsResponse,
   type ShipmentPredictResponse,
 } from "@/lib/nexafreight";
+import DossierHeaderCards, { buildDossierCards } from '@/components/DossierHeaderCards';
+import CopilotVerdictCard from '@/components/CopilotVerdictCard';
 import ProvenanceBadge from "./ProvenanceBadge";
 import { ProvenanceChip } from "./ProvenanceBadge";
 import RouteAlternativesPanel from "./RouteAlternativesPanel";
@@ -159,6 +161,24 @@ export default function ShipmentInspectorPanel({
 
       {shipment && (
         <div className="space-y-4">
+          {/* Dossier header cards — lane / SLA / exposure in rupees / CO2.
+              Figures come from the shipment detail + financials payloads;
+              anything absent prints an em dash rather than a zero. */}
+          <DossierHeaderCards
+            cards={buildDossierCards({
+              origin: shipment.origin,
+              destination: shipment.dest ?? shipment.destination,
+              status: shipment.status,
+              slaDeadline: (shipment as { sla_deadline?: string }).sla_deadline ?? null,
+              slaStatus: (shipment as { sla_status?: string }).sla_status ?? null,
+              exposureUsd: financials
+                ? financials.pnl.sla_penalty_usd + financials.pnl.demurrage_usd
+                : null,
+              co2Kg: (shipment as { kg_co2?: number }).kg_co2 ?? null,
+              containers: shipment.container_count ?? null,
+            })}
+          />
+
           <div>
             <p className="text-xs" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Reference</p>
             <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>
@@ -394,15 +414,16 @@ export default function ShipmentInspectorPanel({
               </div>
               {copilotError && <p className="text-xs" style={{ color: 'var(--oxide-risk)', fontFamily: 'var(--font-ui)' }}>{copilotError}</p>}
               {copilotAnswer && (
-                <div className="rounded p-2 space-y-1" style={{ border: '1px solid var(--border-hairline)', backgroundColor: 'var(--paper)' }}>
-                  <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--ink)', fontFamily: 'var(--font-ui)' }}>{copilotAnswer.answer}</p>
-                  <div className="flex items-center gap-2">
-                    <ProvenanceBadge provenance={copilotAnswer.provenance} size="xs" />
-                    <span className="text-[10px]" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>
-                      source: {copilotAnswer.source}
-                    </span>
-                  </div>
-                </div>
+                /* Verdict card. `source` is load-bearing here: a
+                   rules_fallback answer is flagged as such instead of being
+                   presented with the same authority as a model reply. */
+                <CopilotVerdictCard
+                  verdict={{
+                    answer: copilotAnswer.answer,
+                    source: copilotAnswer.source,
+                    provenance: String(copilotAnswer.provenance),
+                  }}
+                />
               )}
             </div>
           </section>
