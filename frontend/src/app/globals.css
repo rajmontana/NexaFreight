@@ -1107,3 +1107,21 @@ textarea:focus-visible {
   flex-shrink: 0;
   font-size: 12px;
 }
+
+
+/* ── Chartroom repair: flat fallbacks for legacy surfaces (Wave-1 patch) ── */
+.glass-panel {
+  background: var(--paper);
+  border: 1px solid var(--border-hairline);
+  border-radius: 4px;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.provenance-live,
+.provenance-replay,
+.provenance-sim {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+}

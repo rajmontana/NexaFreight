@@ -186,7 +186,7 @@ export default function LiveAlerts({ data, onLocate, onWatchFeed }: LiveAlertsPr
                           onWatchFeed(alert.feedUrl, alert.title);
                         }
                       }}
-                      className="w-full text-left p-2.5 rounded-lg border transition-all group cursor-pointer"
+                      className="w-full text-left p-2.5 rounded-[4px] border transition-all group cursor-pointer"
                       style={{
                         backgroundColor: 'white',
                         border: '1px solid var(--border-hairline)',

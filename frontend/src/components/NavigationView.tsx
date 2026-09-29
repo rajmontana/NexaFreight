@@ -320,7 +320,7 @@ export default function NavigationView({
       )}
 
       {!fix && (
-        <div className="glass-panel px-4 py-2 text-[11px] text-[var(--alert-orange)]">
+        <div className="border border-[var(--border-hairline)] bg-[var(--paper)] px-4 py-2 text-[11px] text-[var(--alert-orange)]">
           Waiting for a position fix… navigation needs HTTPS or localhost.
         </div>
       )}

@@ -293,7 +293,7 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                 aria-expanded={isOpen}
                 aria-label={`${group.fullLabel}${activeCount ? ` — ${activeCount} active` : ''}`}
                 title={group.fullLabel}
-                className="relative w-10 h-10 flex items-center justify-center cursor-pointer rounded-lg transition-all duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--cobalt)]"
+                className="relative w-10 h-10 flex items-center justify-center cursor-pointer rounded-[4px] transition-all duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--cobalt)]"
                 style={{
                   background: isPinned
                     ? 'rgba(37, 71, 200, 0.1)'

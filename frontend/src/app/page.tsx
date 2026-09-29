@@ -144,7 +144,7 @@ function Dashboard() {
     ts: number;
   } | null>(null);
   const [mapProjection, setMapProjection] = useState<'globe' | 'mercator'>('mercator');
-  const [mapStyle, setMapStyle] = useState<'dark' | 'satellite'>('dark');
+  const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'paper'>('paper');
   const [globeTheme, setGlobeTheme] = useState<'core' | 'ghost'>('core');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -177,7 +177,7 @@ function Dashboard() {
     maritime: true,
     flights: false,
     weather: false,
-    global_incidents: true,
+    global_incidents: false,
     cables: false,
   });
 
@@ -313,9 +313,9 @@ function Dashboard() {
 
         {/* Center: In transit / At risk / Demurrage readouts + Spectral thread */}
         <div className="hidden xl:flex items-center gap-4 text-[10px] font-mono tracking-[0.08em] mx-auto" style={{ color: 'var(--text-secondary)' }}>
-          <span className="tabular-nums">IN TRANSIT <strong style={{ color: 'var(--ink)' }}>147</strong></span>
-          <span className="tabular-nums" style={{ color: 'var(--oxide-risk)' }}>AT RISK <strong>8</strong></span>
-          <span className="tabular-nums">DEMURRAGE <strong style={{ color: 'var(--ink)' }}>3</strong></span>
+          <span className="tabular-nums">IN TRANSIT <strong style={{ color: 'var(--ink)' }}>--</strong></span>
+          <span className="tabular-nums" style={{ color: 'var(--oxide-risk)' }}>AT RISK <strong>--</strong></span>
+          <span className="tabular-nums">DEMURRAGE <strong style={{ color: 'var(--ink)' }}>--</strong></span>
           <div
             className="w-16 h-[2px] rounded"
             style={{

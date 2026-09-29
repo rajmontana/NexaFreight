@@ -336,6 +336,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
   const palette: MapPalette = MAP_DEFAULTS;
   const paletteRef = useRef(palette);
   const prevStyleRef = useRef(mapStyle);
+  const initialStyleRef = useRef(mapStyle);
   const prevDrawnPolygonsRef = useRef<string[]>([]);
   const prevArcgisLayersRef = useRef<string[]>([]);
 
@@ -750,7 +751,10 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     if (!containerRef.current || mapRef.current) return;
     
     // Select basemap style
-    const styleUrl = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+    // CHARTROOM: 'paper' (positron) is the default basemap; 'dark' stays available
+    const styleUrl = initialStyleRef.current === 'paper'
+      ? 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
+      : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
     const container = containerRef.current;
     const baseOptions = {
@@ -3220,7 +3224,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     const map = mapRef.current;
 
     try {
-      if (mapStyle !== 'dark') {
+      if (mapStyle === 'satellite') {
         // Add satellite raster tiles
         if (!map.getSource('satellite-tiles')) {
           map.addSource('satellite-tiles', {
