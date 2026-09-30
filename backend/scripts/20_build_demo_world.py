@@ -292,7 +292,7 @@ async def seed_congestion_story(spike_port: str = "INJNP", ratio: float = 1.8) -
     async with get_session_factory()() as session:
         port_nodes = (
             await session.execute(
-                select(NetworkNode).where(NetworkNode.locode.like("IN%"))
+                select(NetworkNode).where(NetworkNode.node_type == "PORT")
             )
         ).scalars().all()
         port_nodes = [n for n in port_nodes if str(n.node_type).split(".")[-1] == "PORT"]  # not AIRPORT
@@ -379,6 +379,94 @@ async def seed_congestion_story(spike_port: str = "INJNP", ratio: float = 1.8) -
     return {"ports": seeded_ports, "stats": stats_written, "spike": spike_info}
 
 
+async def dress_legs_for_reality() -> dict:
+    """Make the map and manifests tell the same story as the clock (wave 5D).
+
+    The demo world shipped three gaps that read as "out of sync" on the
+    control tower: the legs table had no route_geometry (map/routes returned
+    zero features), every leg stayed PLANNED forever, and every shipment was
+    DELIVERED while most legs arrived in the future. This pass:
+
+    1. Fills legs.route_geometry_json with a mode-flavoured LineString
+       (SEA gets a long detour bend, AIR a great-circle-ish lift, ROAD small
+       road bends) between origin/destination Locations.
+    2. Grades leg status against wall-clock (COMPLETED / IN_PROGRESS / PLANNED).
+    3. Derives shipment status from its legs (any active → IN_TRANSIT, all
+       past → DELIVERED, otherwise PLANNED).
+
+    Idempotent: geometry is regenerated, statuses recomputed, every run.
+    """
+    import json as _json
+    import math as _math
+
+    from nexafreight.models.location import Location
+    from nexafreight.models.shipment import Leg, Shipment
+
+    def _bend(a: tuple[float, float], b: tuple[float, float], frac: float, off: float) -> list[float]:
+        lat = a[1] + (b[1] - a[1]) * frac
+        lon = a[0] + (b[0] - a[0]) * frac
+        d = _math.hypot(b[0] - a[0], b[1] - a[1])
+        if d == 0:
+            return [round(lon, 4), round(lat, 4)]
+        nx, ny = -(b[1] - a[1]) / d, (b[0] - a[0]) / d
+        return [round(lon + nx * off * d, 4), round(lat + ny * off * d, 4)]
+
+    now = datetime.now(UTC).replace(tzinfo=None)
+    async with get_session_factory()() as session:
+        locs = {
+            row.id: (float(row.longitude), float(row.latitude))
+            for row in (await session.execute(select(Location))).scalars()
+        }
+        legs = (await session.execute(select(Leg))).scalars().all()
+
+        filled = 0
+        by_shipment: dict[str, list[tuple[datetime, datetime]]] = {}
+        for leg in legs:
+            a = locs.get(leg.origin_id)
+            b = locs.get(leg.destination_id)
+            if a and b:
+                mode = str(leg.transport_mode).split(".")[-1]
+                if mode == "SEA":
+                    coords = [list(a), _bend(a, b, 0.35, 0.18), _bend(a, b, 0.65, 0.22), list(b)]
+                elif mode == "AIR":
+                    coords = [list(a), _bend(a, b, 0.5, 0.10), list(b)]
+                else:
+                    coords = [list(a), _bend(a, b, 0.3, 0.06), _bend(a, b, 0.7, -0.05), list(b)]
+                leg.route_geometry_json = _json.dumps({"type": "LineString", "coordinates": coords})
+                filled += 1
+
+            dep = leg.planned_departure.replace(tzinfo=None) if leg.planned_departure.tzinfo else leg.planned_departure
+            arr = leg.planned_arrival.replace(tzinfo=None) if leg.planned_arrival.tzinfo else leg.planned_arrival
+            if dep <= now < arr:
+                leg.status = "IN_PROGRESS"
+            elif arr <= now:
+                leg.status = "COMPLETED"
+            else:
+                leg.status = "PLANNED"
+            by_shipment.setdefault(str(leg.shipment_id), []).append((dep, arr))
+
+        shipments = (await session.execute(select(Shipment))).scalars().all()
+        counts = {"IN_TRANSIT": 0, "PLANNED": 0, "DELIVERED": 0}
+        for sh in shipments:
+            windows = by_shipment.get(str(sh.id), [])
+            if any(dep <= now < arr for dep, arr in windows):
+                sh.status = "IN_TRANSIT"
+            elif windows and all(arr <= now for _, arr in windows):
+                sh.status = "DELIVERED"
+            else:
+                sh.status = "PLANNED"
+            counts[str(sh.status).split(".")[-1]] = counts.get(str(sh.status).split(".")[-1], 0) + 1
+
+        await session.commit()
+
+    log.info(
+        "Legs dressed for reality: %d geometries filled; shipments %s",
+        filled,
+        counts,
+    )
+    return {"geometries": filled, "shipments": counts}
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--warp", type=float, default=1.0, help="world seconds per real second (default 1.0)")
@@ -394,6 +482,7 @@ async def main() -> int:
     kv = await anchor_world(args.warp)
     await densify_schedules()
     await seed_congestion_story()
+    await dress_legs_for_reality()
     async with get_session_factory()() as session:
         parties_created = await seed_parties(session)
     party_count = len(PARTY_SPECS)

@@ -15,6 +15,7 @@ import ScaleBar from '@/components/ScaleBar';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
 import KpiBand from '@/components/KpiBand';
+import OperatorInsightsStrip from '@/components/OperatorInsightsStrip';
 import FeedHealthIndicator from '@/components/FeedHealthIndicator';
 import ShipmentInspectorPanel from '@/components/ShipmentInspectorPanel';
 import AlertCenter from '@/components/AlertCenter';
@@ -127,7 +128,6 @@ function OverviewCockpit() {
     disruptions: true,
     flights: false,
     weather: false,
-    global_incidents: false,
     sdk_sea: false,
     cables: false,
   });
@@ -347,6 +347,9 @@ function OverviewCockpit() {
               </div>
               <ScaleBar zoom={mapView.zoom} latitude={mapView.latitude} />
             </div>
+
+            {/* Bottom-right: OPERATOR PULSE — control-tower micro-insights */}
+            <OperatorInsightsStrip />
 
             {/* Layer Panel Slide-Over Dock (When toggled on Map) */}
             {showLayers && (

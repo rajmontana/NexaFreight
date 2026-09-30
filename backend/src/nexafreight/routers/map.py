@@ -471,6 +471,7 @@ async def _execute_ports_query(session: AsyncSession) -> GeoJSONFeatureCollectio
                     "port_id": str(row.id),
                     "location_id": str(row.location_id) if row.location_id else None,
                     "name": row.location_name,
+                    "locode": row.locode,
                     "congestion_index": congestion_index,
                     "provenance": stat_provenance,
                 },

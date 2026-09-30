@@ -85,24 +85,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Hydrate from browser storage only on client mount (prevents SSR hydration mismatch)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedToken =
-        sessionStorage.getItem('nexafreight_token') ||
-        localStorage.getItem('nexafreight_token')
-      if (storedToken) {
-        _singleton.token = storedToken
-        setToken(storedToken)
-        setTokenState(storedToken)
+    // Sandboxed preview iframes (opaque origin) throw on ANY storage access —
+    // never let hydration take the whole tree down; degrade to in-memory auth.
+    try {
+      if (typeof window !== 'undefined') {
+        const storedToken =
+          sessionStorage.getItem('nexafreight_token') ||
+          localStorage.getItem('nexafreight_token')
+        if (storedToken) {
+          _singleton.token = storedToken
+          setToken(storedToken)
+          setTokenState(storedToken)
+        }
+        const storedUser = localStorage.getItem('nexafreight_user')
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser)
+            _singleton.user = parsed
+            setUserState(parsed)
+          } catch {}
+        }
       }
-      const storedUser = localStorage.getItem('nexafreight_user')
-      if (storedUser) {
-        try {
-          const parsed = JSON.parse(storedUser)
-          _singleton.user = parsed
-          setUserState(parsed)
-        } catch {}
-      }
-    }
+    } catch {}
     setIsHydrated(true)
   }, [])
 

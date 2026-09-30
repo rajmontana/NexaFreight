@@ -31,6 +31,7 @@ import PlexusHeader from '@/components/illustrations/PlexusHeader';
 import {
   nexaClient,
   getAlerts,
+  getPorts,
   getShipmentFinancials,
   getShipmentPrediction,
   getShipmentRoute,
@@ -49,6 +50,114 @@ const MODE_ICONS: Record<string, typeof Ship> = {
   RAIL: Truck,
 };
 
+/* ── LIVE TRANSIT STATUS — control-tower telemetry strip ────────────────────
+   Reference: shipment_detail_status.html. Four honest cells wired to real
+   data only: time-to-destination countdown (last leg planned arrival),
+   schedule variance (realized leg slip), current corridor leg
+   (mode · vessel/flight), and destination port congestion from /map/ports. */
+
+type PortFeat = { properties?: { locode?: string; un_locode?: string; name?: string; congestion_index?: number | null } };
+
+function congestionLabel(idx: number): { label: string; color: string } {
+  if (idx < 0.9) return { label: `LOW · ${idx.toFixed(2)}×`, color: 'var(--moss-positive)' };
+  if (idx <= 1.2) return { label: `MODERATE · ${idx.toFixed(2)}×`, color: 'var(--cobalt)' };
+  if (idx <= 1.5) return { label: `ELEVATED · ${idx.toFixed(2)}×`, color: '#B54708' };
+  return { label: `SEVERE · ${idx.toFixed(2)}×`, color: 'var(--oxide-risk)' };
+}
+
+function LiveTransitStatusStrip({ shipment, portFeats, p50Hours }: { shipment: ShipmentDetail; portFeats: PortFeat[] | null; p50Hours: number | null }) {
+  const legs = [...(shipment.legs || [])].sort((a, b) => (a.sequence_number ?? a.sequence ?? 0) - (b.sequence_number ?? b.sequence ?? 0));
+  if (!legs.length) return null;
+
+  const etaLeg = legs[legs.length - 1];
+  const etaMs = etaLeg?.planned_arrival ? new Date(etaLeg.planned_arrival).getTime() : NaN;
+  const now = Date.now();
+
+  // TIME TO DESTINATION — "17d 06h" style countdown
+  let countdown = '—';
+  const countdownSub = etaLeg?.planned_arrival ? `PLANNED ARRIVAL · ${etaLeg.planned_arrival.slice(0, 16).replace('T', ' ')}` : 'NO ROUTE PLAN';
+  if (!Number.isNaN(etaMs)) {
+    const diff = etaMs - now;
+    if (diff <= 0) {
+      countdown = shipment.status === 'DELIVERED' ? 'ARRIVED' : 'IMMINENT';
+    } else {
+      const d = Math.floor(diff / 86_400_000);
+      const h = Math.floor((diff % 86_400_000) / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      countdown = d > 0 ? `${d}d ${String(h).padStart(2, '0')}h` : `${h}h ${String(m).padStart(2, '0')}m`;
+    }
+  }
+
+  // SCHEDULE VARIANCE — realized slip on completed legs
+  const slipH = legs.reduce(
+    (s, l) => (l.actual_arrival && l.planned_arrival ? s + (new Date(l.actual_arrival).getTime() - new Date(l.planned_arrival).getTime()) / 3_600_000 : s),
+    0,
+  );
+  const variance = Math.abs(slipH) > 0.05
+    ? `${slipH > 0 ? '+' : '−'}${Math.abs(slipH).toFixed(1)} h`
+    : 'ON PLAN';
+  const varianceTone = slipH > 2 ? 'var(--oxide-risk)' : slipH > 0.5 ? '#B54708' : 'var(--moss-positive)';
+  const varianceFlag = slipH > 2 ? ' · ETA_WARN' : slipH > 0.5 ? ' · WATCH' : '';
+
+  // CURRENT CORRIDOR — active leg else next planned leg
+  const active = legs.find((l) => l.status === 'IN_PROGRESS') ?? legs.find((l) => l.status === 'PLANNED') ?? etaLeg;
+  const corridorSub = [active?.mode, active?.vessel?.name || active?.flight_number].filter(Boolean).join(' · ') || 'NEXT SCHEDULED LEG';
+
+  // PORT CONGESTION — destination locode → /map/ports congestion_index
+  const portFeat = (portFeats || []).find((f) => (f.properties?.locode || f.properties?.un_locode) === (active?.destination || shipment.destination));
+  const cIdx = portFeat?.properties?.congestion_index;
+  const cong = typeof cIdx === 'number' ? congestionLabel(cIdx) : null;
+
+  const cell = 'p-3 rounded-[2px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] flex flex-col gap-1';
+
+  return (
+    <section
+      className="p-4 rounded-[3px] border bg-[var(--paper)]"
+      style={{ borderColor: 'var(--border-hairline)' }}
+      aria-label="Live transit status telemetry"
+    >
+      <div className="flex items-center justify-between pb-3 border-b border-[var(--border-hairline)] mb-4">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-[var(--cobalt)]" />
+          <h3 className="font-ui text-[14px] font-bold text-[var(--ink)]">Live Transit Status</h3>
+        </div>
+        <span className="font-mono text-[9px] tracking-[0.12em] text-[var(--text-secondary)] border border-[var(--border-hairline)] rounded-[2px] px-1.5 py-0.5">
+          LIVE FEED
+        </span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 font-mono text-[12px]">
+        <div className={cell}>
+          <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">Time to Destination</span>
+          <span className="text-[18px] font-bold text-[var(--ink)] tabular-nums">{countdown}</span>
+          <span className="text-[9.5px] text-[var(--text-secondary)]">{countdownSub}</span>
+        </div>
+        <div className={cell}>
+          <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">Schedule Variance</span>
+          <span className="text-[18px] font-bold tabular-nums" style={{ color: varianceTone }}>
+            {variance}
+            <span className="text-[9.5px] font-normal" style={{ color: varianceTone }}>{varianceFlag}</span>
+          </span>
+          <span className="text-[9.5px] text-[var(--text-secondary)]">REALIZED SLIP · ML P50 {(p50Hours ?? 0).toFixed(1)} H</span>
+        </div>
+        <div className={cell}>
+          <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">Current Corridor</span>
+          <span className="text-[15px] font-bold text-[var(--ink)] tracking-tight">
+            {active?.origin || '—'} → {active?.destination || '—'}
+          </span>
+          <span className="text-[9.5px] text-[var(--text-secondary)]">{corridorSub}</span>
+        </div>
+        <div className={cell}>
+          <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">Port Congestion · {active?.destination || shipment.destination}</span>
+          <span className="text-[15px] font-bold tabular-nums" style={{ color: cong?.color ?? 'var(--text-secondary)' }}>
+            {cong?.label ?? 'NO FEED'}
+          </span>
+          <span className="text-[9.5px] text-[var(--text-secondary)]">{portFeat?.properties?.name || 'DESTINATION NOT IN PORT INDEX'}</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ShipmentDossierPageContent() {
   const router = useRouter();
   const routeParams = useParams();
@@ -60,6 +169,7 @@ function ShipmentDossierPageContent() {
   const [financials, setFinancials] = useState<ShipmentFinancialsResponse | null>(null);
   const [prediction, setPrediction] = useState<ShipmentPredictResponse | null>(null);
   const [routeData, setRouteData] = useState<RouteFeatureCollection | null>(null);
+  const [portFeats, setPortFeats] = useState<PortFeat[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,14 +194,17 @@ function ShipmentDossierPageContent() {
       getShipmentFinancials(shipmentId).catch(() => null),
       getShipmentPrediction(shipmentId).catch(() => null),
       getShipmentRoute(shipmentId).catch(() => null),
+      getPorts().catch(() => null),
     ])
-      .then(([detail, alertsResp, finResp, predResp, routeResp]) => {
+      .then(([detail, alertsResp, finResp, predResp, routeResp, portsResp]) => {
         if (!cancelled) {
           setShipment(detail as ShipmentDetail);
           setAlerts(alertsResp.alerts.filter((a) => a.shipment_id === shipmentId));
           setFinancials(finResp);
           setPrediction(predResp);
           setRouteData(routeResp);
+          const pf = portsResp as unknown as { type?: string; features?: PortFeat[] } | PortFeat[] | null;
+          setPortFeats(pf ? (Array.isArray(pf) ? pf : pf.features ?? []) : null);
         }
       })
       .catch((err) => {
@@ -326,6 +439,11 @@ function ShipmentDossierPageContent() {
                 </div>
               </div>
             </section>
+
+            {/* 3b. Live Transit Status — countdown / variance / corridor / congestion */}
+            {shipment && (
+              <LiveTransitStatusStrip shipment={shipment} portFeats={portFeats} p50Hours={prediction?.delay_p50_hours ?? null} />
+            )}
 
             {/* 4. Visual Transit Milestone Stepper */}
             {shipment && (

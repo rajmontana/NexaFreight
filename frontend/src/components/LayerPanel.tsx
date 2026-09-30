@@ -4,7 +4,7 @@ import { memo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Ship, Anchor, AlertTriangle, CloudLightning,
-  Plane, Sun, Radio, Activity, X
+  Plane, Sun,Activity, X
 } from 'lucide-react';
 
 interface LayerPanelProps {
@@ -91,8 +91,6 @@ function LayerPanel({
         return 4;
       case 'weather':
         return data.weather_events?.length ?? 0;
-      case 'global_incidents':
-        return data.gdelt?.length ?? 0;
       case 'flights':
         return data.commercial_flights?.length ?? 0;
       default:
@@ -143,13 +141,6 @@ function LayerPanel({
           description: 'Severe gale force, typhoon & storm cells',
           icon: CloudLightning,
           count: getEntityCount('weather'),
-        },
-        {
-          key: 'global_incidents',
-          label: 'GDACS Geopolitical Alerts',
-          description: 'Port strikes, conflict zones & delays',
-          icon: Radio,
-          count: getEntityCount('global_incidents'),
         },
       ],
     },
@@ -292,7 +283,6 @@ function LayerPanel({
               ports: true,
               disruptions: true,
               weather: false,
-              global_incidents: false,
               flights: false,
               day_night: false,
             });

@@ -195,8 +195,9 @@ async def create_route_plan(
     if shipment is None:
         raise HTTPException(status_code=404, detail=f"Shipment {body.shipment_id} not found")
 
-    origin = await shipment.awaitable_attrs.origin
-    dest = await shipment.awaitable_attrs.destination
+    # origin/destination are eagerly loaded via selectinload above
+    origin = shipment.origin
+    dest = shipment.destination
 
     # Allow override for recovery routing
     origin_locode = body.origin_locode or (origin.locode if origin else None)
