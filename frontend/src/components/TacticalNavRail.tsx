@@ -1,6 +1,8 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Compass,
   Package,
@@ -11,19 +13,22 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 import type { User } from '@/lib/nexafreight/types';
+import { useAuthStore } from '@/store/useAuthStore';
+import { getAlerts } from '@/lib/nexafreight';
 
 export type WorkspaceScreen = 'map' | 'shipments' | 'disruptions' | 'analytics' | 'calibration';
 
 interface TacticalNavRailProps {
-  activeScreen: WorkspaceScreen;
-  onSelectScreen: (screen: WorkspaceScreen) => void;
+  activeScreen?: WorkspaceScreen;
+  onSelectScreen?: (screen: WorkspaceScreen) => void;
   alertCount?: number;
-  user: User | null;
+  user?: User | null;
   onLogout?: () => void;
 }
 
 interface NavItemDef {
-  key: WorkspaceScreen;
+  key: string;
+  href: string;
   label: string;
   sublabel: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
@@ -32,15 +37,60 @@ interface NavItemDef {
 }
 
 function TacticalNavRailComponent({
-  activeScreen,
+  activeScreen: legacyActiveScreen,
   onSelectScreen,
-  alertCount = 0,
-  user,
-  onLogout,
+  alertCount: propAlertCount,
+  user: propUser,
+  onLogout: propOnLogout,
 }: TacticalNavRailProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user: authUser, clearAuth } = useAuthStore();
+  const currentUser = propUser !== undefined ? propUser : authUser;
+
+  const [internalAlertCount, setInternalAlertCount] = useState<number>(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCount = async () => {
+      try {
+        const res = await getAlerts({ status: 'OPEN' });
+        if (!cancelled && res?.alerts) {
+          setInternalAlertCount(res.alerts.length);
+        }
+      } catch {}
+    };
+    fetchCount();
+    const iv = setInterval(fetchCount, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, []);
+
+  const effectiveAlertCount = propAlertCount !== undefined ? propAlertCount : internalAlertCount;
+
+  // Keyboard navigation between routes (1–5)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as Element)?.tagName)) return;
+      if (e.key === '1') router.push('/');
+      if (e.key === '2') router.push('/shipments');
+      if (e.key === '3') router.push('/alerts');
+      if (e.key === '4') router.push('/insights');
+      if (e.key === '5') router.push('/validation');
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [router]);
+
+  // Don't render the rail on login screen
+  if (pathname === '/login') return null;
+
   const navItems: NavItemDef[] = [
     {
-      key: 'map',
+      key: 'overview',
+      href: '/',
       label: 'Control Tower',
       sublabel: 'Tactical Map & AIS Telemetry',
       icon: Compass,
@@ -48,34 +98,61 @@ function TacticalNavRailComponent({
     },
     {
       key: 'shipments',
+      href: '/shipments',
       label: 'Shipment Manifest',
       sublabel: 'Milestone Waybills & Legs',
       icon: Package,
       shortcut: '2',
     },
     {
-      key: 'disruptions',
+      key: 'alerts',
+      href: '/alerts',
       label: 'Disruption Center',
-      sublabel: 'Active Breaches & Rerouting',
+      sublabel: 'Active Breaches & Recovery',
       icon: AlertTriangle,
       shortcut: '3',
-      badge: alertCount > 0 ? alertCount : undefined,
+      badge: effectiveAlertCount > 0 ? effectiveAlertCount : undefined,
     },
     {
-      key: 'analytics',
+      key: 'insights',
+      href: '/insights',
       label: 'Operational Analytics',
       sublabel: 'Demurrage, SLA & CO2 Ledger',
       icon: BarChart3,
       shortcut: '4',
     },
     {
-      key: 'calibration',
+      key: 'validation',
+      href: '/validation',
       label: 'Sensor Calibration',
-      sublabel: 'Feed Health & Matrix',
+      sublabel: 'Validation Matrix & Telemetry',
       icon: HeartPulse,
       shortcut: '5',
     },
   ];
+
+  const handleLogout = () => {
+    if (propOnLogout) {
+      propOnLogout();
+    } else {
+      clearAuth();
+      router.replace('/login');
+    }
+  };
+
+  const isItemActive = (item: NavItemDef) => {
+    if (legacyActiveScreen) {
+      if (item.href === '/' && legacyActiveScreen === 'map') return true;
+      if (item.href === '/shipments' && legacyActiveScreen === 'shipments') return true;
+      if (item.href === '/alerts' && legacyActiveScreen === 'disruptions') return true;
+      if (item.href === '/insights' && legacyActiveScreen === 'analytics') return true;
+      if (item.href === '/validation' && legacyActiveScreen === 'calibration') return true;
+    }
+    if (item.href === '/') {
+      return pathname === '/';
+    }
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  };
 
   return (
     <aside
@@ -89,8 +166,8 @@ function TacticalNavRailComponent({
     >
       {/* Top: Brand Monogram */}
       <div className="flex flex-col items-center gap-3 w-full">
-        <button
-          onClick={() => onSelectScreen('map')}
+        <Link
+          href="/"
           className="w-9 h-9 flex items-center justify-center rounded-[3px] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--cobalt)]"
           style={{
             backgroundColor: 'var(--cobalt)',
@@ -99,21 +176,30 @@ function TacticalNavRailComponent({
           title="NexaFreight Control Tower"
         >
           <span className="font-mono text-[13px] font-bold tracking-tight">NF</span>
-        </button>
+        </Link>
 
         {/* Separator Hairline */}
         <div className="w-6 h-[1px]" style={{ backgroundColor: 'var(--border-hairline)' }} />
 
-        {/* Navigation Items */}
+        {/* Navigation Items (Real Next.js Links) */}
         <nav className="flex flex-col gap-1.5 items-center w-full px-1">
           {navItems.map((item) => {
-            const isActive = activeScreen === item.key;
+            const isActive = isItemActive(item);
             const Icon = item.icon;
 
             return (
-              <button
+              <Link
                 key={item.key}
-                onClick={() => onSelectScreen(item.key)}
+                href={item.href}
+                onClick={() => {
+                  if (onSelectScreen) {
+                    if (item.href === '/') onSelectScreen('map');
+                    if (item.href === '/shipments') onSelectScreen('shipments');
+                    if (item.href === '/alerts') onSelectScreen('disruptions');
+                    if (item.href === '/insights') onSelectScreen('analytics');
+                    if (item.href === '/validation') onSelectScreen('calibration');
+                  }
+                }}
                 className="relative group w-10 h-10 flex items-center justify-center rounded-[3px] transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--cobalt)]"
                 style={{
                   backgroundColor: isActive ? 'var(--bg-subtle)' : 'transparent',
@@ -123,10 +209,10 @@ function TacticalNavRailComponent({
                 aria-current={isActive ? 'page' : undefined}
                 aria-label={item.label}
               >
-                {/* Active Left Indicator Notch */}
+                {/* Active Left Indicator 2px Rule */}
                 {isActive && (
                   <span
-                    className="absolute left-[-5px] top-[7px] bottom-[7px] w-[3px] rounded-r-[2px]"
+                    className="absolute left-[-5px] top-[7px] bottom-[7px] w-[2px] rounded-r-[1px]"
                     style={{ backgroundColor: 'var(--cobalt)' }}
                   />
                 )}
@@ -149,13 +235,14 @@ function TacticalNavRailComponent({
                   </span>
                 )}
 
-                {/* Tactical Hover Flyout Tooltip (Aligned to Right) */}
+                {/* Tactical Hover Flyout Tooltip (Aligned to Right - Flat, No Shadow) */}
                 <div
-                  className="pointer-events-none absolute left-[54px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[1200] whitespace-nowrap px-2.5 py-1.5 rounded-[2px] shadow-sm flex flex-col gap-0.5"
+                  className="pointer-events-none absolute left-[54px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[1200] whitespace-nowrap px-2.5 py-1.5 rounded-[2px] flex flex-col gap-0.5"
                   style={{
                     backgroundColor: 'var(--ink)',
                     color: 'var(--paper)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid var(--border-hairline)',
+                    boxShadow: 'none',
                   }}
                 >
                   <div className="flex items-center gap-2">
@@ -168,7 +255,7 @@ function TacticalNavRailComponent({
                   </div>
                   <span className="font-mono text-[10px] text-white/70">{item.sublabel}</span>
                 </div>
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -186,38 +273,37 @@ function TacticalNavRailComponent({
             border: '1px solid var(--border-hairline)',
             color: 'var(--ink)',
           }}
-          title={user?.email || 'Operator'}
+          title={currentUser?.email || 'Operator'}
         >
           <UserIcon style={{ width: 16, height: 16 }} />
 
           {/* User tooltip */}
           <div
-            className="pointer-events-none absolute left-[54px] bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[1200] whitespace-nowrap px-2.5 py-1.5 rounded-[2px] shadow-sm flex flex-col gap-0.5"
+            className="pointer-events-none absolute left-[54px] bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[1200] whitespace-nowrap px-2.5 py-1.5 rounded-[2px] flex flex-col gap-0.5"
             style={{
               backgroundColor: 'var(--ink)',
               color: 'var(--paper)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid var(--border-hairline)',
+              boxShadow: 'none',
             }}
           >
-            <span className="font-ui text-[12px] font-semibold">{user?.full_name || 'Operator'}</span>
-            <span className="font-mono text-[10px] text-white/70">{user?.email || 'operator@nexafreight.dev'}</span>
+            <span className="font-ui text-[12px] font-semibold">{currentUser?.full_name || 'Operator'}</span>
+            <span className="font-mono text-[10px] text-white/70">{currentUser?.email || 'operator@nexafreight.dev'}</span>
             <span className="font-mono text-[9px] text-[var(--moss-positive)] uppercase mt-0.5">
-              Role: {user?.role || 'OPERATOR'}
+              Role: {currentUser?.role || 'OPERATOR'}
             </span>
           </div>
         </div>
 
         {/* Logout */}
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            className="w-8 h-8 flex items-center justify-center rounded-[3px] text-[var(--text-secondary)] hover:text-[var(--oxide-risk)] hover:bg-black/5 transition-colors"
-            title="Sign Out"
-            aria-label="Sign Out"
-          >
-            <LogOut style={{ width: 15, height: 15 }} />
-          </button>
-        )}
+        <button
+          onClick={handleLogout}
+          className="w-8 h-8 flex items-center justify-center rounded-[3px] text-[var(--text-secondary)] hover:text-[var(--oxide-risk)] hover:bg-black/5 transition-colors"
+          title="Sign Out"
+          aria-label="Sign Out"
+        >
+          <LogOut style={{ width: 15, height: 15 }} />
+        </button>
       </div>
     </aside>
   );

@@ -8,8 +8,7 @@ import {
   Layers,
   Search,
   Globe,
-  Bell,
-  Compass,
+  AlertTriangle,
 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import ScaleBar from '@/components/ScaleBar';
@@ -20,34 +19,11 @@ import FeedHealthIndicator from '@/components/FeedHealthIndicator';
 import ShipmentInspectorPanel from '@/components/ShipmentInspectorPanel';
 import AlertCenter from '@/components/AlertCenter';
 import RerouteOptions from '@/components/RerouteOptions';
-import AnalyticsDashboard from '@/components/AnalyticsDashboard';
-import TacticalNavRail, { WorkspaceScreen } from '@/components/TacticalNavRail';
-import ShipmentManifestView from '@/components/ShipmentManifestView';
-import CopilotQuickDock from '@/components/CopilotQuickDock';
 import { ProvenanceChip } from '@/components/ProvenanceBadge';
 import { getAlerts } from '@/lib/nexafreight';
 
 const GlobeMap = dynamic(() => import('@/components/GlobeMap'), { ssr: false });
 const LayerPanel = dynamic(() => import('@/components/LayerPanel'));
-
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      setIsMobile(w < 768 || (h < 500 && w < 1024));
-    };
-    check();
-    window.addEventListener('resize', check);
-    window.addEventListener('orientationchange', check);
-    return () => {
-      window.removeEventListener('resize', check);
-      window.removeEventListener('orientationchange', check);
-    };
-  }, []);
-  return isMobile;
-}
 
 const ZuluClock = () => {
   const [time, setTime] = useState('');
@@ -101,30 +77,18 @@ const ActiveEntityCount = ({ data }: { data: Record<string, unknown[]> }) => {
   );
 };
 
-const SCREEN_TITLES: Record<WorkspaceScreen, { title: string; subtitle: string }> = {
-  map: { title: 'CONTROL TOWER', subtitle: 'LIVE AIS FLEET & MARITIME TELEMETRY' },
-  shipments: { title: 'SHIPMENT MANIFEST', subtitle: 'MULTIMODAL WAYBILLS & ROUTE MILESTONES' },
-  disruptions: { title: 'DISRUPTION DESK', subtitle: 'INCIDENT RECOVERY & 3-WAY REROUTING' },
-  analytics: { title: 'ANALYTICS LEDGER', subtitle: 'OPERATIONAL FINANCE, DEMURRAGE & ESG' },
-  calibration: { title: 'CALIBRATION MATRIX', subtitle: 'FEED HEALTH & SENSOR TELEMETRY' },
-};
-
-function Dashboard() {
+function OverviewCockpit() {
   const router = useRouter();
-  const { isAuthenticated, isHydrated, user, clearAuth } = useAuthStore();
+  const { isAuthenticated, isHydrated, user } = useAuthStore();
 
-  // ── Auth gate ────────────────────────────────────────────────────────
+  // Auth gate
   useEffect(() => {
     if (isHydrated && !isAuthenticated) {
       router.replace('/login');
     }
   }, [isHydrated, isAuthenticated, router]);
 
-  // ── Active Workspace Screen (Stitch-inspired) ────────────────────────
-  const [activeScreen, setActiveScreen] = useState<WorkspaceScreen>('map');
-  const [activeAlertCount, setActiveAlertCount] = useState(0);
-
-  // ── Map state ────────────────────────────────────────────────────────
+  // Map state
   const dataRef = useRef<Record<string, unknown[]>>({});
   const data = dataRef.current;
 
@@ -137,23 +101,25 @@ function Dashboard() {
   } | null>(null);
   const [mapProjection, setMapProjection] = useState<'globe' | 'mercator'>('mercator');
   const [mapStyle] = useState<'dark' | 'satellite' | 'paper'>('paper');
-  const [globeTheme, setGlobeTheme] = useState<'core' | 'ghost'>('core');
+  const [globeTheme] = useState<'core' | 'ghost'>('core');
   const [showSplash, setShowSplash] = useState(true);
   const mouseCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
   const coordsDisplayRef = useRef<HTMLDivElement>(null);
 
-  // ── Panels / drawers ─────────────────────────────────────────────────
+  // Scrimmed Drawers & Panels
   const [showLayers, setShowLayers] = useState(false);
   const [showDesktopSearch, setShowDesktopSearch] = useState(false);
+  const [showAlertsDrawer, setShowAlertsDrawer] = useState(false);
+  const [activeAlertCount, setActiveAlertCount] = useState(0);
 
-  /** Alert currently being re-routed in the options drawer */
+  /** Alert currently being re-routed in options drawer */
   const [activeOptionsAlertId, setActiveOptionsAlertId] = useState<string | null>(null);
-  /** Shipment id open in the right-hand inspector */
+  /** Shipment id open in the right-hand peek drawer */
   const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
-  /** Bumped when a decision executes so every downstream block refetches */
+  /** Bumped when a decision executes so downstream components refetch */
   const [opsVersion, setOpsVersion] = useState(0);
 
-  // ── Layer buckets ───────────────────────────────────────────────────
+  // Layer buckets
   const [activeLayers, setActiveLayers] = useState<Record<string, boolean>>({
     ports: true,
     routes: true,
@@ -166,7 +132,7 @@ function Dashboard() {
     cables: false,
   });
 
-  // Query alert count for Disruption badge
+  // Query alert count for Disruption drawer badge
   useEffect(() => {
     let cancelled = false;
     const fetchAlertCount = async () => {
@@ -185,15 +151,12 @@ function Dashboard() {
     };
   }, [opsVersion]);
 
-  // Splash timeout
+  // Splash veil timeout
   useEffect(() => {
     const splashTimer = setTimeout(() => setShowSplash(false), 900);
     return () => clearTimeout(splashTimer);
   }, []);
 
-  const isMobile = useIsMobile();
-
-  // ── Callbacks ────────────────────────────────────────────────────────
   const openInspector = useCallback((shipmentId: string | null) => {
     if (!shipmentId) return;
     setSelectedShipmentId(shipmentId);
@@ -201,6 +164,7 @@ function Dashboard() {
 
   const openOptions = useCallback((alertId: string) => {
     setActiveOptionsAlertId(alertId);
+    setShowAlertsDrawer(true);
   }, []);
 
   const handleDecisionExecuted = useCallback(() => {
@@ -225,55 +189,34 @@ function Dashboard() {
     }
   }, []);
 
-  // Keyboard navigation between workspaces (1–5) and tools
+  // Keyboard navigation & tool shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as Element)?.tagName)) return;
-      if (e.key === '1') setActiveScreen('map');
-      if (e.key === '2') setActiveScreen('shipments');
-      if (e.key === '3') setActiveScreen('disruptions');
-      if (e.key === '4') setActiveScreen('analytics');
-      if (e.key === '5') setActiveScreen('calibration');
-      if (e.key === 'l' && activeScreen === 'map') setShowLayers((p) => !p);
+      if (e.key === 'l') setShowLayers((p) => !p);
       if (e.key === 's') setShowDesktopSearch((p) => !p);
       if (e.key === 'r') setFlyToLocation({ lat: 20, lng: 0, ts: Date.now() });
       if (e.key === 'Escape') {
         setSelectedShipmentId(null);
         setActiveOptionsAlertId(null);
+        setShowAlertsDrawer(false);
         setShowLayers(false);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [activeScreen]);
+  }, []);
 
   if (!isHydrated || !isAuthenticated) return null;
-
-  const currentMeta = SCREEN_TITLES[activeScreen] || SCREEN_TITLES.map;
 
   return (
     <div
       className="fixed inset-0 overflow-hidden"
       style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)' }}
     >
-      {/* ══════════ 1. FIXED TACTICAL NAVIGATION RAIL (Left 58px) ═════════ */}
-      <TacticalNavRail
-        activeScreen={activeScreen}
-        onSelectScreen={(screen) => {
-          setActiveScreen(screen);
-          setShowLayers(false);
-        }}
-        alertCount={activeAlertCount}
-        user={user}
-        onLogout={() => {
-          clearAuth();
-          router.replace('/login');
-        }}
-      />
-
-      {/* ══════════ 2. MAIN APPLICATION WORKSPACE (Offset pl-[58px]) ══════ */}
+      {/* Main Workspace (Offset pl-[58px] for the global TacticalNavRail) */}
       <div className="pl-[58px] h-full flex flex-col relative overflow-hidden">
-        {/* Top Cockpit Header Bar */}
+        {/* Cockpit Status Strip */}
         <header
           className="h-12 border-b flex items-center justify-between px-4 z-[1040] select-none flex-shrink-0"
           style={{
@@ -281,15 +224,15 @@ function Dashboard() {
             borderColor: 'var(--border-hairline)',
           }}
         >
-          {/* Left: Active Screen Title & Provenance */}
+          {/* Left: Overview Title & System Health */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="font-ui text-[13px] font-bold tracking-wider text-[var(--ink)]">
-                {currentMeta.title}
+                CONTROL TOWER
               </span>
               <span className="text-[var(--border-hairline)]">/</span>
               <span className="hidden sm:inline font-mono text-[10px] text-[var(--text-secondary)]">
-                {currentMeta.subtitle}
+                LIVE AIS FLEET & MARITIME TELEMETRY
               </span>
             </div>
 
@@ -307,37 +250,55 @@ function Dashboard() {
             <ProvenanceChip provenance="REAL" size="sm" />
           </div>
 
-          {/* Right: Tools & Health */}
+          {/* Right: Tools & Drawers */}
           <div className="flex items-center gap-2">
             <FeedHealthIndicator className="hidden md:flex" />
 
-            {/* Quick Map Controls when in Map view */}
-            {activeScreen === 'map' && (
-              <>
-                <button
-                  onClick={() => setShowLayers((p) => !p)}
-                  aria-pressed={showLayers}
-                  className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono rounded-[2px] border transition-colors ${
-                    showLayers
-                      ? 'bg-[var(--cobalt)] text-white border-[var(--cobalt)]'
-                      : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--ink)]'
-                  }`}
-                  title="Toggle Map Layers (L)"
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">LAYERS</span>
-                </button>
+            {/* Disruptions Drawer Toggle */}
+            <button
+              onClick={() => setShowAlertsDrawer((p) => !p)}
+              aria-pressed={showAlertsDrawer}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono rounded-[2px] border transition-colors ${
+                showAlertsDrawer || activeAlertCount > 0
+                  ? 'border-[var(--oxide-risk)] text-[var(--oxide-risk)] hover:bg-[var(--oxide-risk)]/10'
+                  : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--ink)]'
+              }`}
+              title="Toggle Alerts & Disruptions Drawer"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">ALERTS</span>
+              {activeAlertCount > 0 && (
+                <span className="px-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-[2px] font-mono text-[9px] font-bold bg-[var(--oxide-risk)] text-white">
+                  {activeAlertCount}
+                </span>
+              )}
+            </button>
 
-                <button
-                  onClick={() => setMapProjection((p) => (p === 'globe' ? 'mercator' : 'globe'))}
-                  className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--ink)] border border-[var(--border-hairline)] rounded-[2px] transition-colors"
-                  title="Toggle Projection"
-                >
-                  <Globe className="w-3.5 h-3.5" />
-                </button>
-              </>
-            )}
+            {/* Map Layers Popover Toggle */}
+            <button
+              onClick={() => setShowLayers((p) => !p)}
+              aria-pressed={showLayers}
+              className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono rounded-[2px] border transition-colors ${
+                showLayers
+                  ? 'bg-[var(--cobalt)] text-white border-[var(--cobalt)]'
+                  : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--ink)]'
+              }`}
+              title="Toggle Map Layers (L)"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">LAYERS</span>
+            </button>
 
+            {/* Globe / Mercator Projection Toggle */}
+            <button
+              onClick={() => setMapProjection((p) => (p === 'globe' ? 'mercator' : 'globe'))}
+              className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--ink)] border border-[var(--border-hairline)] rounded-[2px] transition-colors"
+              title="Toggle Projection"
+            >
+              <Globe className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Search Dialog Toggle */}
             <button
               onClick={() => setShowDesktopSearch((p) => !p)}
               className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--ink)] border border-[var(--border-hairline)] rounded-[2px] transition-colors"
@@ -348,208 +309,148 @@ function Dashboard() {
           </div>
         </header>
 
-        {/* ══════════ WORKSPACE CONTENT AREA ═════════════════════════ */}
-        <div className="flex-1 relative overflow-hidden">
-          {/* VIEW 1: CONTROL TOWER MAP (Always mounted in background for zero-lag) */}
-          <div
-            className={`absolute inset-0 flex flex-col transition-opacity duration-150 ${
-              activeScreen === 'map'
-                ? 'opacity-100 pointer-events-auto z-10'
-                : 'opacity-0 pointer-events-none -z-10'
-            }`}
-          >
-            {/* Headline KPI Band */}
-            <KpiBand window="month" />
+        {/* Workspace Canvas (Globe-Centric: KpiBand + Map Canvas, No Permanent Right Panels) */}
+        <div className="flex-1 relative overflow-hidden flex flex-col">
+          {/* Headline KPI Band */}
+          <KpiBand window="month" />
 
-            {/* Map Canvas */}
-            <div className="flex-1 relative">
-              <GlobeMap
-                data={data}
-                activeLayers={activeLayers}
-                onEntityClick={handleEntityClick}
-                onMouseCoords={handleMouseCoords}
-                onViewStateChange={(vs) => setMapView({ zoom: vs.zoom, latitude: vs.latitude })}
-                flyToLocation={flyToLocation}
-                projection={mapProjection}
-                mapStyle={mapStyle}
-                demoMode={false}
-                theme={globeTheme}
-              />
+          {/* GlobeMap Canvas */}
+          <div className="flex-1 relative">
+            <GlobeMap
+              data={data}
+              activeLayers={activeLayers}
+              onEntityClick={handleEntityClick}
+              onMouseCoords={handleMouseCoords}
+              onViewStateChange={(vs) => setMapView({ zoom: vs.zoom, latitude: vs.latitude })}
+              flyToLocation={flyToLocation}
+              projection={mapProjection}
+              mapStyle={mapStyle}
+              demoMode={false}
+              theme={globeTheme}
+            />
 
-              {/* Bottom-left: Coordinate Readout & Scale */}
+            {/* Bottom-left: Coordinate Readout & Scale */}
+            <div
+              className="absolute bottom-6 left-4 z-[1030] flex flex-col gap-1 text-[10px] font-mono select-none"
+              style={{ color: 'var(--text-secondary)' }}
+            >
               <div
-                className="absolute bottom-6 left-4 z-[1030] flex flex-col gap-1 text-[10px] font-mono select-none"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                <div
-                  ref={coordsDisplayRef}
-                  className="px-1.5 py-0.5 rounded-[2px] border font-mono"
-                  style={{
-                    backgroundColor: 'rgba(246, 247, 244, 0.95)',
-                    borderColor: 'var(--border-hairline)',
-                    color: 'var(--ink)',
-                  }}
-                >
-                  —, —
-                </div>
-                <ScaleBar zoom={mapView.zoom} latitude={mapView.latitude} />
-              </div>
-
-              {/* Layer Panel Slide-Over Dock (When toggled on Map) */}
-              {showLayers && (
-                <div className="absolute top-3 left-3 z-[1050]">
-                  <LayerPanel
-                    data={data}
-                    activeLayers={activeLayers}
-                    setActiveLayers={setActiveLayers}
-                    onClose={() => setShowLayers(false)}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* VIEW 2: SHIPMENT MANIFEST & WAYBILLS */}
-          {activeScreen === 'shipments' && (
-            <div className="absolute inset-0 z-20 overflow-hidden bg-[var(--paper)]">
-              <ShipmentManifestView
-                onSelectShipment={(id) => openInspector(id)}
-                selectedShipmentId={selectedShipmentId}
-              />
-            </div>
-          )}
-
-          {/* VIEW 3: DISRUPTION CENTER & REROUTE DESK */}
-          {activeScreen === 'disruptions' && (
-            <div className="absolute inset-0 z-20 overflow-hidden bg-[var(--paper)] flex flex-col p-6">
-              <div className="mb-4">
-                <h2 className="font-ui text-[18px] font-semibold text-[var(--ink)]">
-                  Active Disruption Alerts & Autonomous Recovery Desk
-                </h2>
-                <p className="font-ui text-[12px] text-[var(--text-secondary)] mt-0.5">
-                  Monitor active operational exceptions, canal bottlenecks, and execute 3-way deterministic recovery options.
-                </p>
-              </div>
-
-              <div className="flex-1 flex gap-6 overflow-hidden relative">
-                {/* Embedded Alert Queue Panel */}
-                <div className="w-[380px] flex-shrink-0 flex flex-col">
-                  <AlertCenter
-                    onOpenInspector={openInspector}
-                    onOpenOptions={openOptions}
-                    refreshKey={opsVersion}
-                    defaultOpen
-                  />
-                </div>
-
-                {/* Right: Active Reroute Planner or Guidance */}
-                <div
-                  className="flex-1 border rounded-[3px] p-6 flex flex-col justify-center items-center text-center overflow-y-auto"
-                  style={{
-                    backgroundColor: 'var(--bg-subtle)',
-                    borderColor: 'var(--border-hairline)',
-                  }}
-                >
-                  {activeOptionsAlertId ? (
-                    <div className="w-full max-w-xl text-left">
-                      <RerouteOptions
-                        alertId={activeOptionsAlertId}
-                        onApproved={handleDecisionExecuted}
-                        onClose={() => setActiveOptionsAlertId(null)}
-                      />
-                    </div>
-                  ) : (
-                    <div className="max-w-md flex flex-col items-center">
-                      <div className="w-10 h-10 rounded-[3px] flex items-center justify-center mb-3 bg-black/5 text-[var(--text-secondary)]">
-                        <Compass className="w-5 h-5" />
-                      </div>
-                      <h3 className="font-ui text-[14px] font-semibold text-[var(--ink)]">
-                        Select an Alert to Evaluate Recovery Scenarios
-                      </h3>
-                      <p className="font-ui text-[12px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
-                        Click on any active incident in the queue to calculate the 3 recovery trade-offs: 
-                        <strong className="text-[var(--ink)]"> Accept Delay</strong>, 
-                        <strong className="text-[var(--ink)]"> Port Divert</strong>, or 
-                        <strong className="text-[var(--ink)]"> Modal Shift</strong>.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* VIEW 4: OPERATIONAL ANALYTICS LEDGER */}
-          {activeScreen === 'analytics' && (
-            <div className="absolute inset-0 z-20 overflow-hidden bg-[var(--paper)]">
-              <ErrorBoundary name="Analytics">
-                <AnalyticsDashboard
-                  openKey={opsVersion}
-                  onClose={() => setActiveScreen('map')}
-                  onOpenInspector={(id) => openInspector(id)}
-                />
-              </ErrorBoundary>
-            </div>
-          )}
-
-          {/* VIEW 5: SENSOR CALIBRATION & FEED HEALTH */}
-          {activeScreen === 'calibration' && (
-            <div className="absolute inset-0 z-20 overflow-y-auto bg-[var(--paper)] p-8">
-              <div className="max-w-3xl mx-auto flex flex-col gap-6">
-                <div>
-                  <h2 className="font-ui text-[20px] font-semibold text-[var(--ink)]">
-                    Sensor Calibration & Feed Health
-                  </h2>
-                  <p className="font-ui text-[12px] text-[var(--text-secondary)] mt-1">
-                    Telemetry feeds ingestion status, AISStream WebSocket health, and dead-reckoning position interpolator metrics.
-                  </p>
-                </div>
-
-                <div
-                  className="p-6 rounded-[3px] border"
-                  style={{
-                    backgroundColor: 'var(--bg-subtle)',
-                    borderColor: 'var(--border-hairline)',
-                  }}
-                >
-                  <FeedHealthIndicator intervalMs={10000} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ══════════ SHARED OVERLAYS (Drawers & Search) ═════════════ */}
-          {/* Global Search Dialog */}
-          {showDesktopSearch && (
-            <div className="absolute top-4 left-6 z-[1065]">
-              <SearchBar
-                onLocate={(lat, lng, zoom) => {
-                  setFlyToLocation({ lat, lng, zoom, ts: Date.now() });
-                  setActiveScreen('map');
-                  setShowDesktopSearch(false);
+                ref={coordsDisplayRef}
+                className="px-1.5 py-0.5 rounded-[2px] border font-mono"
+                style={{
+                  backgroundColor: 'rgba(246, 247, 244, 0.95)',
+                  borderColor: 'var(--border-hairline)',
+                  color: 'var(--ink)',
                 }}
-                alwaysExpanded
-              />
+              >
+                —, —
+              </div>
+              <ScaleBar zoom={mapView.zoom} latitude={mapView.latitude} />
             </div>
-          )}
 
-          {/* Shipment Detail Inspector Drawer */}
-          <ShipmentInspectorPanel
-            shipmentId={selectedShipmentId}
-            onClose={() => setSelectedShipmentId(null)}
-            refreshKey={opsVersion}
-            viewerRole={user?.role}
-          />
+            {/* Layer Panel Slide-Over Dock (When toggled on Map) */}
+            {showLayers && (
+              <div className="absolute top-3 left-3 z-[1050]">
+                <LayerPanel
+                  data={data}
+                  activeLayers={activeLayers}
+                  setActiveLayers={setActiveLayers}
+                  onClose={() => setShowLayers(false)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ══════════ 3. PROJECT44-STYLE PERSISTENT AI COPILOT HUD ═══════ */}
-      <CopilotQuickDock activeShipmentId={selectedShipmentId} />
+      {/* ══════════ SCRIMMED DRAWERS & MODALS ═══════════════════════ */}
 
-      {/* ══════════ 4. KEYBOARD SHORTCUTS LISTENER ════════════════════ */}
+      {/* Global Search Dialog */}
+      {showDesktopSearch && (
+        <div className="absolute top-4 left-[74px] z-[1065]">
+          <SearchBar
+            onLocate={(lat, lng, zoom) => {
+              setFlyToLocation({ lat, lng, zoom, ts: Date.now() });
+              setShowDesktopSearch(false);
+            }}
+            alwaysExpanded
+          />
+        </div>
+      )}
+
+      {/* Scrimmed Disruptions & Rerouting Drawer */}
+      {showAlertsDrawer && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/20 z-[1065] transition-opacity"
+            onClick={() => {
+              setShowAlertsDrawer(false);
+              setActiveOptionsAlertId(null);
+            }}
+            aria-hidden="true"
+          />
+          <aside
+            className="fixed right-0 top-0 bottom-0 w-full max-w-[380px] sm:w-[380px] z-[1070] overflow-y-auto p-4 border-l select-text"
+            style={{
+              backgroundColor: 'var(--paper)',
+              borderColor: 'var(--border-hairline)',
+              boxShadow: 'none',
+            }}
+            aria-label="Alerts & Disruptions Drawer"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[14px] font-bold tracking-wide font-ui text-[var(--ink)]">
+                  DISRUPTIONS & RECOVERY
+                </h2>
+                {activeAlertCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-[2px] bg-[var(--oxide-risk)] text-white text-[10px] font-mono font-bold">
+                    {activeAlertCount}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setShowAlertsDrawer(false);
+                  setActiveOptionsAlertId(null);
+                }}
+                className="p-1 rounded-[2px] hover:bg-black/5 transition-colors font-mono text-[13px] text-[var(--text-secondary)]"
+                aria-label="Close alerts drawer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {activeOptionsAlertId ? (
+              <RerouteOptions
+                alertId={activeOptionsAlertId}
+                onApproved={handleDecisionExecuted}
+                onClose={() => setActiveOptionsAlertId(null)}
+              />
+            ) : (
+              <AlertCenter
+                onOpenInspector={openInspector}
+                onOpenOptions={openOptions}
+                refreshKey={opsVersion}
+                defaultOpen
+              />
+            )}
+          </aside>
+        </>
+      )}
+
+      {/* Scrimmed Shipment Peek Drawer (max 360px, auto-closes on navigation) */}
+      <ShipmentInspectorPanel
+        shipmentId={selectedShipmentId}
+        onClose={() => setSelectedShipmentId(null)}
+        refreshKey={opsVersion}
+        viewerRole={user?.role}
+      />
+
+      {/* Keyboard Shortcuts Listener */}
       <KeyboardShortcuts />
 
-      {/* ══════════ 5. FIRST-PAINT SPLASH VEIL ════════════════════════ */}
+      {/* First-Paint Splash Veil */}
       {showSplash && (
         <div
           className="absolute inset-0 z-[2000] flex items-center justify-center pointer-events-none transition-opacity duration-300"
@@ -578,7 +479,7 @@ function Dashboard() {
 export default function Page() {
   return (
     <ErrorBoundary name="NexaFreight Control Tower">
-      <Dashboard />
+      <OverviewCockpit />
     </ErrorBoundary>
   );
 }

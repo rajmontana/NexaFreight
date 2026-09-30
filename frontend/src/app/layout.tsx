@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, IBM_Plex_Mono } from 'next/font/google';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/store/useAuthStore';
+import TacticalNavRail from '@/components/TacticalNavRail';
+import CopilotQuickDock from '@/components/CopilotQuickDock';
 import "./globals.css";
 
 const archivo = Archivo({
@@ -195,7 +197,9 @@ export default function RootLayout({
       <body className="antialiased">
         <ErrorBoundary name="NexaFreight Core">
           <AuthProvider>
+            <TacticalNavRail />
             {children}
+            <CopilotQuickDock />
           </AuthProvider>
         </ErrorBoundary>
       </body>

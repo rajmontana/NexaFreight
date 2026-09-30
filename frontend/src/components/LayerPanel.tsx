@@ -185,7 +185,7 @@ function LayerPanel({
       style={{
         backgroundColor: 'var(--paper)',
         borderColor: 'var(--border-hairline)',
-        boxShadow: '0 4px 20px -2px rgba(22, 24, 29, 0.08)',
+        boxShadow: 'none',
       }}
     >
       {/* Header */}

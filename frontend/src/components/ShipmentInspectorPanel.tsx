@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   askCopilot as askCopilotApi,
   getAlerts,
@@ -142,20 +143,50 @@ export default function ShipmentInspectorPanel({
     }
   }, [shipmentId, copilotQuestion]);
 
+  const pathname = usePathname();
+
+  // Auto-close on navigation
+  useEffect(() => {
+    onClose();
+  }, [pathname, onClose]);
+
   if (!shipmentId) return null;
 
   return (
-    <div className="fixed right-0 top-0 h-full w-96 text-[var(--ink)] overflow-y-auto p-4 border-l z-50" style={{
-      backgroundColor: 'var(--paper)',
-      borderLeftColor: 'var(--border-hairline)',
-      boxShadow: 'none',
-    }}>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-ui)', color: 'var(--ink)' }}>Shipment Detail</h2>
-        <button onClick={onClose} className="p-1" aria-label="Close inspector" style={{ color: 'var(--text-secondary)' }}>
-          ✕
-        </button>
-      </div>
+    <>
+      {/* Scrim backdrop */}
+      <div
+        className="fixed inset-0 bg-black/20 z-[1065] transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Peek drawer (max 360px, scrim + close button, auto-close on navigation) */}
+      <aside
+        className="fixed right-0 top-0 bottom-0 w-full max-w-[360px] sm:w-[360px] text-[var(--ink)] overflow-y-auto p-4 border-l z-[1070] select-text"
+        style={{
+          backgroundColor: 'var(--paper)',
+          borderLeftColor: 'var(--border-hairline)',
+          boxShadow: 'none',
+        }}
+        aria-label="Shipment Peek Drawer"
+      >
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[14px] font-bold tracking-wide" style={{ fontFamily: 'var(--font-ui)', color: 'var(--ink)' }}>
+              SHIPMENT DOSSIER
+            </h2>
+            <ProvenanceChip provenance={shipment?.provenance || 'DERIVED'} size="sm" />
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-[2px] hover:bg-black/5 transition-colors font-mono text-[13px]"
+            aria-label="Close inspector"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            ✕
+          </button>
+        </div>
 
       {loading && <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>Loading...</p>}
       {error && <p style={{ color: 'var(--oxide-risk)', fontFamily: 'var(--font-ui)' }}>{error}</p>}
@@ -453,7 +484,8 @@ export default function ShipmentInspectorPanel({
           </section>
         </div>
       )}
-    </div>
+      </aside>
+    </>
   );
 }
 
