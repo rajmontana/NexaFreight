@@ -8,6 +8,8 @@ import { NexaHttpError, NexaNetworkError } from '@/lib/nexafreight/errors'
 import { AuthProvider, useAuthStore } from '@/store/useAuthStore'
 import { getCurrentUser } from '@/lib/nexafreight/client'
 
+import LoginHeroIllustration from '@/components/illustrations/LoginHeroIllustration'
+
 // ─── Inner form (needs access to auth store context) ─────────────────────────
 
 function LoginForm() {
@@ -67,15 +69,22 @@ function LoginForm() {
 
   return (
     <div style={styles.page}>
-      <motion.main
-        className="login-card"
-        style={styles.card}
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-        role="main"
-        aria-label="NexaFreight login"
-      >
+      {/* Desktop Left Illustration Pane */}
+      <div className="hidden lg:flex w-1/2 min-h-screen">
+        <LoginHeroIllustration />
+      </div>
+
+      {/* Right Login Pane */}
+      <div className="flex-1 w-full min-h-screen flex items-center justify-center p-6">
+        <motion.main
+          className="login-card"
+          style={styles.card}
+          initial={{ opacity: 0, y: 24, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          role="main"
+          aria-label="NexaFreight login"
+        >
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.eyeGlyph} aria-hidden="true">
@@ -199,6 +208,7 @@ function LoginForm() {
           <code style={styles.code}>operator@nexafreight.dev</code>
         </p>
       </motion.main>
+      </div>
     </div>
   )
 }
@@ -214,7 +224,7 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     width: '100%',
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'center',
     background: 'var(--paper)',
     fontFamily: 'var(--font-ui)',

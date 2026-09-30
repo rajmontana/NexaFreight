@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ShipmentManifestView from '@/components/ShipmentManifestView';
 import { ProvenanceChip } from '@/components/ProvenanceBadge';
+import PlexusHeader from '@/components/illustrations/PlexusHeader';
 
 function ShipmentsPageContent() {
   const router = useRouter();
@@ -27,13 +28,14 @@ function ShipmentsPageContent() {
       <div className="pl-[58px] h-full flex flex-col relative overflow-hidden">
         {/* Cockpit Status Strip */}
         <header
-          className="h-12 border-b flex items-center justify-between px-4 z-[1040] select-none flex-shrink-0"
+          className="h-12 border-b flex items-center justify-between px-4 z-[1040] select-none flex-shrink-0 relative overflow-hidden"
           style={{
             backgroundColor: 'var(--paper)',
             borderColor: 'var(--border-hairline)',
           }}
         >
-          <div className="flex items-center gap-3">
+          <PlexusHeader />
+          <div className="relative z-10 flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="font-ui text-[13px] font-bold tracking-wider text-[var(--ink)]">
                 SHIPMENT MANIFEST
