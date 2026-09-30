@@ -399,8 +399,9 @@ async def dress_legs_for_reality() -> dict:
     import json as _json
     import math as _math
 
+    from nexafreight.models.leg import Leg
     from nexafreight.models.location import Location
-    from nexafreight.models.shipment import Leg, Shipment
+    from nexafreight.models.shipment import Shipment
 
     def _bend(a: tuple[float, float], b: tuple[float, float], frac: float, off: float) -> list[float]:
         lat = a[1] + (b[1] - a[1]) * frac
