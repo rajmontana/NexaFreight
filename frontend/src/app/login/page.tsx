@@ -67,24 +67,8 @@ function LoginForm() {
 
   return (
     <div style={styles.page}>
-      {/* Animated background grid */}
-      <div style={styles.grid} aria-hidden="true" />
-
-      {/* Glow orbs */}
-      <motion.div
-        style={{ ...styles.orb, ...styles.orbGold }}
-        animate={{ scale: [1, 1.15, 1], opacity: [0.18, 0.28, 0.18] }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-        aria-hidden="true"
-      />
-      <motion.div
-        style={{ ...styles.orb, ...styles.orbCyan }}
-        animate={{ scale: [1, 1.1, 1], opacity: [0.12, 0.2, 0.12] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-        aria-hidden="true"
-      />
-
       <motion.main
+        className="login-card"
         style={styles.card}
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -95,7 +79,7 @@ function LoginForm() {
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.eyeGlyph} aria-hidden="true">
-            <span style={styles.eyeOuter}>◈</span>
+            ◈
           </div>
           <h1 style={styles.title}>NEXAFREIGHT</h1>
           <p style={styles.subtitle}>Control Tower — Operator Access</p>
@@ -105,20 +89,20 @@ function LoginForm() {
         {expiredNotice && (
           <div
             style={{
-              padding: '10px 14px',
+              padding: '10px 12px',
               marginBottom: 16,
-              background: 'rgba(255, 145, 0, 0.12)',
-              border: '1px solid rgba(255, 145, 0, 0.4)',
-              borderRadius: 6,
-              color: '#FFB74D',
+              background: 'transparent',
+              border: `1px solid var(--alert-orange)`,
+              borderRadius: 2,
+              color: 'var(--alert-orange)',
               fontSize: 12,
-              fontFamily: 'var(--font-hud)',
+              fontFamily: 'var(--font-ui)',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
             }}
           >
-            <span>◈</span>
+            <span>⚠</span>
             <span>Authentication token expired. Click Authenticate below to reconnect.</span>
           </div>
         )}
@@ -186,7 +170,7 @@ function LoginForm() {
             disabled={loading || !email || !password}
             style={{
               ...styles.button,
-              opacity: loading || !email || !password ? 0.5 : 1,
+              opacity: loading || !email || !password ? 0.6 : 1,
               cursor: loading || !email || !password ? 'not-allowed' : 'pointer',
             }}
             whileHover={loading ? {} : { scale: 1.02 }}
@@ -223,9 +207,7 @@ export default function LoginPage() {
   return <LoginForm />
 }
 
-// ─── Styles (inline, using NexaFreight CSS variables via string literals) ──────────
-// Using inline styles avoids any className/Tailwind conflicts with the global
-// NexaFreight stylesheet while still reading from its CSS custom properties.
+// ─── Styles (inline, using Chartroom CSS variables) ──────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
@@ -234,47 +216,13 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'var(--bg-void)',
-    fontFamily: 'var(--font-body)',
+    background: 'var(--paper)',
+    fontFamily: 'var(--font-ui)',
     position: 'relative',
     overflow: 'hidden',
   },
 
-  // Subtle dot-grid background
-  grid: {
-    position: 'absolute',
-    inset: 0,
-    backgroundImage:
-      'radial-gradient(circle, rgba(212,175,55,0.07) 1px, transparent 1px)',
-    backgroundSize: '32px 32px',
-    pointerEvents: 'none',
-  },
-
-  // Glow orbs
-  orb: {
-    position: 'absolute',
-    borderRadius: '50%',
-    filter: 'blur(80px)',
-    pointerEvents: 'none',
-  },
-  orbGold: {
-    width: 480,
-    height: 480,
-    background: 'var(--gold-primary)',
-    top: '-15%',
-    right: '-10%',
-    opacity: 0.18,
-  },
-  orbCyan: {
-    width: 360,
-    height: 360,
-    background: 'var(--cyan-primary)',
-    bottom: '-10%',
-    left: '-8%',
-    opacity: 0.12,
-  },
-
-  // Glass card
+  // Flat waybill-style card with corner registration ticks (via CSS)
   card: {
     position: 'relative',
     zIndex: 10,
@@ -282,13 +230,11 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 420,
     margin: '0 16px',
     padding: '40px 36px 32px',
-    background: 'var(--bg-panel)',
-    backdropFilter: 'blur(24px)',
-    WebkitBackdropFilter: 'blur(24px)',
-    border: '1px solid var(--border-active)',
-    borderRadius: 12,
-    boxShadow:
-      '0 0 0 1px rgba(212,175,55,0.08), 0 32px 64px rgba(0,0,0,0.6), 0 0 80px rgba(212,175,55,0.06)',
+    background: 'var(--paper)',
+    border: '1px solid var(--border-hairline)',
+    borderRadius: 3,
+    boxShadow: 'none',
+    backdropFilter: 'none',
   },
 
   // Header section
@@ -296,67 +242,67 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     marginBottom: 32,
   },
+
   eyeGlyph: {
+    fontSize: 16,
     marginBottom: 12,
+    color: 'var(--ink)',
   },
-  eyeOuter: {
-    fontSize: 36,
-    color: 'var(--gold-primary)',
-    textShadow: '0 0 20px rgba(212,175,55,0.6)',
-    fontFamily: 'var(--font-hud)',
-  },
+
   title: {
-    margin: '0 0 4px',
-    fontSize: 22,
-    fontWeight: 700,
-    letterSpacing: '0.18em',
-    color: 'var(--text-heading)',
-    fontFamily: 'var(--font-hud)',
+    margin: '0 0 8px 0',
+    fontSize: '20px',
+    fontWeight: 500,
+    letterSpacing: '-0.01em',
+    color: 'var(--ink)',
+    fontFamily: 'var(--font-ui)',
   },
+
   subtitle: {
-    margin: '0 0 20px',
-    fontSize: 11,
-    letterSpacing: '0.12em',
+    margin: '0 0 16px 0',
+    fontSize: '14px',
+    fontWeight: 400,
+    letterSpacing: '0',
     color: 'var(--text-secondary)',
-    fontFamily: 'var(--font-hud)',
-    textTransform: 'uppercase',
+    fontFamily: 'var(--font-ui)',
   },
+
   divider: {
     height: 1,
-    background:
-      'linear-gradient(90deg, transparent, var(--gold-primary), transparent)',
-    opacity: 0.3,
+    background: 'var(--border-hairline)',
+    margin: '16px 0',
   },
 
   // Form
   form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
+    marginTop: 24,
   },
+
   fieldGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
+    marginBottom: 16,
   },
+
   label: {
-    fontSize: 10,
+    display: 'block',
+    fontSize: '12px',
     fontWeight: 600,
-    letterSpacing: '0.14em',
-    color: 'var(--text-gold)',
-    fontFamily: 'var(--font-hud)',
+    letterSpacing: '0.05em',
+    color: 'var(--ink)',
+    fontFamily: 'var(--font-ui)',
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
+
   input: {
     width: '100%',
-    padding: '10px 14px',
-    background: 'rgba(0,0,0,0.35)',
-    border: '1px solid var(--border-primary)',
-    borderRadius: 6,
-    color: 'var(--text-primary)',
-    fontSize: 14,
-    fontFamily: 'var(--font-body)',
-    outline: 'none',
-    transition: 'border-color 0.2s, box-shadow 0.2s',
+    padding: '8px 12px',
+    fontFamily: 'var(--font-ui)',
+    fontSize: '13px',
+    fontWeight: 400,
+    color: 'var(--ink)',
+    background: 'var(--paper)',
+    border: '1px solid var(--border-hairline)',
+    borderRadius: 2,
     boxSizing: 'border-box',
   },
 
@@ -364,39 +310,39 @@ const styles: Record<string, React.CSSProperties> = {
   errorBox: {
     display: 'flex',
     alignItems: 'flex-start',
-    gap: 8,
-    padding: '10px 14px',
-    background: 'rgba(255,61,61,0.1)',
-    border: '1px solid rgba(255,61,61,0.35)',
-    borderRadius: 6,
-    color: 'var(--alert-red)',
-    fontSize: 13,
-    fontFamily: 'var(--font-body)',
+    padding: '10px 12px',
+    background: 'transparent',
+    border: '1px solid var(--oxide-risk)',
+    borderRadius: 2,
+    color: 'var(--oxide-risk)',
+    fontSize: '12px',
+    fontFamily: 'var(--font-ui)',
     lineHeight: 1.5,
-    overflow: 'hidden',
+    gap: 8,
   },
+
   errorIcon: {
     flexShrink: 0,
     marginTop: 1,
-    fontSize: 14,
   },
 
   // Submit button
   button: {
-    marginTop: 4,
-    padding: '12px',
     width: '100%',
-    background: 'linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-dim) 100%)',
+    padding: '8px 16px',
+    fontFamily: 'var(--font-ui)',
+    fontSize: '13px',
+    fontWeight: 600,
+    letterSpacing: '0.05em',
+    color: 'var(--paper)',
+    background: 'var(--cobalt)',
     border: 'none',
-    borderRadius: 6,
-    color: '#06060C',
-    fontSize: 13,
-    fontWeight: 700,
-    letterSpacing: '0.14em',
-    fontFamily: 'var(--font-hud)',
-    transition: 'box-shadow 0.2s',
-    boxShadow: '0 0 20px rgba(212,175,55,0.25)',
+    borderRadius: 2,
+    cursor: 'pointer',
+    textTransform: 'uppercase',
+    boxSizing: 'border-box',
   },
+
   buttonLoading: {
     display: 'flex',
     alignItems: 'center',
@@ -406,15 +352,17 @@ const styles: Record<string, React.CSSProperties> = {
 
   // Footer hint
   hint: {
-    marginTop: 24,
+    marginTop: 20,
     textAlign: 'center',
-    fontSize: 11,
-    color: 'var(--text-muted)',
-    fontFamily: 'var(--font-hud)',
+    fontSize: '12px',
+    color: 'var(--text-secondary)',
+    fontFamily: 'var(--font-ui)',
+    margin: '20px 0 0 0',
   },
+
   code: {
-    color: 'var(--text-cyan)',
-    fontFamily: 'var(--font-hud)',
-    fontSize: 11,
+    fontFamily: 'var(--font-mono)',
+    fontSize: '11px',
+    color: 'var(--cobalt)',
   },
 }

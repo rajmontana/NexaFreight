@@ -10,16 +10,22 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+  showStack: boolean;
 }
 
+/**
+ * Wave 4: Error boundary reskinned as calm diagnostic dispatch card.
+ * Oxide-risk indicators, hairline borders, collapsible stack trace,
+ * no glow or dark theme effects.
+ */
 export default class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, showStack: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, showStack: false };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -29,21 +35,35 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center w-full h-full bg-[var(--bg-secondary)] rounded-lg border border-red-900/30 p-4">
-          <div className="text-center">
-            <div className="text-xs font-mono text-red-400 tracking-widest mb-2">
-              ⚠ {this.props.name?.toUpperCase() || 'COMPONENT'} ERROR
-            </div>
-            <div className="text-[11px] font-mono text-[var(--text-muted)] max-w-[300px] truncate">
-              {this.state.error?.message}
-            </div>
-            <button
-              onClick={() => this.setState({ hasError: false })}
-              className="mt-3 px-3 py-1 text-[10px] font-mono tracking-widest text-[var(--gold-primary)] border border-[var(--border-primary)] rounded hover:bg-[var(--hover-accent)] transition-colors"
-            >
-              RETRY
-            </button>
+        <div className="error-dispatch">
+          <div className="error-dispatch__header">
+            {this.props.name?.toUpperCase() || 'COMPONENT'} ERROR
           </div>
+          <div className="error-dispatch__message">
+            {this.state.error?.message}
+          </div>
+          {this.state.error?.stack && (
+            <>
+              <button
+                onClick={() => this.setState(s => ({ showStack: !s.showStack }))}
+                className="error-dispatch__retry"
+                style={{ marginTop: 'var(--spacing-md)' }}
+              >
+                {this.state.showStack ? 'HIDE' : 'SHOW'} STACK
+              </button>
+              {this.state.showStack && (
+                <div className="error-dispatch__stack">
+                  {this.state.error.stack}
+                </div>
+              )}
+            </>
+          )}
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            className="error-dispatch__retry"
+          >
+            RETRY
+          </button>
         </div>
       );
     }

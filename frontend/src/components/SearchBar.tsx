@@ -68,12 +68,12 @@ function getResultIcon(type: string, category: string) {
     return <Navigation className="w-3 h-3 text-[var(--alert-green)] flex-shrink-0" />;
   }
   if (['country', 'continent', 'state'].includes(type)) {
-    return <Globe2 className="w-3 h-3 text-[var(--gold-primary)] flex-shrink-0" />;
+    return <Globe2 className="w-3 h-3 text-[var(--cobalt)] flex-shrink-0" />;
   }
   if (['city', 'town', 'village', 'municipality'].includes(type)) {
     return <Landmark className="w-3 h-3 text-[#FF9500] flex-shrink-0" />;
   }
-  return <MapPin className="w-3 h-3 text-[var(--gold-primary)] flex-shrink-0" />;
+  return <MapPin className="w-3 h-3 text-[var(--cobalt)] flex-shrink-0" />;
 }
 
 // Format label: keep it concise
@@ -230,7 +230,7 @@ export default function SearchBar({ onLocate, alwaysExpanded = false }: SearchBa
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 glass-panel-sm px-3 py-2 text-[10px] font-mono tracking-[0.15em] text-[var(--text-muted)] hover:text-[var(--gold-primary)] hover:border-[var(--border-active)] transition-all hover:shadow-[0_0_12px_rgba(212,175,55,0.08)]"
+        className="flex items-center gap-1.5 border border-[var(--border-hairline)] bg-[var(--paper)] px-3 py-2 text-[10px] font-mono tracking-[0.15em] text-[var(--text-secondary)] hover:text-[var(--cobalt)] hover:border-[var(--cobalt)] transition-all"
       >
         <Search className="w-3 h-3" />
         CMD: LOCATE
@@ -240,27 +240,26 @@ export default function SearchBar({ onLocate, alwaysExpanded = false }: SearchBa
 
   return (
     <div className="relative w-full" ref={containerRef}>
-      <div className="flex items-center gap-2 glass-panel px-3 py-2.5 !border-[var(--border-active)] transition-all"
-        style={{ boxShadow: '0 0 20px rgba(212,175,55,0.05), inset 0 0 20px rgba(0,0,0,0.2)' }}
+      <div className="flex items-center gap-2 bg-[var(--paper)] border border-[var(--border-hairline)] px-3 py-2.5 transition-all"
       >
-        <Search className="w-3.5 h-3.5 text-[var(--gold-primary)] flex-shrink-0" />
+        <Search className="w-3.5 h-3.5 text-[var(--cobalt)] flex-shrink-0" />
         <input
           ref={inputRef}
           value={value}
           onChange={(e) => handleSearch(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="SEARCH ADDRESS, CITY, OR COORDINATES..."
-          className="flex-1 bg-transparent text-[11px] text-[var(--text-primary)] font-mono tracking-wider outline-none placeholder:text-[var(--text-muted)]"
+          className="flex-1 bg-transparent text-[11px] text-[var(--ink)] font-mono tracking-wider outline-none placeholder:text-[var(--text-secondary)]"
           autoComplete="off"
           spellCheck={false}
         />
-        {loading && <div className="w-3 h-3 border border-[var(--gold-primary)] border-t-transparent rounded-full animate-spin" />}
-        <span className="text-[9px] text-[var(--text-muted)] font-mono opacity-50 hidden md:inline">CTRL+F</span>
+        {loading && <div className="w-3 h-3 border border-[var(--cobalt)] border-t-transparent rounded-full animate-spin" />}
+        <span className="text-[9px] text-[var(--text-secondary)] font-mono opacity-50 hidden md:inline">CTRL+F</span>
         {(value || !alwaysExpanded) && (
           <button onClick={() => {
             if (alwaysExpanded) { setValue(''); setResults([]); }
             else { setOpen(false); setValue(''); setResults([]); }
-          }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+          }} className="text-[var(--text-secondary)] hover:text-[var(--ink)] transition-colors">
             <X className="w-3 h-3" />
           </button>
         )}
@@ -268,8 +267,7 @@ export default function SearchBar({ onLocate, alwaysExpanded = false }: SearchBa
 
       {results.length > 0 && (
         <div
-          className="absolute top-full left-0 right-0 mt-1 glass-panel overflow-hidden max-h-[320px] overflow-y-auto styled-scrollbar z-[9999]"
-          style={{ boxShadow: '0 12px 40px rgba(0,0,0,0.6), 0 0 1px rgba(212,175,55,0.2)' }}
+          className="absolute top-full left-0 right-0 mt-1 bg-[var(--paper)] border border-[var(--border-hairline)] overflow-hidden max-h-[320px] overflow-y-auto z-[9999]"
         >
           {results.map((r, i) => {
             const { primary, secondary } = formatLabel(r.label);
@@ -279,22 +277,22 @@ export default function SearchBar({ onLocate, alwaysExpanded = false }: SearchBa
                 key={i}
                 onClick={() => handleSelect(r)}
                 onMouseEnter={() => setSelectedIdx(i)}
-                className={`w-full text-left px-3 py-2.5 transition-colors border-b border-[var(--border-secondary)] last:border-0 flex items-start gap-2.5 ${
-                  isSelected ? 'bg-[rgba(212,175,55,0.08)]' : 'hover:bg-[var(--hover-accent)]'
+                className={`w-full text-left px-3 py-2.5 transition-colors border-b border-[var(--border-hairline)] last:border-0 flex items-start gap-2.5 ${
+                  isSelected ? 'bg-[#EDF1FA]' : 'hover:bg-[var(--bg-subtle)]'
                 }`}
               >
                 <div className="mt-0.5">{getResultIcon(r.type, r.category)}</div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] text-[var(--text-primary)] font-mono truncate leading-tight">{primary}</div>
+                  <div className="text-[11px] text-[var(--ink)] font-mono truncate leading-tight">{primary}</div>
                   {secondary && (
-                    <div className="text-[9px] text-[var(--text-muted)] font-mono truncate mt-0.5">{secondary}</div>
+                    <div className="text-[9px] text-[var(--text-secondary)] font-mono truncate mt-0.5">{secondary}</div>
                   )}
                 </div>
                 <div className="flex flex-col items-end flex-shrink-0">
-                  <span className="text-[9px] text-[var(--text-muted)] font-mono uppercase tracking-wider">
+                  <span className="text-[9px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
                     {r.type === 'coordinate' ? 'COORDS' : r.type}
                   </span>
-                  <span className="text-[9px] text-[var(--gold-primary)] font-mono opacity-40">
+                  <span className="text-[9px] text-[var(--cobalt)] font-mono opacity-40">
                     Z{r.zoomLevel}
                   </span>
                 </div>

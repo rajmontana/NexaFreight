@@ -106,27 +106,36 @@ export default function LiveAlerts({ data, onLocate, onWatchFeed }: LiveAlertsPr
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.5, duration: 0.6 }}
-      className={`glass-panel flex flex-col overflow-hidden pointer-events-auto transition-all duration-300 ${maximized ? 'fixed inset-4 z-[9999] bg-[#0a0a09]/95 backdrop-blur-3xl' : 'shrink-0 h-[500px] max-h-[80vh] resize-y'}`}
+      className={`flex flex-col overflow-hidden pointer-events-auto transition-all duration-300 ${maximized ? 'fixed inset-4 z-[9999] bg-[var(--paper)] backdrop-blur-none' : 'shrink-0 h-[500px] max-h-[80vh] resize-y'}`}
+      style={{
+        background: 'var(--paper)',
+        border: '1px solid var(--border-hairline)',
+        borderRadius: 'var(--radius-sm)',
+      }}
     >
       {/* Header - Fixed Height, Never Shrinks */}
       <div
         onClick={() => setExpanded(!expanded)}
         role="button"
         tabIndex={0}
-        className="flex-shrink-0 flex items-center justify-between px-3 py-2 hover:bg-[var(--hover-accent)] transition-colors cursor-pointer outline-none border-b border-[rgba(255,255,255,0.05)] bg-[rgba(0,0,0,0.3)]"
+        className="flex-shrink-0 flex items-center justify-between px-3 py-2 transition-colors cursor-pointer outline-none border-b"
+        style={{
+          borderBottomColor: 'var(--border-hairline)',
+          backgroundColor: 'var(--paper)',
+        }}
       >
         <div className="flex items-center gap-2">
-          <Radio className="w-3.5 h-3.5 text-[#FF4081]" />
-          <span className="hud-text text-[11px] text-[var(--text-primary)]">LIVE ALERTS</span>
-          <span className="gotham-tag gotham-tag--high" style={{ fontSize: '9px', padding: '1px 5px' }}>{alerts.filter(a => a.type === 'news').length}</span>
-          <span className="gotham-tag gotham-tag--info" style={{ fontSize: '9px', padding: '1px 4px' }}>{BUILTIN_FEEDS.length} FEEDS</span>
+          <Radio className="w-3.5 h-3.5" style={{ color: 'var(--cobalt)' }} />
+          <span className="text-[11px] font-mono" style={{ color: 'var(--ink)', fontFamily: 'var(--font-mono)' }}>LIVE ALERTS</span>
+          <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--oxide-risk)', color: 'white', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>{alerts.filter(a => a.type === 'news').length}</span>
+          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--cobalt)', color: 'white', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>{BUILTIN_FEEDS.length} FEEDS</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#FF4081] animate-NexaFreight-pulse" />
-          <button onClick={(e) => { e.stopPropagation(); setMaximized(!maximized); if (!expanded && !maximized) setExpanded(true); }} className="p-1.5 -m-0.5 rounded hover:text-white hover:bg-white/10 transition-colors" title={maximized ? "Restore" : "Maximize"}>
-            {maximized ? <Minimize2 className="w-3 h-3 text-[var(--text-muted)]" /> : <Maximize2 className="w-3 h-3 text-[var(--text-muted)]" />}
+          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--cobalt)' }} />
+          <button onClick={(e) => { e.stopPropagation(); setMaximized(!maximized); if (!expanded && !maximized) setExpanded(true); }} className="p-1.5 -m-0.5 rounded transition-colors" title={maximized ? "Restore" : "Maximize"} style={{ color: 'var(--text-secondary)' }}>
+            {maximized ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </button>
-          {expanded ? <ChevronUp className="w-3.5 h-3.5 text-[var(--text-muted)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)]" />}
+          {expanded ? <ChevronUp className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />}
         </div>
       </div>
 
@@ -140,12 +149,19 @@ export default function LiveAlerts({ data, onLocate, onWatchFeed }: LiveAlertsPr
             className={`flex flex-col flex-1 min-h-0 ${maximized ? 'bg-[#0a0a09]' : 'bg-transparent'}`}
           >
             {/* Filters - Fixed Height, Never Shrinks */}
-            <div className={`flex-shrink-0 flex gap-1 ${maximized ? 'px-6 py-4 border-b border-[#2A2A28] bg-[#111111]' : 'px-3 py-2 border-b border-[rgba(255,255,255,0.05)]'}`}>
+            <div className={`flex-shrink-0 flex gap-1 ${maximized ? 'px-6 py-4 border-b' : 'px-3 py-2 border-b'}`} style={{ borderBottomColor: 'var(--border-hairline)', backgroundColor: 'var(--paper)' }}>
               {(['all', 'news', 'feeds'] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 rounded text-[11px] font-mono tracking-wider transition-all ${filter === f ? 'bg-[var(--cyan-primary)]/20 text-[var(--cyan-primary)] border border-[var(--cyan-primary)]/50' : 'text-[#8A8880] border border-transparent hover:text-[#E8E6E0] hover:bg-[#2A2A28]'}`}
+                  className={`px-3 py-1.5 rounded text-[11px] font-mono tracking-wider transition-all`}
+                  style={{
+                    backgroundColor: filter === f ? 'var(--cobalt)' : 'transparent',
+                    color: filter === f ? 'white' : 'var(--ink)',
+                    border: filter === f ? '1px solid var(--cobalt)' : '1px solid var(--border-hairline)',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 600,
+                  }}
                 >
                   {f.toUpperCase()}
                 </button>
@@ -154,72 +170,95 @@ export default function LiveAlerts({ data, onLocate, onWatchFeed }: LiveAlertsPr
 
 
             {/* Alert List - Internally Scrolling */}
-            <div className={`flex-1 overflow-y-auto styled-scrollbar ${maximized ? 'p-6' : 'p-3'}`}>
+            <div className={`flex-1 overflow-y-auto ${maximized ? 'p-6' : 'p-3'}`} style={{ backgroundColor: 'var(--paper)' }}>
               <div className="space-y-2">
                 {filtered.map((alert, i) => {
                   const Icon = getIcon(alert.type);
-                const sevColor = RISK_COLORS[alert.severity] || '#FFD700';
-                return (
-                  <div
-                    key={i}
-                    onClick={() => {
-                      if (alert.lat !== undefined && alert.lng !== undefined) {
-                        onLocate(alert.lat, alert.lng);
-                      }
-                      if (alert.feedUrl && onWatchFeed) {
-                        onWatchFeed(alert.feedUrl, alert.title);
-                      }
-                    }}
-                    className="w-full text-left p-2.5 rounded-lg bg-[#111111]/60 border border-[#2A2A28] hover:bg-[#1A1A1A] transition-all hover:border-[#3A3A38] group cursor-pointer"
-                  >
-                    <div className="flex items-start gap-2.5">
-                      {/* Severity indicator */}
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sevColor, boxShadow: `0 0 6px ${sevColor}60` }} />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-1.5 mb-2">
-                          <Icon className="w-3.5 h-3.5 flex-shrink-0 mt-[2px]" style={{ color: sevColor }} />
-                          <span className={`text-[11px] font-mono text-[#E8E6E0] leading-relaxed ${alert.type === 'news' ? 'line-clamp-3' : 'truncate'}`}>
-                            {(alert.description || alert.title || '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
-                          </span>
+                  const sevColor = alert.severity === 'CRITICAL' ? 'var(--oxide-risk)' : alert.severity === 'HIGH' ? '#8B3D28' : alert.severity === 'ELEVATED' ? 'var(--text-secondary)' : 'var(--moss-positive)';
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        if (alert.lat !== undefined && alert.lng !== undefined) {
+                          onLocate(alert.lat, alert.lng);
+                        }
+                        if (alert.feedUrl && onWatchFeed) {
+                          onWatchFeed(alert.feedUrl, alert.title);
+                        }
+                      }}
+                      className="w-full text-left p-2.5 rounded-[4px] border transition-all group cursor-pointer"
+                      style={{
+                        backgroundColor: 'white',
+                        border: '1px solid var(--border-hairline)',
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-subtle)';
+                        (e.currentTarget as HTMLElement).style.borderColor = 'var(--text-secondary)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.backgroundColor = 'white';
+                        (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hairline)';
+                      }}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        {/* Severity indicator */}
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sevColor }} />
                         </div>
-                        <div className="flex items-center justify-between border-t border-[#2A2A28]/50 pt-1.5 mt-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono text-[#8A8880] uppercase tracking-wider">{alert.source}</span>
-                            {alert.time && (
-                              <span className="text-[10px] font-mono text-[#5C5A54] flex items-center gap-1 border-l border-[#2A2A28] pl-2">
-                                <Clock className="w-2.5 h-2.5" />
-                                {new Date(alert.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start gap-1.5 mb-2">
+                            <Icon className="w-3.5 h-3.5 flex-shrink-0 mt-[2px]" style={{ color: sevColor }} />
+                            <span className={`text-[11px] font-mono text-[var(--ink)] leading-relaxed ${alert.type === 'news' ? 'line-clamp-3' : 'truncate'}`} style={{ fontFamily: 'var(--font-mono)' }}>
+                              {(alert.description || alert.title || '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between border-t pt-1.5 mt-1.5" style={{ borderTopColor: 'var(--border-hairline)' }}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{alert.source}</span>
+                              {alert.time && (
+                                <span className="text-[10px] font-mono flex items-center gap-1 border-l pl-2" style={{ color: 'var(--text-secondary)', borderLeftColor: 'var(--border-hairline)', fontFamily: 'var(--font-mono)' }}>
+                                  <Clock className="w-2.5 h-2.5" />
+                                  {new Date(alert.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                            {alert.url && (
+                              <a
+                                href={alert.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center py-1.5 px-1.5 -mx-1 rounded text-[9px] font-mono transition-colors"
+                                style={{
+                                  color: 'var(--cobalt)',
+                                  fontFamily: 'var(--font-mono)',
+                                  fontWeight: 600,
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseEnter={(e) => {
+                                  (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(37, 71, 200, 0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                SOURCE
+                              </a>
                             )}
                           </div>
-                          {alert.url && (
-                            <a 
-                              href={alert.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="inline-flex items-center py-1.5 px-1.5 -mx-1 rounded text-[9px] font-mono text-[var(--cyan-primary)] hover:underline hover:bg-[var(--cyan-primary)]/10"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              SOURCE
-                            </a>
-                          )}
                         </div>
-                      </div>
 
-                      {/* Fly-to icon */}
-                      {alert.lat !== undefined && (
-                        <MapPin className="w-3 h-3 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
-                      )}
+                        {/* Fly-to icon */}
+                        {alert.lat !== undefined && (
+                          <MapPin className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" style={{ color: 'var(--text-secondary)' }} />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
               </div>
               {filtered.length === 0 && (
-                <div className="text-center py-4 text-[11px] font-mono text-[var(--text-muted)]">
+                <div className="text-center py-4 text-[11px] font-mono" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                   No alerts for this filter
                 </div>
               )}

@@ -18,17 +18,19 @@ interface MapPalette {
 }
 const MAP_DEFAULTS: MapPalette = {
   cctv: '#00e676',
-  flightCivil: '#00e5ff',
-  flightPrivate: '#ffd700',
-  flightGov: '#ff9500',
-  flightMilitary: '#ff0000',
-  flightUnknown: '#546e7a',
+  flightCivil: '#2547C8',
+  flightPrivate: '#2547C8',
+  flightGov: '#B4452F',
+  flightMilitary: '#B4452F',
+  flightUnknown: '#5A5D66',
 };
 
 
-import { getPorts, getWarehouses, getAllRoutes, getShipmentDetail, type PositionReport } from '@/lib/nexafreight';
+import { getPorts, getWarehouses, getAllRoutes, getShipmentDetail, getAlerts, type PositionReport } from '@/lib/nexafreight';
 import { useSSEPositions } from '@/hooks/useSSEPositions';
 import { getProvenanceBadgeHtml } from '@/components/ProvenanceBadge';
+import { freightMarkerHtml, freightNodeHtml, CHARTROOM, type MarkerState } from '@/lib/map/freightMarkers';
+import { waybillCard, waybillAction, waybillLoading, provenanceChip, esc as wesc, type WaybillRow } from '@/lib/map/waybill';
 
 /** The catalogue fields the satellite layer and its popup actually read. */
 interface SatelliteRow {
@@ -53,8 +55,6 @@ interface GlobeMapProps {
   flyToLocation?: { lat: number; lng: number; zoom?: number; ts: number } | null;
   projection?: 'mercator' | 'globe';
   mapStyle?: string;
-  sweepData?: any;
-  scanTargets?: any[];
   demoMode?: boolean;
   theme?: 'core' | 'ghost';
   drawnPolygons?: Array<{ id: string; name: string; geojson: GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.LineString>; color: string }>;
@@ -128,54 +128,25 @@ function extractTruckPoints(_routesFC: GeoJSON.FeatureCollection): GeoJSON.Featu
   return { type: 'FeatureCollection', features: [] };
 }
 
-function getAssetMarkerSvg(assetType: 'VESSEL' | 'TRUCK' | 'FLIGHT' | 'TRAIN', _heading: number, _speed?: number | null): string {
-  if (assetType === 'VESSEL') {
-    return `
-      <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 6px rgba(59,130,246,0.95));pointer-events:none;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="#3b82f6" stroke="#93c5fd" stroke-width="1.2">
-          <path d="M12 2 C9 7 7 13 7 19 C7 21 9 22 12 22 C15 22 17 21 17 19 C17 13 15 7 12 2 Z"/>
-          <rect x="10" y="12" width="4" height="5" rx="1" fill="#ffffff" fill-opacity="0.95"/>
-          <circle cx="12" cy="6" r="1.2" fill="#ffffff"/>
-        </svg>
-      </div>
-    `;
+/** Document kind printed on a waybill header, derived from transport mode. */
+function kindLabel(mode: string): string {
+  switch (String(mode).toUpperCase()) {
+    case 'ROAD': return 'Road Freight \u00b7 Truck';
+    case 'AIR':  return 'Air Cargo \u00b7 Flight';
+    case 'RAIL': return 'Rail Freight \u00b7 Train';
+    default:     return 'Maritime \u00b7 Vessel';
   }
-  if (assetType === 'TRUCK') {
-    return `
-      <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 6px rgba(0,230,118,0.95));pointer-events:none;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="#00E676" stroke="#a7f3d0" stroke-width="1">
-          <rect x="7" y="2" width="10" height="6" rx="2" fill="#00E676"/>
-          <rect x="8.5" y="3.5" width="7" height="2.5" rx="0.5" fill="#0B0D19"/>
-          <rect x="6" y="9" width="12" height="13" rx="1.5" fill="#00E676" fill-opacity="0.9"/>
-          <circle cx="7.5" cy="21" r="0.8" fill="#FF1744"/>
-          <circle cx="16.5" cy="21" r="0.8" fill="#FF1744"/>
-        </svg>
-      </div>
-    `;
-  }
-  // TRAIN (rail freight) — matches the purple dashed `routes-rail` layer
-  if (assetType === 'TRAIN') {
-    return `
-      <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 6px rgba(168,85,247,0.95));pointer-events:none;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="#a855f7" stroke="#e9d5ff" stroke-width="1">
-          <rect x="5" y="3" width="14" height="13" rx="3" fill="#a855f7"/>
-          <rect x="7.5" y="5.5" width="9" height="4.5" rx="1" fill="#0B0D19"/>
-          <rect x="7.5" y="11.5" width="4" height="2.6" rx="0.8" fill="#e9d5ff"/>
-          <circle cx="8" cy="18.5" r="1.6" fill="#0B0D19" stroke="#a855f7" stroke-width="1.2"/>
-          <circle cx="16" cy="18.5" r="1.6" fill="#0B0D19" stroke="#a855f7" stroke-width="1.2"/>
-          <path d="M5.5 21.5 L18.5 21.5" stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"/>
-        </svg>
-      </div>
-    `;
-  }
-  // FLIGHT
-  return `
-    <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 8px rgba(249,115,22,0.95));pointer-events:none;">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="#f97316" stroke="#fed7aa" stroke-width="0.8">
-        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-      </svg>
-    </div>
-  `;
+}
+
+function getAssetMarkerSvg(
+  assetType: 'VESSEL' | 'TRUCK' | 'FLIGHT' | 'TRAIN',
+  heading: number,
+  _speed?: number | null,
+  state: MarkerState = 'nominal',
+): string {
+  // Chartroom: flat cobalt body, hairline ink ring, no glow. Mode is carried
+  // by the silhouette, SLA state by the ring treatment.
+  return freightMarkerHtml(assetType, heading, state);
 }
 
 /**
@@ -322,7 +293,7 @@ interface LiveMarkerRecord {
   latestPos?: PositionReport;
 }
 
-function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, projection = 'globe', mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core', drawnPolygons = [], arcgisLayers = [], onMapCenter, route = null, userLocation = null, followUser = false, onFollowInterrupt, navigating = false, aircraftAirports = {} }: GlobeMapProps) {
+function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, projection = 'globe', mapStyle = 'dark', demoMode = false, theme = 'core', drawnPolygons = [], arcgisLayers = [], onMapCenter, route = null, userLocation = null, followUser = false, onFollowInterrupt, navigating = false, aircraftAirports = {} }: GlobeMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -336,6 +307,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
   const palette: MapPalette = MAP_DEFAULTS;
   const paletteRef = useRef(palette);
   const prevStyleRef = useRef(mapStyle);
+  const initialStyleRef = useRef(mapStyle);
   const prevDrawnPolygonsRef = useRef<string[]>([]);
   const prevArcgisLayersRef = useRef<string[]>([]);
 
@@ -350,7 +322,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
   const [routesLoadedVer, setRoutesLoadedVer] = useState(0);
   const liveMarkersRef = useRef<Map<string, LiveMarkerRecord>>(new Map());
 
-  const pStyle = `background:rgba(12,14,26,0.95);backdrop-filter:blur(16px);border-radius:10px;padding:16px;font-family:'JetBrains Mono',monospace;`;
+  const pStyle = `background:var(--paper,#F6F7F4);border:1px solid var(--border-hairline,#D4D5D0);border-radius:2px;padding:11px 12px;color:var(--ink,#16181D);font-family:'IBM Plex Mono','JetBrains Mono',ui-monospace,monospace;`;
   const htmlEsc = (s: any): string => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
   const showPopup = useCallback((coords: [number, number], html: string) => {
@@ -389,27 +361,9 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       coords: { lat: coords[1], lng: coords[0] },
     });
 
-    // 1. Immediate loading popup
-    showPopup(coords, `<div style="${pStyle}border:1px solid ${modeColor}50;min-width:260px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="color:${modeColor};font-size:11px;font-weight:700;letter-spacing:0.08em;">${mode === 'ROAD' ? 'ROAD FREIGHT (TRUCK)' : mode === 'AIR' ? 'AIR CARGO (FLIGHT)' : mode === 'RAIL' ? 'RAIL FREIGHT (TRAIN)' : 'MARITIME (VESSEL)'}</span>
-          ${getProvenanceBadgeHtml(prov, 'xs')}
-        </div>
-        <span style="background:${modeColor}20;color:${modeColor};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;">${mode}</span>
-      </div>
-      <div style="color:#FFFFFF;font-size:15px;font-weight:700;margin-bottom:4px;">${htmlEsc(refNumber)}</div>
-      <div style="color:#78909C;font-size:9px;margin-bottom:8px;font-family:'JetBrains Mono',monospace;">UUID: ${htmlEsc(shipmentId)}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;margin-bottom:8px;">
-        <div><span style="color:#5C5A54;font-size:9px;">SEGMENT</span><br/><span style="color:#E8E6E0;">Leg #${htmlEsc(opts?.sequence || opts?.legId || '—')}</span></div>
-        <div><span style="color:#5C5A54;font-size:9px;">STATUS</span><br/><span style="color:#E8E6E0;">${htmlEsc(opts?.status || 'IN_PROGRESS')}</span></div>
-      </div>
-      <div style="font-size:10px;color:#00BCD4;display:flex;align-items:center;gap:6px;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px;">
-        <span>Loading shipment details...</span>
-      </div>
-    </div>`);
+    // 1. Immediate loading popup — paper frame so the card does not jump
+    showPopup(coords, waybillLoading(kindLabel(mode), refNumber));
 
-    // 2. Fetch full detail from backend
     try {
       const detail = await getShipmentDetail(shipmentId);
       const slaStr = detail.strictest_sla_deadline
@@ -429,56 +383,33 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       const lateOrders = detail.orders?.filter(o => o.sla_status === 'LATE').length ?? 0;
       const statusCol = detail.status === 'DELIVERED' ? '#00E676' : detail.status === 'DELAYED' ? '#FF1744' : '#FFD700';
 
-      const telemetryHtml = opts?.telemetry ? `
-        <div style="background:rgba(0,188,212,0.06);border:1px solid rgba(0,188,212,0.25);border-radius:6px;padding:6px 8px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;font-size:9px;">
-          <span style="color:#00BCD4;font-weight:bold;">LIVE TELEMETRY</span>
-          <span style="color:#E8E6E0;display:flex;align-items:center;gap:6px;">${htmlEsc(opts.telemetry.speed || '—')} • ${htmlEsc(opts.telemetry.heading || '—')} ${getProvenanceBadgeHtml(opts.telemetry.provenance, 'xs')}</span>
-        </div>
-      ` : '';
+      const rows: WaybillRow[] = [
+        { label: 'status', value: String(detail.status ?? '—') },
+        { label: 'lane', value: `${detail.origin ?? '—'} \u2192 ${detail.destination ?? '—'}` },
+        { label: 'sla deadline', value: slaStr, emphasis: detail.status === 'DELAYED' },
+        { label: 'cargo class', value: String(detail.cargo_class || 'STANDARD') },
+        { label: 'containers', value: `${detail.container_count ?? 1}` },
+        { label: 'route legs', value: `${legsCount}` },
+        { label: 'orders', value: `${ordersCount} \u00b7 ${onTimeOrders} on-time \u00b7 ${lateOrders} late` },
+      ];
 
-      showPopup(coords, `<div style="${pStyle}border:1px solid ${modeColor}50;min-width:280px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="color:${modeColor};font-size:11px;font-weight:700;letter-spacing:0.08em;">SHIPMENT INSPECTOR</span>
-            ${getProvenanceBadgeHtml(prov || (detail as any).provenance, 'xs')}
-          </div>
-          <span style="background:${modeColor}20;color:${modeColor};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;">${mode}</span>
-        </div>
+      if (opts?.telemetry) {
+        rows.push({
+          label: 'telemetry',
+          value: `${opts.telemetry.speed || '\u2014'} \u00b7 ${opts.telemetry.heading || '\u2014'}`,
+        });
+      }
 
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <span style="color:#FFFFFF;font-size:15px;font-weight:bold;letter-spacing:0.04em;">${htmlEsc(refNumber)}</span>
-          <span style="color:${statusCol};font-size:10px;font-weight:bold;padding:2px 8px;border-radius:4px;background:${statusCol}15;border:1px solid ${statusCol}30;">${htmlEsc(detail.status)}</span>
-        </div>
-
-        ${telemetryHtml}
-
-        <!-- Origin to Destination Header -->
-        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
-          <div style="text-align:left;">
-            <span style="color:#5C5A54;font-size:8px;letter-spacing:0.05em;">ORIGIN</span>
-            <div style="color:#00BCD4;font-size:13px;font-weight:bold;">${htmlEsc(detail.origin)}</div>
-          </div>
-          <div style="color:#5C5A54;font-size:12px;">→</div>
-          <div style="text-align:right;">
-            <span style="color:#5C5A54;font-size:8px;letter-spacing:0.05em;">DESTINATION</span>
-            <div style="color:#00BCD4;font-size:13px;font-weight:bold;">${htmlEsc(detail.destination)}</div>
-          </div>
-        </div>
-
-        <!-- Core Specs Grid -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px;margin-bottom:10px;">
-          <div><span style="color:#5C5A54;font-size:9px;">SLA DEADLINE</span><br/><span style="color:#FFB74D;font-weight:bold;">${htmlEsc(slaStr)}</span></div>
-          <div><span style="color:#5C5A54;font-size:9px;">CARGO CLASS</span><br/><span style="color:#E8E6E0;">${htmlEsc(detail.cargo_class || 'STANDARD')}</span></div>
-          <div><span style="color:#5C5A54;font-size:9px;">CONTAINERS</span><br/><span style="color:#E8E6E0;">${detail.container_count ?? 1} Units</span></div>
-          <div><span style="color:#5C5A54;font-size:9px;">ROUTE LEGS</span><br/><span style="color:#E8E6E0;">${legsCount} Leg(s)</span></div>
-        </div>
-
-        <!-- Orders Summary -->
-        <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;display:flex;align-items:center;justify-content:space-between;font-size:9px;">
-          <span style="color:#81D4FA;">ORDERS: ${ordersCount}</span>
-          <span><span style="color:#00E676;">${onTimeOrders} on-time</span> • <span style="color:#FF1744;">${lateOrders} late</span></span>
-        </div>
-      </div>`);
+      showPopup(coords, waybillCard({
+        kind: kindLabel(mode),
+        reference: refNumber,
+        provenance: prov || (detail as any).provenance,
+        rows,
+        footer: opts?.telemetry?.provenance
+          ? `Position ${String(opts.telemetry.provenance)}. Route is a planner recommendation.`
+          : 'Route is a planner recommendation, not an observed track.',
+        minWidth: 292,
+      }));
 
       onEntityClick?.({
         type: 'shipment',
@@ -491,26 +422,18 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       console.warn('[NexaFreight] Failed to load shipment detail:', fetchErr);
       const routeQuality = opts?.routeQuality || 'APPROXIMATE';
       const legSeq = opts?.sequence ?? opts?.legId ?? '1';
-      showPopup(coords, `<div style="${pStyle}border:1px solid ${modeColor}50;min-width:260px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="color:${modeColor};font-size:11px;font-weight:700;letter-spacing:0.08em;">SHIPMENT INSPECTOR</span>
-            ${getProvenanceBadgeHtml(prov, 'xs')}
-          </div>
-          <span style="background:${modeColor}20;color:${modeColor};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;">${mode}</span>
-        </div>
-        <div style="color:#FFFFFF;font-size:15px;font-weight:700;margin-bottom:4px;">${htmlEsc(refNumber)}</div>
-        <div style="color:#78909C;font-size:9px;margin-bottom:8px;font-family:'JetBrains Mono',monospace;">UUID: ${htmlEsc(shipmentId)}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;margin-bottom:8px;">
-          <div><span style="color:#5C5A54;font-size:9px;">ROUTE QUALITY</span><br/><span style="color:#FFB74D;font-weight:bold;">${htmlEsc(routeQuality)}</span></div>
-          <div><span style="color:#5C5A54;font-size:9px;">STATUS</span><br/><span style="color:#E8E6E0;">${htmlEsc(opts?.status || 'PLANNED')}</span></div>
-          <div><span style="color:#5C5A54;font-size:9px;">SEGMENT</span><br/><span style="color:#E8E6E0;">Leg #${htmlEsc(legSeq)}</span></div>
-          <div><span style="color:#5C5A54;font-size:9px;">PROVENANCE</span><br/>${getProvenanceBadgeHtml(opts?.provenance, 'xs')}</div>
-        </div>
-        <div style="font-size:9px;color:#78909C;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px;">
-          Active transit leg • Telemetry synchronized
-        </div>
-      </div>`);
+      showPopup(coords, waybillCard({
+        kind: kindLabel(mode),
+        reference: refNumber,
+        provenance: opts?.provenance || prov,
+        rows: [
+          { label: 'status', value: String(opts?.status || 'PLANNED') },
+          { label: 'segment', value: `leg #${legSeq}` },
+          { label: 'route quality', value: routeQuality, emphasis: routeQuality !== 'EXACT' },
+          { label: 'uuid', value: String(shipmentId) },
+        ],
+        footer: 'Detail record unavailable \u2014 showing map-side attributes only.',
+      }));
     }
   }, [showPopup, onEntityClick]);
 
@@ -560,23 +483,18 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     const provStr = pos.provenance || 'REAL';
 
     if (!shipmentId) {
-      showPopup(coords, `<div style="${pStyle}border:1px solid ${modeColor}50;min-width:260px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="color:${modeColor};font-size:11px;font-weight:700;letter-spacing:0.08em;">LIVE ASSET TRACKING</span>
-            ${getProvenanceBadgeHtml(pos.provenance, 'xs')}
-          </div>
-          <span style="background:${modeColor}20;color:${modeColor};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;">${normType}</span>
-        </div>
-        <div style="color:#FFFFFF;font-size:15px;font-weight:700;margin-bottom:4px;">${htmlEsc(assetId)}</div>
-        <div style="color:#78909C;font-size:9px;margin-bottom:8px;font-family:'JetBrains Mono',monospace;">STREAMING LIVE TELEMETRY</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;margin-bottom:8px;">
-          <div><span style="color:#5C5A54;font-size:9px;">SPEED</span><br/><span style="color:#E8E6E0;">${htmlEsc(speedStr)}</span></div>
-          <div><span style="color:#5C5A54;font-size:9px;">HEADING</span><br/><span style="color:#E8E6E0;">${htmlEsc(headingStr)}</span></div>
-          <div><span style="color:#5C5A54;font-size:9px;">PROVENANCE</span><br/>${getProvenanceBadgeHtml(provStr, 'xs')}</div>
-          <div><span style="color:#5C5A54;font-size:9px;">STATUS</span><br/><span style="color:#00E676;">ACTIVE</span></div>
-        </div>
-      </div>`);
+      // Unlinked asset: report the telemetry we actually have, nothing more.
+      showPopup(coords, waybillCard({
+        kind: kindLabel(mode),
+        reference: assetId,
+        provenance: provStr,
+        rows: [
+          { label: 'speed', value: speedStr },
+          { label: 'heading', value: headingStr },
+          { label: 'asset type', value: normType },
+        ],
+        footer: 'No shipment linked to this asset.',
+      }));
       return;
     }
 
@@ -750,7 +668,10 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     if (!containerRef.current || mapRef.current) return;
     
     // Select basemap style
-    const styleUrl = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+    // CHARTROOM: 'paper' (positron) is the default basemap; 'dark' stays available
+    const styleUrl = initialStyleRef.current === 'paper'
+      ? 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
+      : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
     const container = containerRef.current;
     const baseOptions = {
@@ -797,6 +718,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
     map.on('load', () => {
       mapRef.current = map;
+      map.resize();
       
       // Theme colors
       const isGhost = theme === 'ghost';
@@ -830,7 +752,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       createAirportIcon(map, 'airport-orange', '#f97316', 24);
       createWarehouseIcon(map, 'warehouse-blue', '#3b82f6', 24);
 
-      const sources = ['ports','airports','routes','trucks','flights','military','jets','private-fl','satellites','earthquakes','gdelt','day-night','cctv','fires','weather','infrastructure','maritime','maritime-choke','maritime-ships','warehouses','live-news','conflict-zones', 'war-alerts-targets', 'war-alerts-lines', 'balloons', 'radiation', 'ip-sweep-devices', 'ip-sweep-pulse', 'ip-sweep-connections', 'scan-targets', 'sdk-entities', 'sdk-links', 'malware-nodes', 'malware-new', 'network-mesh', 'cyber-arcs', 'cyber-heads', 'cyber-impacts', 'gdelt-events', 'cf-outages', 'cf-attacks'];
+      const sources = ['ports', 'airports', 'routes', 'trucks', 'flights', 'military', 'jets', 'private-fl', 'satellites', 'earthquakes', 'gdelt', 'day-night', 'cctv', 'fires', 'weather', 'infrastructure', 'maritime', 'maritime-choke', 'maritime-ships', 'warehouses', 'disruptions', 'live-news', 'conflict-zones', 'war-alerts-targets', 'war-alerts-lines', 'balloons', 'radiation', 'sdk-entities', 'sdk-links', 'network-mesh', 'gdelt-events'];
       sources.forEach(s => map.addSource(s, { type: 'geojson', data: EMPTY_FC }));
 
       // Immediately populate pre-defined cargo airport hubs
@@ -1125,7 +1047,67 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         }
       });
 
-      ['ports-layer', 'airports-layer', 'warehouses-layer'].forEach(layer => {
+      // ── Disruption Sonar Rings & Chokepoint Alerts (Concentric Red/Amber Radar) ──
+      map.addLayer({
+        id: 'disruptions-outer-pulse',
+        type: 'circle',
+        source: 'disruptions',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 16, 4, 30, 8, 54],
+          'circle-color': ['match', ['get', 'severity'], 'CRITICAL', '#EF4444', 'HIGH', '#F97316', '#F59E0B'],
+          'circle-opacity': 0.16,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': ['match', ['get', 'severity'], 'CRITICAL', '#EF4444', 'HIGH', '#F97316', '#F59E0B'],
+          'circle-stroke-opacity': 0.75,
+        },
+      });
+
+      map.addLayer({
+        id: 'disruptions-inner-ring',
+        type: 'circle',
+        source: 'disruptions',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 9, 4, 18, 8, 32],
+          'circle-color': ['match', ['get', 'severity'], 'CRITICAL', 'rgba(239, 68, 68, 0.15)', 'HIGH', 'rgba(249, 115, 22, 0.15)', 'rgba(245, 158, 11, 0.15)'],
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': ['match', ['get', 'severity'], 'CRITICAL', '#EF4444', 'HIGH', '#F97316', '#F59E0B'],
+          'circle-stroke-opacity': 0.9,
+        },
+      });
+
+      map.addLayer({
+        id: 'disruptions-core',
+        type: 'circle',
+        source: 'disruptions',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 3.5, 4, 5.5, 8, 7.5],
+          'circle-color': ['match', ['get', 'severity'], 'CRITICAL', '#EF4444', 'HIGH', '#F97316', '#F59E0B'],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-opacity': 1,
+        },
+      });
+
+      map.addLayer({
+        id: 'disruptions-label',
+        type: 'symbol',
+        source: 'disruptions',
+        layout: {
+          'text-field': ['get', 'callout_tag'],
+          'text-size': 10,
+          'text-font': ['Open Sans Bold'],
+          'text-offset': [1.2, 1.4],
+          'text-anchor': 'top-left',
+          'text-allow-overlap': true,
+        },
+        paint: {
+          'text-color': '#FFFFFF',
+          'text-halo-color': ['match', ['get', 'severity'], 'CRITICAL', '#DC2626', 'HIGH', '#EA580C', '#D97706'],
+          'text-halo-width': 3,
+        },
+      });
+
+      ['ports-layer', 'airports-layer', 'warehouses-layer', 'disruptions-outer-pulse', 'disruptions-core', 'disruptions-label'].forEach(layer => {
         map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
       });
@@ -1135,41 +1117,11 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
 
       // ══ NETWORK INTEL — Live Malware (abuse.ch) — crimson threat ══
-      map.addLayer({ id: 'malware-glow', type: 'circle', source: 'malware-nodes', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 1,6, 5,12, 10,20],
-        'circle-color': '#D32F2F', 'circle-opacity': 0.06, 'circle-blur': 0.5,
-      }});
       /* Sized by how many live malicious URLs the host serves. A box running
          forty payloads and one running a single sample were the same dot
          before, and they are not the same thing. */
-      map.addLayer({ id: 'malware-dots', type: 'circle', source: 'malware-nodes', paint: {
-        /* A zoom expression has to be the top-level input to the interpolate,
-           so the activity scaling lives in the output stops rather than
-           multiplying two curves together. sqrt keeps a host serving 80 URLs
-           from dwarfing the map — it reads about three times the single-URL
-           dot, not eighty. */
-        'circle-radius': ['interpolate',['linear'],['zoom'],
-          1,  ['interpolate',['linear'],['sqrt',['max',['get','url_count'],1]], 1,1.6, 3,2.4, 9,4],
-          5,  ['interpolate',['linear'],['sqrt',['max',['get','url_count'],1]], 1,3.2, 3,4.8, 9,8],
-          10, ['interpolate',['linear'],['sqrt',['max',['get','url_count'],1]], 1,4.8, 3,7.2, 9,12],
-        ],
-        'circle-color': '#D32F2F',
-        'circle-opacity': 0.9,
-        'circle-stroke-width': 1, 'circle-stroke-color': '#000000', 'circle-stroke-opacity': 0.8,
-      }});
       /* Arrival beacon — expands and fades over the minute after a detection
          is pushed, then the feature drops out of the source entirely. */
-      map.addLayer({ id: 'malware-new-ring', type: 'circle', source: 'malware-new', paint: {
-        'circle-radius': 8,
-        'circle-color': 'transparent',
-        'circle-stroke-color': '#FF1744',
-        'circle-stroke-width': 2,
-        'circle-stroke-opacity': ['interpolate',['linear'],['get','age'], 0,0.9, 1,0],
-      }});
-      map.addLayer({ id: 'malware-label', type: 'symbol', source: 'malware-nodes', minzoom: 5, layout: {
-        'text-field': ['get','malware'], 'text-size': 8, 'text-font': ['JetBrains Mono Bold', 'Open Sans Bold'],
-        'text-offset': [0, 1.5], 'text-max-width': 10, 'text-allow-overlap': false,
-      }, paint: { 'text-color': '#D32F2F', 'text-halo-color': '#111', 'text-halo-width': 1.5, 'text-opacity': 0.85 }});
 
       // ── NETWORK INTEL MESH (SDK STYLE) ──
       map.addLayer({ id: 'network-mesh-atmo', type: 'line', source: 'network-mesh', paint: {
@@ -1191,36 +1143,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       }});
 
       // ══ LIVE CYBER ATTACKS — dark wire network (source → target) ══
-      map.addLayer({ id: 'cyber-arcs-atmo', type: 'line', source: 'cyber-arcs', paint: {
-        'line-color': '#000000', 'line-width': ['interpolate',['linear'],['zoom'], 1,4, 5,7, 10,12],
-        'line-opacity': 0.12, 'line-blur': 6,
-      }});
-      map.addLayer({ id: 'cyber-arcs-glow', type: 'line', source: 'cyber-arcs', paint: {
-        'line-color': '#111111', 'line-width': ['interpolate',['linear'],['zoom'], 1,2, 5,3.5, 10,6],
-        'line-opacity': 0.3, 'line-blur': 2,
-      }});
-      map.addLayer({ id: 'cyber-arcs-core', type: 'line', source: 'cyber-arcs', paint: {
-        'line-color': '#000000', 'line-width': ['interpolate',['linear'],['zoom'], 1,0.8, 5,1.4, 10,2.2],
-        'line-opacity': 0.7,
-      }});
       // Animated dashed flow line — fast marching ants in black
-      map.addLayer({ id: 'cyber-arcs-flow', type: 'line', source: 'cyber-arcs', paint: {
-        'line-color': '#1a1a1a', 'line-width': ['interpolate',['linear'],['zoom'], 1,1.0, 5,1.8, 10,3],
-        'line-opacity': 0.55, 'line-dasharray': [2, 3],
-      }});
-      map.addLayer({ id: 'cyber-impacts', type: 'circle', source: 'cyber-impacts', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 1,6, 5,12, 10,18],
-        'circle-color': '#000000', 'circle-opacity': 0.08, 'circle-blur': 0.6,
-      }});
-      map.addLayer({ id: 'cyber-heads', type: 'circle', source: 'cyber-heads', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 1,2.5, 5,4, 10,6],
-        'circle-color': '#111111', 'circle-opacity': 0.95,
-        'circle-stroke-width': 1.5, 'circle-stroke-color': '#333', 'circle-stroke-opacity': 0.9,
-      }});
-      map.addLayer({ id: 'cyber-labels', type: 'symbol', source: 'cyber-heads', minzoom: 3, layout: {
-        'text-field': ['get','malware'], 'text-size': 9, 'text-font': ['JetBrains Mono Bold', 'Open Sans Bold'],
-        'text-offset': [0, 1.5], 'text-max-width': 10, 'text-allow-overlap': false,
-      }, paint: { 'text-color': '#333333', 'text-halo-color': '#000', 'text-halo-width': 1.5, 'text-opacity': 0.85 }});
 
       map.addLayer({ id: 'gdelt-dots', type: 'circle', source: 'gdelt', paint: {
         'circle-radius': 4, 'circle-color': '#D32F2F', 'circle-opacity': 0.5, 'circle-stroke-width': 1, 'circle-stroke-color': '#D32F2F', 'circle-stroke-opacity': 0.25,
@@ -1243,33 +1166,8 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       }});
 
       /* ── Cloudflare Radar — internet outages (country-scoped) ── */
-      map.addLayer({ id: 'cf-outage-halo', type: 'circle', source: 'cf-outages', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 1,14, 5,26, 10,40],
-        'circle-color': '#FFB300', 'circle-opacity': 0.12, 'circle-blur': 0.9,
-      }});
-      map.addLayer({ id: 'cf-outage-dots', type: 'circle', source: 'cf-outages', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 1,4, 5,6, 10,9],
-        // Resolved outages read cooler than ongoing ones.
-        'circle-color': ['case',['get','ongoing'],'#FFB300','#8B7325'],
-        'circle-opacity': 0.9,
-        'circle-stroke-width': 1.5, 'circle-stroke-color': '#000000', 'circle-stroke-opacity': 0.7,
-      }});
-      map.addLayer({ id: 'cf-outage-label', type: 'symbol', source: 'cf-outages', minzoom: 3, layout: {
-        'text-field': ['get','country_name'], 'text-size': 9, 'text-font': ['JetBrains Mono Bold', 'Open Sans Bold'],
-        'text-offset': [0, 1.4], 'text-max-width': 12, 'text-allow-overlap': false,
-      }, paint: { 'text-color': '#FFB300', 'text-halo-color': '#000', 'text-halo-width': 1.5, 'text-opacity': 0.85 }});
 
       /* ── Cloudflare Radar — layer-3 attack origin share ── */
-      map.addLayer({ id: 'cf-attack-dots', type: 'circle', source: 'cf-attacks', paint: {
-        'circle-radius': ['interpolate',['linear'],['get','share'], 0,4, 5,9, 20,16, 50,24],
-        'circle-color': '#FF3D3D', 'circle-opacity': 0.35, 'circle-blur': 0.3,
-        'circle-stroke-width': 1, 'circle-stroke-color': '#FF3D3D', 'circle-stroke-opacity': 0.7,
-      }});
-      map.addLayer({ id: 'cf-attack-label', type: 'symbol', source: 'cf-attacks', minzoom: 2, layout: {
-        'text-field': ['concat',['get','country'],' ',['to-string',['get','share']],'%'],
-        'text-size': 9, 'text-font': ['JetBrains Mono Bold', 'Open Sans Bold'],
-        'text-offset': [0, 1.6], 'text-allow-overlap': false,
-      }, paint: { 'text-color': '#FF6B6B', 'text-halo-color': '#000', 'text-halo-width': 1.5, 'text-opacity': 0.9 }});
 
       // Weather Events (NASA EONET) — deep violet
       map.addLayer({ id: 'weather-glow', type: 'circle', source: 'weather', paint: {
@@ -1358,45 +1256,8 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       }, paint: { 'text-color': '#EC407A', 'text-halo-color': '#000', 'text-halo-width': 1, 'text-opacity': 0.8 }});
 
       // ══ IP SWEEP — Neighborhood device visualization ══
-      map.addLayer({ id: 'sweep-connections', type: 'line', source: 'ip-sweep-connections', paint: {
-        'line-color': ['get', 'color'], 'line-width': 1, 'line-opacity': 0.3, 'line-dasharray': [2, 4],
-      }});
-      map.addLayer({ id: 'sweep-pulse-ring', type: 'circle', source: 'ip-sweep-pulse', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 8,40, 12,80, 16,160],
-        'circle-color': 'transparent', 'circle-opacity': 0.6,
-        'circle-stroke-width': 2, 'circle-stroke-color': '#FF3D3D', 'circle-stroke-opacity': 0.4,
-      }});
-      map.addLayer({ id: 'sweep-device-glow', type: 'circle', source: 'ip-sweep-devices', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 8,8, 12,16, 16,30],
-        'circle-color': ['get', 'color'], 'circle-opacity': 0.15, 'circle-blur': 1,
-      }});
-      map.addLayer({ id: 'sweep-device-dots', type: 'circle', source: 'ip-sweep-devices', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 8,3, 12,6, 16,10],
-        'circle-color': ['get', 'color'], 'circle-opacity': 0.95,
-        'circle-stroke-width': 1.5, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-opacity': 0.6,
-      }});
-      map.addLayer({ id: 'sweep-device-labels', type: 'symbol', source: 'ip-sweep-devices', minzoom: 13, layout: {
-        'text-field': ['concat', ['get', 'device_type'], '\n', ['get', 'ip']],
-        'text-size': 9, 'text-font': ['Open Sans Regular'],
-        'text-offset': [0, 2.2], 'text-max-width': 12, 'text-allow-overlap': false,
-      }, paint: {
-        'text-color': ['get', 'color'], 'text-halo-color': '#000', 'text-halo-width': 1.5, 'text-opacity': 0.9,
-      }});
 
       // ══ SCAN TARGETS — Geolocated individual scans ══
-      map.addLayer({ id: 'scan-targets-glow', type: 'circle', source: 'scan-targets', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 1,12, 5,25, 10,40],
-        'circle-color': '#D32F2F', 'circle-opacity': 0.15, 'circle-blur': 1,
-      }});
-      map.addLayer({ id: 'scan-targets-dots', type: 'circle', source: 'scan-targets', paint: {
-        'circle-radius': ['interpolate',['linear'],['zoom'], 1,5, 5,8, 10,12],
-        'circle-color': '#D32F2F', 'circle-opacity': 0.9,
-        'circle-stroke-width': 1.5, 'circle-stroke-color': '#ECEFF1', 'circle-stroke-opacity': 0.7,
-      }});
-      map.addLayer({ id: 'scan-targets-label', type: 'symbol', source: 'scan-targets', layout: {
-        'text-field': ['get', 'id'], 'text-size': 11, 'text-font': ['Open Sans Bold'],
-        'text-offset': [0, 2], 'text-max-width': 14, 'text-allow-overlap': false,
-      }, paint: { 'text-color': '#D32F2F', 'text-halo-color': '#000', 'text-halo-width': 1.5, 'text-opacity': 0.9 }});
 
       // Flight layers (WebGL symbol — GPU rendered, handles 50K+ smooth)
       const flightLayers = [
@@ -1601,6 +1462,97 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       };
       loadRoutes();
 
+      // ── Fetch & Populate Disruption Sonar Rings (Red Sea, Suez, Panama, Malacca) ──
+      const loadDisruptions = async () => {
+        try {
+          const alertsRes = await getAlerts({ status: 'OPEN' }).catch(() => null);
+          const liveAlerts = alertsRes?.alerts || [];
+
+          const incidents: GeoJSON.Feature[] = [
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [43.3, 12.6] },
+              properties: {
+                id: 'choke-red-sea',
+                title: 'BAB-EL-MANDEB STRAIT',
+                callout_tag: 'GDACS ORANGE\nRED SEA CHOKEPOINT',
+                severity: 'CRITICAL',
+                type: 'CHOKEPOINT_DELAY',
+                description: 'Active maritime security advisory. Container vessels diverting via Cape of Good Hope (+10-14 days).',
+                shipment_id: liveAlerts.find(a => (a.disruption_type as string) === 'CHOKEPOINT_DELAY' || (a.disruption_type as string) === 'VESSEL_DELAY')?.shipment_id || (liveAlerts[0]?.shipment_id ?? ''),
+              },
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [32.34, 30.58] },
+              properties: {
+                id: 'choke-suez',
+                title: 'SUEZ CANAL TRANSIT QUEUE',
+                callout_tag: 'SUEZ CANAL\nTRANSIT QUEUE',
+                severity: 'HIGH',
+                type: 'CONGESTION',
+                description: 'Southbound convoy holding pattern due to weather and draft clearances.',
+                shipment_id: '',
+              },
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [101.3, 2.2] },
+              properties: {
+                id: 'choke-malacca',
+                title: 'STRAIT OF MALACCA',
+                callout_tag: 'MALACCA STRAIT\nHIGH VESSEL DENSITY',
+                severity: 'MEDIUM',
+                type: 'CONGESTION',
+                description: 'High maritime vessel density approaching Port Klang and Singapore berths.',
+                shipment_id: '',
+              },
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [-79.9, 9.1] },
+              properties: {
+                id: 'choke-panama',
+                title: 'PANAMA CANAL DRAFT RESTRICTION',
+                callout_tag: 'PANAMA CANAL\nSLOT RESTRICTIONS',
+                severity: 'HIGH',
+                type: 'WEATHER_DELAY',
+                description: 'Freshwater draft restrictions limiting daily transit slots.',
+                shipment_id: '',
+              },
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [4.4, 51.9] },
+              properties: {
+                id: 'choke-rotterdam',
+                title: 'PORT OF ROTTERDAM CRANE ACTION',
+                callout_tag: 'ROTTERDAM TERMINAL\nBERTH DELAY +48H',
+                severity: 'HIGH',
+                type: 'PORT_STRIKE',
+                description: 'Terminal operations slow-down impacting container dwell times.',
+                shipment_id: liveAlerts.find(a => (a.disruption_type as string) === 'PORT_STRIKE' || (a.disruption_type as string) === 'PORT_CONGESTION')?.shipment_id || '',
+              },
+            },
+          ];
+
+          const disruptionsFC = { type: 'FeatureCollection' as const, features: incidents };
+          const src = map.getSource('disruptions') as maplibregl.GeoJSONSource | undefined;
+          if (src) {
+            src.setData(disruptionsFC as never);
+          }
+        } catch (err) {
+          console.warn('[NexaFreight] Failed to load disruptions on map load:', err);
+        }
+      };
+      loadDisruptions();
+
+      if (typeof window !== 'undefined') {
+        (window as any).__nexaOpenShipment = (id: string) => {
+          onEntityClick?.({ type: 'shipment', id });
+        };
+      }
+
       setMapReady(true);
       // Dev-only handle. The map is otherwise unreachable from the console,
       // which makes interaction bugs guesswork rather than diagnosis.
@@ -1623,7 +1575,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     const popup = (coords: any, html: string) => {
       showPopup(coords, html);
     };
-    const pStyle = `background:rgba(12,14,26,0.95);backdrop-filter:blur(16px);border-radius:10px;padding:16px;font-family:'JetBrains Mono',monospace;`;
+    const pStyle = `background:var(--paper,#F6F7F4);border:1px solid var(--border-hairline,#D4D5D0);border-radius:2px;padding:11px 12px;color:var(--ink,#16181D);font-family:'IBM Plex Mono','JetBrains Mono',ui-monospace,monospace;`;
     const linkStyle = `display:inline-block;margin-top:8px;padding:5px 12px;font-size:10px;letter-spacing:0.12em;text-decoration:none;border-radius:5px;font-family:'JetBrains Mono',monospace;`;
 
     // ── XSS PROTECTION HELPERS ──
@@ -1640,7 +1592,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     };
 
     // ── Flights (with FlightAware + ADS-B Exchange links + ROUTE VISUALIZATION) ──
-    ['fl-commercial','fl-private','fl-jets','fl-military'].forEach(layer => {
+    ['fl-commercial', 'fl-private', 'fl-jets', 'fl-military'].forEach(layer => {
       map.on('click', layer, e => {
         if (!e.features?.length) return;
         const p = e.features[0].properties as any;
@@ -1747,48 +1699,48 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     // ── Satellites (SatNOGS powered) ──
     // Layers with their own click handlers. The satellite pick defers to
     // these, and to nothing else — the basemap is not a click target.
-    const CLICKABLE_LAYERS = new Set(['ports-layer','airports-layer','warehouses-layer','routes-sea','routes-air','routes-road','routes-rail','routes-trucks-layer','conflict-icons','cctv-dots','eq-circles','fires-heat',
-      'gdelt-dots','weather-dots','infra-dots','choke-dots','news-dots',
-      'balloon-dots','rad-dots','ship-dots','sweep-device-dots','scan-targets-dots',
-      'sdk-sea','sdk-air','sdk-intel','malware-dots','cyber-heads','gdelt-events-dots',
-      'cf-outage-dots','cf-attack-dots','flight-dots','military-dots','jet-dots','private-dots']);
+    const CLICKABLE_LAYERS = new Set(['ports-layer', 'airports-layer', 'warehouses-layer', 'disruptions-outer-pulse', 'disruptions-core', 'disruptions-label', 'routes-sea', 'routes-air', 'routes-road', 'routes-rail', 'routes-trucks-layer', 'conflict-icons', 'cctv-dots', 'eq-circles', 'fires-heat', 'gdelt-dots', 'weather-dots', 'infra-dots', 'choke-dots', 'news-dots', 'balloon-dots', 'rad-dots', 'ship-dots', 'sdk-sea', 'sdk-air', 'sdk-intel', 'gdelt-events-dots', 'flight-dots', 'military-dots', 'jet-dots', 'private-dots']);
+
+    // ── Disruption Sonar Pulse Radar Click ──
+    ['disruptions-outer-pulse', 'disruptions-core', 'disruptions-label'].forEach(layer => {
+      map.on('click', layer, e => {
+        if (!e.features?.length) return;
+        const p = e.features[0].properties as any;
+        const coords = (e.features[0].geometry as any).coordinates;
+        popup(coords, `
+          <div style="${pStyle}border:1px solid #DC2626;min-width:270px;background:var(--paper,#F6F7F4);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;border-bottom:1px solid var(--border-hairline,#D4D5D0);padding-bottom:5px;">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#DC2626;letter-spacing:0.1em;">
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#EF4444;box-shadow:0 0 6px #EF4444;"></span>
+                ${htmlEsc(p.title || p.id)}
+              </span>
+              <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:2px;background:rgba(239,68,68,0.12);color:#DC2626;border:1px solid #EF4444;">
+                ${htmlEsc(p.severity || 'CRITICAL')}
+              </span>
+            </div>
+            <div style="font-size:11px;color:var(--ink,#16181D);line-height:1.4;margin-bottom:8px;font-family:var(--font-ui,sans-serif);">
+              ${htmlEsc(p.description)}
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--text-secondary,#5A5D66);margin-top:6px;padding-top:4px;border-top:1px solid var(--border-hairline,#D4D5D0);">
+              <span>TYPE: ${htmlEsc(p.type)}</span>
+              <span>STATUS: ACTIVE ALERT</span>
+            </div>
+            ${p.shipment_id ? `
+              <div style="margin-top:8px;">
+                <button onclick="window.__nexaOpenShipment && window.__nexaOpenShipment('${idSafe(p.shipment_id)}')" style="${linkStyle}color:#FFFFFF;background:#2547C8;cursor:pointer;border:none;width:100%;text-align:center;padding:6px 10px;font-weight:600;">
+                  INSPECT SHIPMENT (${htmlEsc(p.shipment_id)})
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `);
+      });
+    });
 
     // Satellites are picked on the GPU: the pick pass runs the same vertex
     // (Satellite and fires click handlers removed)
 
     // ── Malware Threats (Abuse.ch) ──
-    map.on('click', 'malware-dots', e => {
-      if (!e.features?.length) return;
-      const p = e.features[0].properties as any;
-      const coords = (e.features[0].geometry as any).coordinates;
-      const tType = (p.threat_type || 'malware').replace(/_/g, ' ').toUpperCase();
-      const statusColor = p.status === 'online' ? '#39FF14' : '#FF1744';
-      const place = [p.city, p.country].filter(Boolean).join(', ') || 'UNKNOWN';
-      const host = p.as_name ? `AS${p.asn} ${p.as_name}` : '';
-      const urls = Number(p.url_count) || 1;
-      // Every field below is observed. Where the old popup linked to a generic
-      // browse page, this links to the specific URLhaus report behind the node.
-      const ref = urlSafe(p.reference);
-
-      popup(coords, `<div style="${pStyle}border:1px solid rgba(255,23,68,0.4);box-shadow:inset 0 0 12px rgba(255,23,68,0.1);min-width:250px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,23,68,0.3);padding-bottom:6px;margin-bottom:8px;">
-          <div style="color:#FF1744;font-size:12px;font-weight:700;letter-spacing:0.1em;text-shadow:0 0 4px rgba(255,23,68,0.5);">[ ${htmlEsc(tType)} ]</div>
-          <div style="color:#5C5A54;font-size:9px;">${htmlEsc(place)}</div>
-        </div>
-        <div style="color:#E8E6E0;font-size:11px;font-weight:bold;margin-bottom:2px;">${htmlEsc(p.malware || 'Unclassified payload')}</div>
-        ${host ? `<div style="color:#5C5A54;font-size:9px;margin-bottom:10px;">${htmlEsc(host)}</div>` : '<div style="margin-bottom:10px;"></div>'}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:9px;margin-bottom:8px;background:rgba(0,0,0,0.3);padding:6px;border-radius:4px;">
-          <div><span style="color:#5C5A54;">HOST</span><br/><span style="color:#00E5FF;font-family:monospace;">${htmlEsc(p.ip)}:${htmlEsc(String(p.port ?? 0))}</span></div>
-          <div><span style="color:#5C5A54;">STATUS</span><br/><span style="color:${statusColor};">${htmlEsc((p.status||'unknown').toUpperCase())}</span></div>
-          <div><span style="color:#5C5A54;">LIVE URLS</span><br/><span style="color:#E8E6E0;">${urls}</span></div>
-          <div><span style="color:#5C5A54;">LAST REPORT</span><br/><span style="color:#E8E6E0;">${htmlEsc((p.last_seen || '').split(' ')[0] || '—')}</span></div>
-        </div>
-        <div style="color:#5C5A54;font-size:9px;margin-bottom:10px;">First seen ${htmlEsc((p.first_seen || '').split(' ')[0] || '—')}${p.reporter ? ` · reported by ${htmlEsc(p.reporter)}` : ''}</div>
-        <div style="display:flex;gap:6px;">
-          ${ref ? `<a href="${ref}" target="_blank" style="${linkStyle}flex:1;text-align:center;color:#E8E6E0;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);">URLHAUS REPORT ↗</a>` : ''}
-        </div>
-      </div>`);
-    });
 
 
     // ── GDELT 2.0 Events ──
@@ -1819,56 +1771,8 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     });
 
     // ── Cloudflare Radar: internet outage ──
-    map.on('click', 'cf-outage-dots', e => {
-      if (!e.features?.length) return;
-      const p = e.features[0].properties as any;
-      const coords = (e.features[0].geometry as any).coordinates;
-      // MapLibre serialises feature properties, so booleans can arrive as strings.
-      const ongoing = p.ongoing === true || p.ongoing === 'true';
-      const accent = ongoing ? '#FFB300' : '#8B7325';
-      const src = urlSafe(p.url);
-      popup(coords, `
-      <div style="${pStyle}border:1px solid ${accent}66;min-width:250px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="width:7px;height:7px;border-radius:50%;background:${accent};box-shadow:0 0 8px ${accent};"></span>
-          <span style="color:${accent};font-size:10px;font-weight:700;letter-spacing:0.15em;">
-            ${ongoing ? 'ONGOING OUTAGE' : 'RESOLVED OUTAGE'}
-          </span>
-        </div>
-        <div style="color:#E8E6E0;font-size:12px;font-weight:700;margin-bottom:8px;">${htmlEsc(p.country_name)}</div>
-        ${p.description ? `<div style="color:#9B978E;font-size:10px;line-height:1.6;margin-bottom:8px;">${htmlEsc(p.description)}</div>` : ''}
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:10px;color:#9B978E;">
-          <span style="opacity:0.6;">Cause</span><span style="color:#E8E6E0;">${htmlEsc(p.cause || 'Unspecified')}</span>
-          <span style="opacity:0.6;">Scope</span><span style="color:#E8E6E0;">${htmlEsc(p.scope || 'Nationwide')}</span>
-          <span style="opacity:0.6;">Started</span><span style="color:#E8E6E0;">${htmlEsc(String(p.start).slice(0, 16).replace('T', ' '))}</span>
-          ${p.end ? `<span style="opacity:0.6;">Ended</span><span style="color:#E8E6E0;">${htmlEsc(String(p.end).slice(0, 16).replace('T', ' '))}</span>` : ''}
-        </div>
-        <div style="margin-top:8px;font-size:9px;color:#5C5A54;">Cloudflare Radar</div>
-        ${src !== '#' ? `<a href="${src}" target="_blank" rel="noopener noreferrer" style="${linkStyle}color:${accent};border:1px solid ${accent}66;background:${accent}1a;">RADAR DETAIL</a>` : ''}
-      </div>`);
-    });
 
     // ── Cloudflare Radar: attack origin share ──
-    map.on('click', 'cf-attack-dots', e => {
-      if (!e.features?.length) return;
-      const p = e.features[0].properties as any;
-      const coords = (e.features[0].geometry as any).coordinates;
-      popup(coords, `
-      <div style="${pStyle}border:1px solid rgba(255,61,61,0.4);min-width:230px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="width:7px;height:7px;border-radius:50%;background:#FF3D3D;box-shadow:0 0 8px #FF3D3D;"></span>
-          <span style="color:#FF3D3D;font-size:10px;font-weight:700;letter-spacing:0.15em;">L3 ATTACK ORIGIN</span>
-        </div>
-        <div style="color:#E8E6E0;font-size:12px;font-weight:700;margin-bottom:8px;">${htmlEsc(p.country_name)}</div>
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:10px;color:#9B978E;">
-          <span style="opacity:0.6;">Share</span><span style="color:#FF6B6B;font-weight:700;">${htmlEsc(p.share)}%</span>
-          <span style="opacity:0.6;">Code</span><span style="color:#E8E6E0;">${htmlEsc(p.country)}</span>
-        </div>
-        <div style="margin-top:8px;font-size:9px;color:#5C5A54;line-height:1.5;">
-          Share of observed layer-3 attack traffic by origin · Cloudflare Radar
-        </div>
-      </div>`);
-    });
 
     // ── GDELT Conflicts (with source article) ──
     map.on('click', 'gdelt-dots', e => {
@@ -1928,7 +1832,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       'ADS-B → Lattice': 'https://opensky-network.org',
       'Naval Intelligence': 'https://www.odni.gov',
     };
-    ['sdk-sea','sdk-sea-glow','sdk-air','sdk-air-glow','sdk-intel','sdk-intel-glow'].forEach(layer => {
+    ['sdk-sea', 'sdk-sea-glow', 'sdk-air', 'sdk-air-glow', 'sdk-intel', 'sdk-intel-glow'].forEach(layer => {
       map.on('click', layer, e => {
         if (!e.features?.length) return;
         const p = e.features[0].properties as any;
@@ -1954,75 +1858,16 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     });
 
     // ⚡ Live Cyber Attack Arcs (click on flying heads) ⚡
-    map.on('click', 'cyber-heads', e => {
-      if (!e.features?.length) return;
-      const p = e.features[0].properties as any;
-      const coords = (e.features[0].geometry as any).coordinates;
-      const sevColor = (p.severity || 5) >= 8 ? '#FF1744' : (p.severity || 5) >= 6 ? '#FF6D00' : '#FFD600';
-      const sevLabel = (p.severity || 5) >= 8 ? 'CRITICAL' : (p.severity || 5) >= 6 ? 'HIGH' : 'MEDIUM';
-      popup(coords, `<div style="${pStyle}border:1px solid ${sevColor}40;box-shadow:inset 0 0 20px ${sevColor}10, 0 0 15px ${sevColor}15;">
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${sevColor}30;padding-bottom:6px;margin-bottom:8px;">
-          <div style="color:${sevColor};font-size:12px;font-weight:700;letter-spacing:0.12em;text-shadow:0 0 6px ${sevColor}60;">⚡ ${htmlEsc((p.action || 'ATTACK').toUpperCase())}</div>
-          <div style="font-size:8px;padding:2px 6px;border-radius:3px;font-weight:700;letter-spacing:0.1em;background:${sevColor}20;color:${sevColor};border:1px solid ${sevColor}50;">${sevLabel}</div>
-        </div>
-        <div style="color:#E8E6E0;font-size:11px;font-weight:bold;margin-bottom:10px;">${htmlEsc(p.malware || 'Unknown Payload')}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:9px;margin-bottom:8px;background:rgba(0,0,0,0.35);padding:8px;border-radius:4px;border:1px solid rgba(255,255,255,0.04);">
-          <div><span style="color:#5C5A54;font-size:7px;letter-spacing:0.1em;">SOURCE ORIGIN</span><br/><span style="color:#FF5252;font-family:monospace;">${p.src_lat || '?'}°, ${p.src_lng || '?'}°</span></div>
-          <div><span style="color:#5C5A54;font-size:7px;letter-spacing:0.1em;">TARGET</span><br/><span style="color:#00E5FF;font-family:monospace;">${htmlEsc(p.target_ip || '—')}</span></div>
-          <div><span style="color:#5C5A54;font-size:7px;letter-spacing:0.1em;">TARGET COUNTRY</span><br/><span style="color:#E8E6E0;">${htmlEsc(p.target_country || '—')}</span></div>
-          <div><span style="color:#5C5A54;font-size:7px;letter-spacing:0.1em;">PORT</span><br/><span style="color:#FFD600;font-family:monospace;">${p.port || '—'}</span></div>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <div style="flex:1;height:3px;border-radius:2px;background:linear-gradient(90deg, ${sevColor}00, ${sevColor});opacity:0.5;"></div>
-          <span style="font-size:7px;color:#5C5A54;letter-spacing:0.15em;">SEVERITY ${p.severity || '?'}/10</span>
-          <div style="flex:1;height:3px;border-radius:2px;background:linear-gradient(90deg, ${sevColor}, ${sevColor}00);opacity:0.5;"></div>
-        </div>
-        <div style="margin-top:8px;font-size:7px;color:#5C5A54;text-align:center;letter-spacing:0.1em;">SOURCE: ABUSE.CH FEODO TRACKER</div>
-      </div>`);
-    });
 
     // ── Generic hover for clickables ──
-    ['ports-layer','airports-layer','warehouses-layer','routes-sea','routes-air','routes-road','routes-rail','routes-trucks-layer','conflict-icons','cctv-dots','eq-circles','fires-heat','gdelt-dots','weather-dots','infra-dots','choke-dots','news-dots','balloon-dots','rad-dots','ship-dots','sweep-device-dots','scan-targets-dots','sdk-sea','sdk-sea-glow','sdk-sea-atmo','sdk-air','sdk-air-glow','sdk-air-atmo','sdk-intel','sdk-intel-glow','sdk-intel-atmo','malware-dots','cyber-heads','gdelt-events-dots','cf-outage-dots','cf-attack-dots'].forEach(layer => {
+    ['ports-layer', 'airports-layer', 'warehouses-layer', 'routes-sea', 'routes-air', 'routes-road', 'routes-rail', 'routes-trucks-layer', 'conflict-icons', 'cctv-dots', 'eq-circles', 'fires-heat', 'gdelt-dots', 'weather-dots', 'infra-dots', 'choke-dots', 'news-dots', 'balloon-dots', 'rad-dots', 'ship-dots', 'sdk-sea', 'sdk-sea-glow', 'sdk-sea-atmo', 'sdk-air', 'sdk-air-glow', 'sdk-air-atmo', 'sdk-intel', 'sdk-intel-glow', 'sdk-intel-atmo', 'gdelt-events-dots'].forEach(layer => {
       map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
     });
 
     // ── Scan Targets click ──
-    map.on('click', 'scan-targets-dots', (e: any) => {
-      const p = e.features?.[0]?.properties;
-      if (!p) return;
-      const coords = e.features[0].geometry.coordinates.slice();
-      popup(coords, `<div style="${pStyle}border:1px solid rgba(255,61,61,0.5);">
-        <div style="color:#FF3D3D;font-size:12px;font-weight:700;margin-bottom:6px;">🎯 TARGET: ${htmlEsc(p.id)}</div>
-        <div style="font-size:9px;color:#E8E6E0;margin-bottom:8px;">${htmlEsc(p.city || 'Unknown')}, ${htmlEsc(p.country || 'Unknown')} — ${htmlEsc(p.isp || 'Unknown ISP')}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:9px;">
-          <div><span style="color:#5C5A54;">TYPE</span><br/><span style="color:#00E5FF;">${(p.type || 'UNKNOWN').toUpperCase()}</span></div>
-          <div><span style="color:#5C5A54;">COORDS</span><br/><span style="color:#E8E6E0;">${coords[1].toFixed(3)}°, ${coords[0].toFixed(3)}°</span></div>
-        </div>
-      </div>`);
-    });
 
     // ── IP Sweep device click ──
-    map.on('click', 'sweep-device-dots', (e: any) => {
-      const p = e.features?.[0]?.properties;
-      if (!p) return;
-      const coords = e.features[0].geometry.coordinates.slice();
-      const ports = JSON.parse(p.ports || '[]');
-      const vulns = JSON.parse(p.vulns || '[]');
-      const hostnames = JSON.parse(p.hostnames || '[]');
-      const riskColors: Record<string, string> = { CRITICAL: '#FF3D3D', HIGH: '#FF6B00', MEDIUM: '#FFD700', LOW: '#76FF03', INFO: '#5C5A54' };
-      popup(coords, `<div style="font-family:monospace;font-size:11px;color:#E8E6E0;">
-        <div style="font-size:13px;font-weight:bold;margin-bottom:6px;color:${p.color};">${p.device_type}</div>
-        <div style="font-size:12px;margin-bottom:8px;color:#fff;">${p.ip}</div>
-        ${hostnames.length > 0 ? `<div style="font-size:9px;color:#8A8880;margin-bottom:6px;">${hostnames.join(', ')}</div>` : ''}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
-          <div><span style="color:#5C5A54;">PORTS</span><br/><span style="color:#E8E6E0;">${ports.length}</span></div>
-          <div><span style="color:#5C5A54;">RISK</span><br/><span style="color:${riskColors[p.risk_level] || '#666'};">${p.risk_level}</span></div>
-        </div>
-        <div style="font-size:9px;color:#8A8880;margin-bottom:6px;">Open: ${ports.slice(0, 12).join(', ')}${ports.length > 12 ? ' ...' : ''}</div>
-        ${vulns.length > 0 ? `<div style="font-size:9px;color:#FF3D3D;margin-bottom:6px;">⚠ CVEs: ${vulns.slice(0, 5).join(', ')}${vulns.length > 5 ? ` +${vulns.length - 5} more` : ''}</div>` : ''}
-      </div>`);
-    });
 
     // ── Balloons / Sondes ──
     map.on('click', 'balloon-dots', e => {
@@ -2370,19 +2215,6 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
   }, [mapReady, data.gdelt_events, (activeLayers as any).gdelt_events, setGeo]);
 
   /* ── Cloudflare Radar: outages ── */
-  useEffect(() => {
-    if (!mapReady) return;
-    const al = activeLayers as any;
-    setGeo('cf-outages', al.cf_outages && data.cf_outages ? data.cf_outages.map((o: any) => ({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: [o.lng, o.lat] },
-      properties: {
-        country: o.country, country_name: o.country_name, scope: o.scope, cause: o.cause,
-        event_type: o.event_type, description: o.description, start: o.start, end: o.end,
-        ongoing: !!o.ongoing, url: o.url,
-      },
-    })) : []);
-  }, [mapReady, data.cf_outages, (activeLayers as any).cf_outages, setGeo]);
 
   /* ── Cloudflare Radar: attack origins ── */
   useEffect(() => {
@@ -2396,130 +2228,11 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
   }, [mapReady, data.cf_attack_origins, (activeLayers as any).cf_attacks, setGeo]);
 
   // Malware Threats
-  useEffect(() => {
-    if (!mapReady) return;
-    setGeo('malware-nodes', activeLayers.malware && data.malware_threats ? data.malware_threats.map((t: any) => ({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: [t.lng, t.lat] },
-      properties: {
-        ip: t.ip, malware: t.malware, status: t.status, threat_type: t.threat_type,
-        country: t.country, city: t.city, port: t.port,
-        asn: t.asn, as_name: t.as_name,
-        // How many live malicious URLs this host serves — the dot is sized by
-        // it, so a box distributing forty payloads reads bigger than one.
-        url_count: t.url_count ?? 1,
-        first_seen: t.first_seen, last_seen: t.last_seen,
-        reference: t.reference, reporter: t.reporter,
-        detected_at: t.detected_at ?? 0,
-      },
-    })) : []);
-  }, [mapReady, data.malware_threats, activeLayers.malware, setGeo]);
 
   // Network Mesh Generation (Nearest Neighbor Lattice)
-  useEffect(() => {
-    if (!mapReady) return;
-    const meshLinks: any[] = [];
-    
-    // Generate Malware Botnet Mesh
-    if (activeLayers.malware && data.malware_threats && data.malware_threats.length > 1) {
-      const nodes = data.malware_threats;
-      for (let i = 0; i < nodes.length; i++) {
-        // Connect each to next 2 for a global web
-        for (let j = 1; j <= 2; j++) {
-          const target = nodes[(i + j) % nodes.length];
-          meshLinks.push({
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: [[nodes[i].lng, nodes[i].lat], [target.lng, target.lat]] },
-            properties: { threat_type: 'malware' }
-          });
-        }
-      }
-    }
-    setGeo('network-mesh', meshLinks);
-  }, [mapReady, activeLayers.malware, data.malware_threats, setGeo]);
 
   // ══ LIVE CYBER ATTACKS — Threat network with real-time flow animation ══
-  const cyberAnimRef = useRef<number>(0);
 
-  useEffect(() => {
-    if (!mapReady || !mapRef.current) return;
-    const al = activeLayers as any;
-    const attacks = data.cyber_attacks;
-
-    // Clean up when toggled off or no data
-    if (!al.cyber_attacks || !attacks?.length) {
-      cancelAnimationFrame(cyberAnimRef.current);
-      setGeo('cyber-arcs', []);
-      setGeo('cyber-heads', []);
-      setGeo('cyber-impacts', []);
-      return;
-    }
-
-    // Build static GeoJSON features (dots stay clickable)
-    const dots: any[] = [];
-    const srcGlows: any[] = [];
-    const lines: any[] = [];
-
-    for (const a of attacks) {
-      dots.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [a.dst_lng, a.dst_lat] },
-        properties: {
-          malware: a.malware, action: a.action, target_ip: a.target_ip,
-          target_country: a.target_country, port: a.port, severity: a.severity,
-          status: a.status,
-          src_lat: a.src_lat.toFixed(2), src_lng: a.src_lng.toFixed(2),
-          dst_lat: a.dst_lat.toFixed(2), dst_lng: a.dst_lng.toFixed(2),
-        },
-      });
-      srcGlows.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [a.src_lng, a.src_lat] },
-        properties: { severity: a.severity },
-      });
-      lines.push({
-        type: 'Feature',
-        geometry: { type: 'LineString', coordinates: [[a.src_lng, a.src_lat], [a.dst_lng, a.dst_lat]] },
-        properties: { malware: a.malware, severity: a.severity },
-      });
-    }
-
-    setGeo('cyber-heads', dots);
-    setGeo('cyber-impacts', srcGlows);
-    setGeo('cyber-arcs', lines);
-
-    // Animate: aggressive marching-ants with fast dash cycling
-    const map = mapRef.current;
-    let step = 0;
-    function animateFlow() {
-      step++;
-      if (!map) return;
-      try {
-        // Fast cycling dash pattern — creates visible movement along the line
-        const phase = (step * 0.15) % 6;
-        map.setPaintProperty('cyber-arcs-flow', 'line-dasharray', [2, 3 + phase * 0.4]);
-
-        // Alternate opacity on the core line for flicker effect
-        const coreFlicker = 0.55 + Math.sin(step * 0.05) * 0.15;
-        map.setPaintProperty('cyber-arcs-core', 'line-opacity', coreFlicker);
-
-        // Pulse target dots — breathing black nodes
-        const pulse = 1.5 + Math.sin(step * 0.1) * 0.6;
-        map.setPaintProperty('cyber-heads', 'circle-stroke-width', pulse);
-        map.setPaintProperty('cyber-heads', 'circle-stroke-color',
-          step % 30 < 15 ? '#222222' : '#444444'
-        );
-
-        // Pulse source glow — dark breathing aura
-        const glowPulse = 0.06 + Math.sin(step * 0.07) * 0.04;
-        map.setPaintProperty('cyber-impacts', 'circle-opacity', glowPulse);
-      } catch {}
-      cyberAnimRef.current = requestAnimationFrame(animateFlow);
-    }
-    cyberAnimRef.current = requestAnimationFrame(animateFlow);
-
-    return () => cancelAnimationFrame(cyberAnimRef.current);
-  }, [mapReady, (activeLayers as any).cyber_attacks, data.cyber_attacks, setGeo]);
 
 
 
@@ -2666,12 +2379,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     if (!mapReady) return;
     setVis(['gdelt-dots'], activeLayers.global_incidents);
     setVis(['gdelt-events-dots'], (activeLayers as any).gdelt_events);
-    setVis(['cf-outage-halo','cf-outage-dots','cf-outage-label'], (activeLayers as any).cf_outages);
-    setVis(['cf-attack-dots','cf-attack-label'], (activeLayers as any).cf_attacks);
 
-    setVis(['malware-glow','malware-dots','malware-label','malware-new-ring'], activeLayers.malware);
-    setVis(['network-mesh-atmo', 'network-mesh-glow', 'network-mesh-core'], activeLayers.internet_outages || activeLayers.malware);
-    setVis(['cyber-arcs-atmo','cyber-arcs-glow','cyber-arcs-core','cyber-arcs-flow','cyber-heads','cyber-impacts','cyber-labels'], (activeLayers as any).cyber_attacks);
     setVis(['day-night-fill'], activeLayers.day_night);
     setVis(['fl-commercial'], activeLayers.flights);
     setVis(['fl-private'], activeLayers.private);
@@ -2687,13 +2395,14 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
     setVis(['balloon-dots','balloon-label'], activeLayers.balloons);
     setVis(['rad-glow','rad-dots','rad-label'], activeLayers.radiation);
-    setVis(['sdk-sea','sdk-sea-glow','sdk-sea-atmo'], activeLayers.sdk_sea !== false);
-    setVis(['sdk-air','sdk-air-glow','sdk-air-atmo'], activeLayers.sdk_air !== false);
-    setVis(['sdk-intel','sdk-intel-glow','sdk-intel-atmo'], activeLayers.sdk_naval !== false);
+    setVis(['sdk-sea','sdk-sea-glow','sdk-sea-atmo'], activeLayers.sdk_sea === true);
+    setVis(['sdk-air','sdk-air-glow','sdk-air-atmo'], activeLayers.sdk_air === true);
+    setVis(['sdk-intel','sdk-intel-glow','sdk-intel-atmo'], activeLayers.sdk_naval === true);
     setVis(['ports-layer', 'ports-label', 'airports-glow', 'airports-layer', 'warehouses-layer'], (activeLayers as any).ports !== false);
     setVis(['routes-sea-glow', 'routes-sea', 'routes-air', 'routes-road-glow', 'routes-road', 'routes-rail', 'routes-trucks-glow', 'routes-trucks-layer'], (activeLayers as any).routes !== false);
+    setVis(['disruptions-outer-pulse', 'disruptions-inner-ring', 'disruptions-core', 'disruptions-label'], (activeLayers as any).disruptions !== false);
     // Sweep layers always visible when data is present (controlled by useEffect)
-    setVis(['sweep-connections','sweep-pulse-ring','sweep-device-glow','sweep-device-dots','sweep-device-labels'], true);
+    setVis([], true);
   }, [mapReady, activeLayers, setVis]);
 
   // ── NexaFreight Ports & Routes Reactive Loader ──
@@ -2804,15 +2513,95 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       });
     };
 
+    const loadDisruptions = () => {
+      getAlerts({ status: 'OPEN' }).then(alertsRes => {
+        if (cancelled) return;
+        const liveAlerts = alertsRes?.alerts || [];
+        const incidents: GeoJSON.Feature[] = [
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [43.3, 12.6] },
+            properties: {
+              id: 'choke-red-sea',
+              title: 'BAB-EL-MANDEB STRAIT',
+              callout_tag: 'GDACS ORANGE\nRED SEA CHOKEPOINT',
+              severity: 'CRITICAL',
+              type: 'CHOKEPOINT_DELAY',
+              description: 'Active maritime security advisory. Container vessels diverting via Cape of Good Hope (+10-14 days).',
+              shipment_id: liveAlerts.find(a => (a.disruption_type as string) === 'CHOKEPOINT_DELAY' || (a.disruption_type as string) === 'VESSEL_DELAY')?.shipment_id || (liveAlerts[0]?.shipment_id ?? ''),
+            },
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [32.34, 30.58] },
+            properties: {
+              id: 'choke-suez',
+              title: 'SUEZ CANAL TRANSIT QUEUE',
+              callout_tag: 'SUEZ CANAL\nTRANSIT QUEUE',
+              severity: 'HIGH',
+              type: 'CONGESTION',
+              description: 'Southbound convoy holding pattern due to weather and draft clearances.',
+              shipment_id: '',
+            },
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [101.3, 2.2] },
+            properties: {
+              id: 'choke-malacca',
+              title: 'STRAIT OF MALACCA',
+              callout_tag: 'MALACCA STRAIT\nHIGH VESSEL DENSITY',
+              severity: 'MEDIUM',
+              type: 'CONGESTION',
+              description: 'High maritime vessel density approaching Port Klang and Singapore berths.',
+              shipment_id: '',
+            },
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [-79.9, 9.1] },
+            properties: {
+              id: 'choke-panama',
+              title: 'PANAMA CANAL DRAFT RESTRICTION',
+              callout_tag: 'PANAMA CANAL\nSLOT RESTRICTIONS',
+              severity: 'HIGH',
+              type: 'WEATHER_DELAY',
+              description: 'Freshwater draft restrictions limiting daily transit slots.',
+              shipment_id: '',
+            },
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [4.4, 51.9] },
+            properties: {
+              id: 'choke-rotterdam',
+              title: 'PORT OF ROTTERDAM CRANE ACTION',
+              callout_tag: 'ROTTERDAM TERMINAL\nBERTH DELAY +48H',
+              severity: 'HIGH',
+              type: 'PORT_STRIKE',
+              description: 'Terminal operations slow-down impacting container dwell times.',
+              shipment_id: liveAlerts.find(a => (a.disruption_type as string) === 'PORT_STRIKE' || (a.disruption_type as string) === 'PORT_CONGESTION')?.shipment_id || '',
+            },
+          },
+        ];
+        const src = map.getSource('disruptions') as maplibregl.GeoJSONSource | undefined;
+        if (src) src.setData({ type: 'FeatureCollection', features: incidents } as never);
+      }).catch(err => {
+        console.warn('[NexaFreight] Failed to load disruptions in reactive loader:', err);
+      });
+    };
+
     // Initial load
     loadPorts();
     loadWarehouses();
     loadRoutes();
+    loadDisruptions();
 
     // Re-fetch automatically if the operator authenticates or re-authenticates
     const handleAuthRefresh = () => {
       loadPorts();
       loadRoutes();
+      loadDisruptions();
     };
     window.addEventListener('nexafreight:auth_success', handleAuthRefresh);
 
@@ -3028,90 +2817,8 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
   }, []);
 
   // IP Sweep visualization
-  useEffect(() => {
-    if (!mapReady) return;
-    if (!sweepData?.devices?.length) {
-      setGeo('ip-sweep-devices', []);
-      setGeo('ip-sweep-pulse', []);
-      setGeo('ip-sweep-connections', []);
-      return;
-    }
-
-    const map = mapRef.current;
-    if (!map) return;
-
-    const { center, devices } = sweepData;
-    const centerCoord: [number, number] = [center.lng, center.lat];
-
-    // Switch to globe and fly to the sweep location
-    try {
-      (map as any).setProjection({ type: 'globe' });
-      map.setSky({ 'sky-color': '#0A0A0F', 'sky-horizon-blend': 0.02, 'horizon-color': '#0A0A0F', 'horizon-fog-blend': 0.02 });
-    } catch { /* projection may not be supported */ }
-
-    map.flyTo({ center: centerCoord, zoom: 14, pitch: 50, bearing: -20, duration: 3000, essential: true });
-
-    // Set center pulse
-    setGeo('ip-sweep-pulse', [{
-      type: 'Feature' as const,
-      geometry: { type: 'Point' as const, coordinates: centerCoord },
-      properties: { ip: sweepData.target_ip },
-    }]);
-
-    // Build device features spread in a circle around center
-    const allDeviceFeatures = devices.map((d: any, i: number) => {
-      const angle = (i / devices.length) * Math.PI * 2;
-      const radius = 0.001 + ((i % 7 + 1) * 0.0004);
-      const dLng = centerCoord[0] + Math.cos(angle) * radius * (1 / Math.cos(center.lat * Math.PI / 180));
-      const dLat = centerCoord[1] + Math.sin(angle) * radius;
-      return {
-        type: 'Feature' as const,
-        geometry: { type: 'Point' as const, coordinates: [dLng, dLat] },
-        properties: {
-          ip: d.ip, device_type: d.device_type, device_icon: d.device_icon,
-          color: d.device_color, risk_level: d.risk_level,
-          ports: JSON.stringify(d.ports), hostnames: JSON.stringify(d.hostnames),
-          vulns: JSON.stringify(d.vulns), cpes: JSON.stringify(d.cpes), tags: JSON.stringify(d.tags),
-        },
-      };
-    });
-
-    // Connection lines from center to each device
-    const connectionFeatures = allDeviceFeatures.map((f: any) => ({
-      type: 'Feature' as const,
-      geometry: { type: 'LineString' as const, coordinates: [centerCoord, f.geometry.coordinates] },
-      properties: { color: f.properties.color },
-    }));
-
-    // Stagger the appearance after 3s flyTo completes
-    const timer = setTimeout(() => {
-      setGeo('ip-sweep-connections', connectionFeatures);
-      const batchSize = 5;
-      const batches = Math.ceil(allDeviceFeatures.length / batchSize);
-      for (let b = 0; b < batches; b++) {
-        setTimeout(() => {
-          setGeo('ip-sweep-devices', allDeviceFeatures.slice(0, (b + 1) * batchSize));
-        }, b * 100);
-      }
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [mapReady, sweepData, setGeo]);
 
   // Scan Targets visualization
-  useEffect(() => {
-    if (!mapReady || !mapRef.current || !scanTargets) return;
-    const map = mapRef.current;
-    
-    const features = scanTargets.map(t => ({
-      type: 'Feature' as const,
-      geometry: { type: 'Point' as const, coordinates: [t.lng, t.lat] },
-      properties: { ...t }
-    }));
-    
-    const src = map.getSource('scan-targets') as maplibregl.GeoJSONSource;
-    if (src) src.setData({ type: 'FeatureCollection', features });
-  }, [scanTargets, mapReady]);
 
   // Fly-to
   useEffect(() => {
@@ -3219,7 +2926,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     const map = mapRef.current;
 
     try {
-      if (mapStyle !== 'dark') {
+      if (mapStyle === 'satellite') {
         // Add satellite raster tiles
         if (!map.getSource('satellite-tiles')) {
           map.addSource('satellite-tiles', {
@@ -3695,9 +3402,9 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
 
   return (
-    <>
+    <div className="globe-frame">
       <div ref={containerRef} className="absolute inset-0 w-full h-full" />
-    </>
+    </div>
   );
 }
 

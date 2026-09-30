@@ -59,21 +59,21 @@ const MODE_ICON: Record<string, string> = {
 };
 
 const MODE_COLOR: Record<string, string> = {
-  ROAD: '#FDBA74',
-  RAIL: '#6EE7B7',
-  SEA: '#7DD3FC',
-  AIR: '#C4B5FD',
+  ROAD: '#2547C8',
+  RAIL: '#3E6B4F',
+  SEA: '#2547C8',
+  AIR: '#2547C8',
 };
 
 const PRIORITY_COLOR: Record<string, string> = {
-  CRITICAL: '#FCA5A5',
-  EXPRESS: '#FDBA74',
-  STANDARD: '#7DD3FC',
-  ECONOMY: '#6EE7B7',
+  CRITICAL: '#B4452F',
+  EXPRESS: '#8B3D28',
+  STANDARD: '#5A5D66',
+  ECONOMY: '#3E6B4F',
 };
 
-function fmtUsd(n: number): string {
-  return `$${Math.round(n).toLocaleString()}`;
+function fmtRupee(n: number): string {
+  return `₹${Math.round(n).toLocaleString('en-IN')}`;
 }
 
 function fmtH(h: number): string {
@@ -92,7 +92,7 @@ function fmtPct(v: number): string {
 
 function ScoreBadge({ score }: { score: number }) {
   const pct = Math.round(score * 100);
-  const color = pct >= 80 ? '#34D399' : pct >= 60 ? '#FDE68A' : '#FCA5A5';
+  const color = pct >= 80 ? 'var(--moss-positive)' : pct >= 60 ? 'var(--text-secondary)' : 'var(--oxide-risk)';
   return (
     <span
       style={{
@@ -151,7 +151,7 @@ function LegTimeline({ legs }: { legs: RouteLegKPI[] }) {
               borderRadius: 4,
               padding: '1px 5px',
             }}
-            title={`${leg.mode}: ${leg.from_locode || leg.from_node_id} → ${leg.to_locode || leg.to_node_id} · ${fmtH(leg.transit_h)} · ${fmtUsd(leg.cost_usd)} · CO₂ ${fmtCO2(leg.co2_kg)}`}
+            title={`${leg.mode}: ${leg.from_locode || leg.from_node_id} → ${leg.to_locode || leg.to_node_id} · ${fmtH(leg.transit_h)} · ${fmtRupee(leg.cost_usd)} · CO₂ ${fmtCO2(leg.co2_kg)}`}
           >
             <span style={{ fontSize: 10 }}>{MODE_ICON[leg.mode] ?? '📦'}</span>
             <span
@@ -267,14 +267,14 @@ function PlanCard({
         }}
       >
         {[
-          { label: 'Cost', value: fmtUsd(plan.total_cost_usd), color: '#FDE68A' },
-          { label: 'Transit', value: fmtH(plan.total_time_h), color: '#7DD3FC' },
-          { label: 'CO₂', value: fmtCO2(plan.total_co2_kg), color: '#6EE7B7' },
-          { label: 'Reliability', value: fmtPct(plan.reliability_score), color: '#C4B5FD' },
+          { label: 'Cost', value: fmtRupee(plan.total_cost_usd), color: 'var(--ink)' },
+          { label: 'Transit', value: fmtH(plan.total_time_h), color: 'var(--text-secondary)' },
+          { label: 'CO₂', value: fmtCO2(plan.total_co2_kg), color: 'var(--moss-positive)' },
+          { label: 'Reliability', value: fmtPct(plan.reliability_score), color: 'var(--cobalt)' },
         ].map(({ label, value, color }) => (
           <React.Fragment key={label}>
-            <dt style={{ color: '#64748B' }}>{label}</dt>
-            <dd style={{ margin: 0, color, fontWeight: 700 }}>{value}</dd>
+            <dt style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>{label}</dt>
+            <dd style={{ margin: 0, color, fontWeight: 700, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{value}</dd>
           </React.Fragment>
         ))}
       </dl>
@@ -346,10 +346,10 @@ function PlanCard({
                       minute: '2-digit',
                     })}
                   </td>
-                  <td style={{ padding: '2px 4px', color: '#7DD3FC' }}>{fmtH(leg.transit_h)}</td>
-                  <td style={{ padding: '2px 4px', color: '#FDE68A' }}>{fmtUsd(leg.cost_usd)}</td>
-                  <td style={{ padding: '2px 4px', color: '#6EE7B7' }}>{fmtCO2(leg.co2_kg)}</td>
-                  <td style={{ padding: '2px 4px', color: '#C4B5FD' }}>
+                  <td style={{ padding: '2px 4px', color: 'var(--text-secondary)' }}>{fmtH(leg.transit_h)}</td>
+                  <td style={{ padding: '2px 4px', color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{fmtRupee(leg.cost_usd)}</td>
+                  <td style={{ padding: '2px 4px', color: 'var(--moss-positive)' }}>{fmtCO2(leg.co2_kg)}</td>
+                  <td style={{ padding: '2px 4px', color: 'var(--cobalt)' }}>
                     {fmtPct(leg.reliability)}
                   </td>
                   <td style={{ padding: '2px 4px' }}>
