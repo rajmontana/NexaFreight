@@ -35,7 +35,7 @@ export default function ValidationPage() {
   const summary = matrix ? summarizeValidation(matrix) : null
 
   return (
-    <main className="validation-matrix-container">
+    <main className="validation-matrix-container pl-[58px] sm:pl-[74px]">
       <div className="validation-matrix-card">
         <h1 className="validation-matrix-heading">Validation Matrix</h1>
         <p className="validation-matrix-description">
