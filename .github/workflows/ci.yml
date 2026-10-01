@@ -179,7 +179,7 @@ jobs:
         id: imagetag
         run: |
           SHA="${{ github.event.pull_request.head.sha || github.sha }}"
-          echo "tag=sha-${SHA:0:12}" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${SHA:0:12}-${{ matrix.arch }}" >> "$GITHUB_OUTPUT"
 
       - name: Build backend image (immutable sha tag)
         uses: docker/build-push-action@v5
