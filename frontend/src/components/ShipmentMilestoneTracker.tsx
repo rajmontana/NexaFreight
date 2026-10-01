@@ -8,9 +8,9 @@ import ProvenanceBadge from './ProvenanceBadge';
 interface ShipmentMilestoneTrackerProps {
   legs: Leg[];
   alerts?: Alert[];
-  origin?: string;
-  destination?: string;
-  status?: string;
+  origin?: string | null;
+  destination?: string | null;
+  status?: string | null;
 }
 
 const getModeIcon = (mode: TransportMode | string) => {

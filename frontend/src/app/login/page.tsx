@@ -83,11 +83,12 @@ function LoginForm() {
       >
         {/* Header */}
         <div style={styles.header}>
-          <div style={styles.eyeGlyph} aria-hidden="true">
-            ◈
-          </div>
-          <h1 style={styles.title}>NEXAFREIGHT</h1>
-          <p style={styles.subtitle}>Control Tower — Operator Access</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/nexafreight-logo-horizontal.svg"
+            alt="NexaFreight — Control Tower"
+            style={{ width: '100%', maxWidth: 300, height: 'auto', marginBottom: 12, display: 'block', margin: '0 auto 12px auto' }}
+          />
           <div style={styles.divider} />
         </div>
 

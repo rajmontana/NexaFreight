@@ -331,6 +331,15 @@ export default function InsightsCharts() {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Listen for auth_success so charts load when credentials hydrate
+  useEffect(() => {
+    const handler = () => { void load(); };
+    if (typeof globalThis.window !== 'undefined') {
+      globalThis.window.addEventListener('nexafreight:auth_success', handler);
+      return () => globalThis.window.removeEventListener('nexafreight:auth_success', handler);
+    }
+  }, [load]);
+
   if (state === 'loading') {
     return (
       <div className="flex items-center justify-center" style={{ minHeight: 420 }}>

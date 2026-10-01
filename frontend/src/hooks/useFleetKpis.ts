@@ -9,6 +9,10 @@
  *
  * All four endpoints are JWT-protected, so the hook stays idle until a token
  * exists and surfaces an `unauthenticated` state instead of spinning.
+ *
+ * Auth hydration race fix: the hook listens for the `nexafreight:auth_success`
+ * event and auto-retries after 1 second when unauthenticated, so the band
+ * always picks up the token after the AuthProvider hydrates from storage.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -112,6 +116,23 @@ export function useFleetKpis(window: ExposureWindow = 'month', pollMs = 30_000):
       cancelled = true;
     };
   }, [window, tick]);
+
+  // Auth hydration race fix: if we start unauthenticated, retry after 1s to
+  // catch the AuthProvider hydrating the token from localStorage/sessionStorage.
+  useEffect(() => {
+    if (!unauthenticated) return;
+    const retry = setTimeout(() => setTick((t) => t + 1), 1000);
+    return () => clearTimeout(retry);
+  }, [unauthenticated]);
+
+  // Also listen for explicit auth_success events dispatched on login.
+  useEffect(() => {
+    const handler = () => setTick((t) => t + 1);
+    if (typeof globalThis.window !== 'undefined') {
+      globalThis.window.addEventListener('nexafreight:auth_success', handler);
+      return () => globalThis.window.removeEventListener('nexafreight:auth_success', handler);
+    }
+  }, []);
 
   // Polling cadence, paused while the tab is hidden so a projector-left-open
   // demo does not hammer the API.

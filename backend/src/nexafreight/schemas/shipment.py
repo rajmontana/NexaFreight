@@ -18,8 +18,8 @@ class ShipmentListItem(BaseModel):
     """
 
     id: str = Field(..., description="Shipment UUID")
-    origin: str = Field(..., description="Origin location UN/LOCODE")
-    destination: str = Field(..., description="Destination location UN/LOCODE")
+    origin: str | None = Field(None, description="Origin location UN/LOCODE (None for orphan rows)")
+    destination: str | None = Field(None, description="Destination location UN/LOCODE (None for orphan rows)")
     mode: TransportMode = Field(..., description="Primary transport mode")
     status: ShipmentStatus = Field(..., description="Current shipment status")
     strictest_sla_deadline: datetime | None = Field(

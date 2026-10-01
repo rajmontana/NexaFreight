@@ -78,11 +78,10 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from nexafreight.adapters.protocols import AssetPosition, FeedHealth, Provenance
 from nexafreight.database import get_db_session, get_session_factory
 from nexafreight.dependencies import get_current_user
-from nexafreight.enums import LegStatus
+from nexafreight.enums import LegStatus, TransportMode
 from nexafreight.models.leg import Leg
 from nexafreight.models.location import Location
 from nexafreight.models.port import Port, PortDailyStat
@@ -324,7 +323,10 @@ async def _execute_routes_query(session: AsyncSession) -> GeoJSONFeatureCollecti
             Vessel.mmsi.label("vessel_mmsi"),
         )
         .outerjoin(Vessel, Leg.vessel_id == Vessel.id)
-        .where(Leg.status.in_(statuses))
+        .where(
+            Leg.route_geometry_json.isnot(None),
+            Leg.status.in_(statuses),
+        )
     )
     rows = (await session.execute(stmt)).all()
 
@@ -535,17 +537,44 @@ async def _get_ports_cached(
 
 async def _execute_warehouses_query(session: AsyncSession) -> GeoJSONFeatureCollection:
     features: list[GeoJSONFeature] = []
+    # Identify ports to avoid duplicating them in the warehouse layer
+    port_loc_ids = (await session.execute(select(Port.location_id).where(Port.location_id.is_not(None)))).scalars().all()
+    port_loc_set = set(port_loc_ids)
+
     stmt = (
-        select(Location.id, Location.latitude, Location.longitude, Location.name, Location.locode)
-        .join(Leg, Leg.origin_id == Location.id)
-        .where(Leg.transport_mode == "ROAD")
+        select(Location.id, Location.latitude, Location.longitude, Location.name, Location.locode, Leg.transport_mode)
+        .join(Leg, (Leg.origin_id == Location.id) | (Leg.destination_id == Location.id))
+        .where(
+            (Leg.transport_mode == "ROAD")
+            | (Leg.transport_mode == "RAIL")
+            | (Leg.transport_mode == TransportMode.ROAD)
+            | (Leg.transport_mode == TransportMode.RAIL)
+        )
         .distinct()
     )
     rows = (await session.execute(stmt)).all()
+    seen_ids = set()
 
     for row in rows:
         if row.latitude is None or row.longitude is None:
             continue
+        if row.id in port_loc_set or row.id in seen_ids:
+            continue
+        seen_ids.add(row.id)
+
+        loc_name = row.name or row.locode or "Logistics Node"
+        mode_val = getattr(row.transport_mode, "value", str(row.transport_mode))
+
+        if "ICD" in loc_name or "Rail" in loc_name or mode_val == "RAIL":
+            facility_type = "INLAND_CONTAINER_DEPOT"
+            fac_desc = "Intermodal Rail Terminal / ICD"
+        elif "Airport" in loc_name:
+            facility_type = "AIR_FREIGHT_STAGING"
+            fac_desc = "Air Cargo Overland Drayage Station"
+        else:
+            facility_type = "DISTRIBUTION_CENTER"
+            fac_desc = "Regional Freight Hub & Cross-Dock"
+
         features.append(
             GeoJSONFeature(
                 geometry={
@@ -554,7 +583,12 @@ async def _execute_warehouses_query(session: AsyncSession) -> GeoJSONFeatureColl
                 },
                 properties={
                     "warehouse_id": str(row.id),
-                    "name": row.name or row.locode or "Warehouse",
+                    "name": loc_name,
+                    "locode": row.locode or "",
+                    "facility_type": facility_type,
+                    "type_description": fac_desc,
+                    "transport_mode": mode_val,
+                    "status": "OPERATIONAL",
                 },
             )
         )

@@ -216,6 +216,15 @@ export default function AlertFeed({
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
+  // Listen for auth_success so the feed loads when credentials hydrate
+  useEffect(() => {
+    const handler = () => { void load(); };
+    if (typeof globalThis.window !== 'undefined') {
+      globalThis.window.addEventListener('nexafreight:auth_success', handler);
+      return () => globalThis.window.removeEventListener('nexafreight:auth_success', handler);
+    }
+  }, [load]);
+
   // live clock + age ticker (client-only, hydration-safe)
   useEffect(() => {
     const tick = () => {

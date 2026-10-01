@@ -71,8 +71,8 @@ export default function CopilotQuickDock({ activeShipmentId }: CopilotQuickDockP
     setLoading(true);
 
     try {
-      // Use active shipment ID or fallback default demo shipment
-      const targetShipment = activeShipmentId || 'NXF-882194';
+      // Use active shipment ID or allow backend to evaluate active network context
+      const targetShipment = activeShipmentId || undefined;
       const res = await askCopilot(targetShipment, textToSend);
 
       const botMsg: Message = {
@@ -256,7 +256,7 @@ export default function CopilotQuickDock({ activeShipmentId }: CopilotQuickDockP
           >
             <input
               type="text"
-              placeholder="Ask Copilot (e.g. assess delay for NXF-882194)..."
+              placeholder="Ask Copilot (e.g. assess delay or demurrage risk)..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}

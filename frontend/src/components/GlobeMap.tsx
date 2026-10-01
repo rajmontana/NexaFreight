@@ -128,6 +128,94 @@ function extractTruckPoints(_routesFC: GeoJSON.FeatureCollection): GeoJSON.Featu
   return { type: 'FeatureCollection', features: [] };
 }
 
+/**
+ * Generates an aerial parabolic flight arc between two coordinates.
+ * Deflects poleward (northward in the Northern Hemisphere) proportional to distance,
+ * mimicking high-altitude aviation flight paths rather than a flat ground straight line.
+ */
+export function generateParabolicFlightPath(
+  coords: number[][],
+  numPoints = 48,
+  maxBowDeg = 8.5
+): number[][] {
+  if (!coords || coords.length < 2) return coords || [];
+  const start = coords[0];
+  const end = coords[coords.length - 1];
+  let [lng1, lat1] = start;
+  let [lng2, lat2] = end;
+
+  // Handle antimeridian crossing
+  let dLng = lng2 - lng1;
+  if (dLng > 180) dLng -= 360;
+  else if (dLng < -180) dLng += 360;
+
+  const dLat = lat2 - lat1;
+  const distDeg = Math.hypot(dLng, dLat);
+  if (distDeg < 0.25) return coords;
+
+  const midLng = lng1 + dLng * 0.5;
+  const midLat = lat1 + dLat * 0.5;
+
+  // Normal vector perpendicular to chord
+  let normX = -dLat;
+  let normY = dLng;
+  const normLen = Math.hypot(normX, normY);
+  if (normLen > 0) {
+    normX /= normLen;
+    normY /= normLen;
+  }
+
+  // Curve poleward (towards high latitudes: northward if positive, southward if negative)
+  const poleward = midLat >= 0 ? 1 : -1;
+  if (normY * poleward < 0) {
+    normX = -normX;
+    normY = -normY;
+  }
+
+  // Altitude bow height
+  const bow = Math.min(maxBowDeg, Math.max(1.8, distDeg * 0.22));
+  const ctrlLng = midLng + normX * bow * 0.45;
+  const ctrlLat = Math.min(84, Math.max(-84, midLat + normY * bow));
+
+  const arc: number[][] = [];
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    const invT = 1 - t;
+    // Quadratic Bezier
+    let lng = invT * invT * lng1 + 2 * invT * t * ctrlLng + t * t * (lng1 + dLng);
+    const lat = invT * invT * lat1 + 2 * invT * t * ctrlLat + t * t * lat2;
+    if (lng > 180) lng -= 360;
+    else if (lng < -180) lng += 360;
+    arc.push([Number(lng.toFixed(5)), Number(lat.toFixed(5))]);
+  }
+  return arc;
+}
+
+/** Preprocesses GeoJSON FeatureCollection to turn air routes into parabolic flight paths. */
+export function preprocessRoutesFC(routesFC: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
+  if (!routesFC || !Array.isArray(routesFC.features)) return routesFC;
+  const features = routesFC.features.map((feat: any) => {
+    const mode = String(feat?.properties?.mode || '').toUpperCase();
+    if (mode === 'AIR') {
+      const geom = feat?.geometry;
+      if (geom?.type === 'LineString' && Array.isArray(geom.coordinates)) {
+        return {
+          ...feat,
+          geometry: {
+            ...geom,
+            coordinates: generateParabolicFlightPath(geom.coordinates),
+          },
+        };
+      }
+    }
+    return feat;
+  });
+  return {
+    ...routesFC,
+    features,
+  };
+}
+
 /** Document kind printed on a waybill header, derived from transport mode. */
 function kindLabel(mode: string): string {
   switch (String(mode).toUpperCase()) {
@@ -541,77 +629,278 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     map.addImage(id, { width: size, height: size, data: new Uint8Array(ctx.getImageData(0, 0, size, size).data) });
   }, []);
 
-  const createTruckIcon = useCallback((map: maplibregl.Map, id: string, color: string, size: number = 24) => {
+  const createTruckIcon = useCallback((map: maplibregl.Map, id: string, color: string = '#027A48', size: number = 28) => {
     if (map.hasImage(id)) return;
     const canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
     const ctx = canvas.getContext('2d')!;
     const cx = size / 2, cy = size / 2;
-    ctx.fillStyle = 'rgba(11, 13, 25, 0.95)';
+
+    // Dark badge background with emerald border
+    ctx.fillStyle = '#16181D';
     ctx.beginPath();
-    ctx.arc(cx, cy, size / 2 - 1, 0, Math.PI * 2);
+    ctx.roundRect(1, 1, size - 2, size - 2, 4);
     ctx.fill();
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     ctx.strokeStyle = color;
     ctx.stroke();
 
+    // 53ft intermodal container box
     ctx.fillStyle = color;
-    ctx.fillRect(cx - 7, cy - 4, 8, 7);
-    ctx.fillRect(cx + 2, cy - 2, 5, 5);
-    ctx.fillStyle = '#0B0D19';
-    ctx.fillRect(cx + 4, cy - 1, 2, 2);
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(cx - 9, cy - 4, 12, 8);
+
+    // Corrugated container panel ribs
+    ctx.strokeStyle = '#F6F7F4';
+    ctx.lineWidth = 0.6;
+    for (let x = cx - 7; x <= cx + 1; x += 2) {
+      ctx.beginPath();
+      ctx.moveTo(x, cy - 3.5); ctx.lineTo(x, cy + 3.5);
+      ctx.stroke();
+    }
+
+    // Semi-tractor cab
+    ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(cx - 3, cy + 4, 1.5, 0, Math.PI * 2);
-    ctx.arc(cx + 4, cy + 4, 1.5, 0, Math.PI * 2);
+    ctx.moveTo(cx + 4, cy - 4);
+    ctx.lineTo(cx + 7, cy - 4);
+    ctx.lineTo(cx + 9.5, cy - 1);
+    ctx.lineTo(cx + 9.5, cy + 4);
+    ctx.lineTo(cx + 4, cy + 4);
+    ctx.closePath();
     ctx.fill();
+
+    // Windshield
+    ctx.fillStyle = '#F6F7F4';
+    ctx.fillRect(cx + 6, cy - 3, 2.5, 2.5);
+
+    // Wheels
+    ctx.fillStyle = '#0F172A';
+    ctx.strokeStyle = '#D4D5D0';
+    ctx.lineWidth = 0.6;
+    const wheels = [cx - 7, cx - 3, cx + 7];
+    wheels.forEach(wx => {
+      ctx.beginPath();
+      ctx.arc(wx, cy + 5, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
 
     map.addImage(id, { width: size, height: size, data: new Uint8Array(ctx.getImageData(0, 0, size, size).data) });
   }, []);
 
-  const createWarehouseIcon = useCallback((map: maplibregl.Map, id: string, color: string, size: number = 24) => {
+  const createWarehouseIcon = useCallback((map: maplibregl.Map, id: string, color: string = '#2547C8', size: number = 28) => {
     if (map.hasImage(id)) return;
     const canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
     const ctx = canvas.getContext('2d')!;
     const cx = size / 2, cy = size / 2;
-    ctx.fillStyle = 'rgba(11, 13, 25, 0.95)';
+
+    // Outer tile: Chartroom paper/dark badge with hairline border
+    ctx.fillStyle = '#16181D';
     ctx.beginPath();
-    ctx.arc(cx, cy, size / 2 - 1, 0, Math.PI * 2);
+    ctx.roundRect(1, 1, size - 2, size - 2, 4);
     ctx.fill();
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = '#D4D5D0';
     ctx.stroke();
 
+    // Symmetrical warehouse roofline with industrial gables
     ctx.fillStyle = color;
-    ctx.font = 'bold 12px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('W', cx, cy + 1);
+    ctx.beginPath();
+    ctx.moveTo(cx - 9, cy - 2);
+    ctx.lineTo(cx, cy - 8);
+    ctx.lineTo(cx + 9, cy - 2);
+    ctx.lineTo(cx + 9, cy + 9);
+    ctx.lineTo(cx - 9, cy + 9);
+    ctx.closePath();
+    ctx.fill();
 
-    const imgData = ctx.getImageData(0, 0, size, size);
-    map.addImage(id, imgData);
+    // 3 roll-up loading dock bay doors
+    ctx.fillStyle = '#F6F7F4';
+    ctx.fillRect(cx - 7, cy + 2, 3.5, 7);
+    ctx.fillRect(cx - 1.75, cy + 2, 3.5, 7);
+    ctx.fillRect(cx + 3.5, cy + 2, 3.5, 7);
+
+    // Roll-up door slat horizontal ribs
+    ctx.strokeStyle = '#16181D';
+    ctx.lineWidth = 0.6;
+    for (let y = cy + 4; y <= cy + 8; y += 2) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 7, y); ctx.lineTo(cx - 3.5, y);
+      ctx.moveTo(cx - 1.75, y); ctx.lineTo(cx + 1.75, y);
+      ctx.moveTo(cx + 3.5, y); ctx.lineTo(cx + 7, y);
+      ctx.stroke();
+    }
+
+    // Overhead crane / gantry beam
+    ctx.fillStyle = '#F6F7F4';
+    ctx.fillRect(cx - 8, cy - 3, 16, 1.2);
+
+    map.addImage(id, { width: size, height: size, data: new Uint8Array(ctx.getImageData(0, 0, size, size).data) });
   }, []);
 
-  const createAirportIcon = useCallback((map: maplibregl.Map, id: string, color: string, size: number = 24) => {
+  const createICDIcon = useCallback((map: maplibregl.Map, id: string, color: string = '#475569', size: number = 28) => {
     if (map.hasImage(id)) return;
     const canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
     const ctx = canvas.getContext('2d')!;
     const cx = size / 2, cy = size / 2;
-    ctx.fillStyle = 'rgba(11, 13, 25, 0.95)';
+
+    // Dark badge background with steel rail border
+    ctx.fillStyle = '#16181D';
     ctx.beginPath();
-    ctx.arc(cx, cy, size / 2 - 1, 0, Math.PI * 2);
+    ctx.roundRect(1, 1, size - 2, size - 2, 4);
     ctx.fill();
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = '#94A3B8';
+    ctx.stroke();
+
+    // Intermodal rail container crane / gantry frame
+    ctx.strokeStyle = '#64748B';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(cx - 8, cy - 8, 16, 11);
+
+    // Gantry top rail
+    ctx.fillStyle = '#94A3B8';
+    ctx.fillRect(cx - 9, cy - 9, 18, 2);
+
+    // Suspended intermodal shipping container
+    ctx.fillStyle = '#2547C8';
+    ctx.fillRect(cx - 5.5, cy - 5, 11, 6.5);
+    ctx.strokeStyle = '#F6F7F4';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(cx - 5.5, cy - 5, 11, 6.5);
+
+    // Railway tracks and cross-ties at the base
+    ctx.strokeStyle = '#D4D5D0';
+    ctx.lineWidth = 1;
+    // Cross-ties
+    for (let x = cx - 8; x <= cx + 8; x += 3.5) {
+      ctx.beginPath();
+      ctx.moveTo(x, cy + 5.5);
+      ctx.lineTo(x, cy + 9.5);
+      ctx.stroke();
+    }
+    // Rails
+    ctx.strokeStyle = '#CBD5E1';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - 9, cy + 6.5);
+    ctx.lineTo(cx + 9, cy + 6.5);
+    ctx.moveTo(cx - 9, cy + 8.5);
+    ctx.lineTo(cx + 9, cy + 8.5);
+    ctx.stroke();
+
+    map.addImage(id, { width: size, height: size, data: new Uint8Array(ctx.getImageData(0, 0, size, size).data) });
+  }, []);
+
+  const createAirportIcon = useCallback((map: maplibregl.Map, id: string, color: string = '#D97706', size: number = 28) => {
+    if (map.hasImage(id)) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const cx = size / 2, cy = size / 2;
+
+    // Dark badge background with aviation amber border
+    ctx.fillStyle = '#16181D';
+    ctx.beginPath();
+    ctx.roundRect(1, 1, size - 2, size - 2, 4);
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = '#F59E0B';
+    ctx.stroke();
+
+    // Airport runway intersection cross lines
+    ctx.strokeStyle = 'rgba(246, 247, 244, 0.35)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy - 8); ctx.lineTo(cx + 8, cy + 8);
+    ctx.moveTo(cx + 8, cy - 8); ctx.lineTo(cx - 8, cy + 8);
+    ctx.stroke();
+
+    // Swept-wing cargo jet silhouette
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 8);
+    ctx.lineTo(cx + 1.5, cy - 4);
+    ctx.lineTo(cx + 9, cy + 1);
+    ctx.lineTo(cx + 9, cy + 3);
+    ctx.lineTo(cx + 2, cy);
+    ctx.lineTo(cx + 1.8, cy + 5);
+    ctx.lineTo(cx + 5, cy + 7);
+    ctx.lineTo(cx + 5, cy + 8.5);
+    ctx.lineTo(cx, cy + 7.5);
+    ctx.lineTo(cx - 5, cy + 8.5);
+    ctx.lineTo(cx - 5, cy + 7);
+    ctx.lineTo(cx - 1.8, cy + 5);
+    ctx.lineTo(cx - 2, cy);
+    ctx.lineTo(cx - 9, cy + 3);
+    ctx.lineTo(cx - 9, cy + 1);
+    ctx.lineTo(cx - 1.5, cy - 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Jet cockpit window
+    ctx.fillStyle = '#F6F7F4';
+    ctx.fillRect(cx - 0.75, cy - 6, 1.5, 1.5);
+
+    map.addImage(id, { width: size, height: size, data: new Uint8Array(ctx.getImageData(0, 0, size, size).data) });
+  }, []);
+
+  const createPortIcon = useCallback((map: maplibregl.Map, id: string, color: string = '#2547C8', size: number = 28) => {
+    if (map.hasImage(id)) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const cx = size / 2, cy = size / 2;
+
+    // Dark badge background with maritime cobalt border
+    ctx.fillStyle = '#16181D';
+    ctx.beginPath();
+    ctx.roundRect(1, 1, size - 2, size - 2, 4);
+    ctx.fill();
+    ctx.lineWidth = 1.2;
     ctx.strokeStyle = color;
     ctx.stroke();
 
+    // Precision Anchor Glyph
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = 'round';
+
+    // Ring at top
+    ctx.beginPath();
+    ctx.arc(cx, cy - 6, 2.2, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Crossbar / Stock
+    ctx.beginPath();
+    ctx.moveTo(cx - 5.5, cy - 3);
+    ctx.lineTo(cx + 5.5, cy - 3);
+    ctx.stroke();
+
+    // Shank
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 4);
+    ctx.lineTo(cx, cy + 6.5);
+    ctx.stroke();
+
+    // Flukes (curved bottom arms)
+    ctx.beginPath();
+    ctx.arc(cx, cy + 1.5, 6, 0.2 * Math.PI, 0.8 * Math.PI, false);
+    ctx.stroke();
+
+    // Fluke arrow points
     ctx.fillStyle = color;
-    ctx.font = 'bold 12px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('✈', cx, cy);
+    ctx.beginPath();
+    ctx.moveTo(cx - 5.8, cy + 3.8); ctx.lineTo(cx - 4.5, cy + 6.5); ctx.lineTo(cx - 3.5, cy + 4.5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(cx + 5.8, cy + 3.8); ctx.lineTo(cx + 4.5, cy + 6.5); ctx.lineTo(cx + 3.5, cy + 4.5);
+    ctx.closePath();
+    ctx.fill();
 
     map.addImage(id, { width: size, height: size, data: new Uint8Array(ctx.getImageData(0, 0, size, size).data) });
   }, []);
@@ -748,9 +1037,11 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       createDot(map, 'dot-green', isGhost ? phantomPurple : '#26A69A', 10);
       createDot(map, 'dot-fire', isGhost ? phantomPurple : '#E65100', 10);
       createDot(map, 'dot-cctv', cameraColor, 10);
-      createTruckIcon(map, 'truck-green', '#027A48', 24);
-      createAirportIcon(map, 'airport-orange', '#B54708', 24);
-      createWarehouseIcon(map, 'warehouse-blue', '#2547C8', 24);
+      createTruckIcon(map, 'truck-green', '#027A48', 28);
+      createAirportIcon(map, 'airport-orange', '#D97706', 28);
+      createWarehouseIcon(map, 'warehouse-blue', '#2547C8', 28);
+      createICDIcon(map, 'icd-rail', '#475569', 28);
+      createPortIcon(map, 'port-anchor', '#2547C8', 28);
 
       const sources = ['ports', 'airports', 'routes', 'trucks', 'flights', 'jets', 'private-fl', 'satellites', 'earthquakes', 'day-night', 'cctv', 'fires', 'weather', 'infrastructure', 'maritime', 'maritime-choke', 'maritime-ships', 'warehouses', 'disruptions', 'live-news', 'balloons', 'radiation', 'sdk-entities', 'sdk-links', 'network-mesh'];
       sources.forEach(s => map.addSource(s, { type: 'geojson', data: EMPTY_FC }));
@@ -786,13 +1077,24 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       createWarningIcon('warn-orange', '#E65100');
       createWarningIcon('warn-yellow', '#F9A825');
 
-      
-
       // Day/Night
       map.addLayer({ id: 'day-night-fill', type: 'fill', source: 'day-night', paint: { 'fill-color': isGhost ? '#0D0030' : '#000022', 'fill-opacity': 0.35 }});
 
-      // ── NexaFreight Route Layers (Step 5) ──
-      // Sea routes: dashed blue (#3b82f6)
+      // ── NexaFreight Route Layers (Step 5 — Full Multimodal Maritime, Aviation, Road & Rail) ──
+      // 1. Sea routes: deep maritime cobalt with navigational dashed track
+      map.addLayer({
+        id: 'routes-sea-glow',
+        type: 'line',
+        source: 'routes',
+        filter: ['==', ['get', 'mode'], 'SEA'],
+        paint: {
+          'line-color': '#2547C8',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 3.5, 5, 5.5, 10, 8.0],
+          'line-opacity': 0.22,
+          'line-blur': 2,
+        },
+      });
+
       map.addLayer({
         id: 'routes-sea',
         type: 'line',
@@ -800,9 +1102,9 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         filter: ['==', ['get', 'mode'], 'SEA'],
         paint: {
           'line-color': '#2547C8',
-          'line-dasharray': [2, 2],
+          'line-dasharray': [3, 2],
           'line-width': ['interpolate', ['linear'], ['zoom'], 1, 1.8, 5, 2.8, 10, 4.5],
-          'line-opacity': 0.9,
+          'line-opacity': 0.95,
         },
       });
 
@@ -823,20 +1125,65 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         },
       });
 
-      // Air routes: solid orange (#f97316) - great-circle arcs between airports
+      // 2. Air routes: High-altitude golden amber parabolic flight corridors with glowing contrails
+      map.addLayer({
+        id: 'routes-air-glow',
+        type: 'line',
+        source: 'routes',
+        filter: ['==', ['get', 'mode'], 'AIR'],
+        paint: {
+          'line-color': '#F59E0B',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 5.0, 5, 8.0, 10, 12.0],
+          'line-opacity': 0.28,
+          'line-blur': 3,
+        },
+      });
+
       map.addLayer({
         id: 'routes-air',
         type: 'line',
         source: 'routes',
         filter: ['==', ['get', 'mode'], 'AIR'],
         paint: {
-          'line-color': '#B54708',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 2.0, 5, 3.2, 10, 4.8],
+          'line-color': '#D97706',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 2.2, 5, 3.4, 10, 5.0],
+          'line-opacity': 0.95,
+        },
+      });
+
+      map.addLayer({
+        id: 'routes-air-dash',
+        type: 'line',
+        source: 'routes',
+        filter: ['==', ['get', 'mode'], 'AIR'],
+        paint: {
+          'line-color': '#FEF08A',
+          'line-dasharray': [4, 6],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 1.4, 5, 2.0, 10, 3.0],
           'line-opacity': 0.9,
         },
       });
 
-      // Road routes glow: subtle emerald halo for high visibility
+      map.addLayer({
+        id: 'routes-air-arrows',
+        type: 'symbol',
+        source: 'routes',
+        filter: ['==', ['get', 'mode'], 'AIR'],
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 180,
+          'text-field': '✈',
+          'text-size': ['interpolate', ['linear'], ['zoom'], 1, 9, 5, 13, 10, 16],
+          'text-keep-upright': false,
+        },
+        paint: {
+          'text-color': '#FEF08A',
+          'text-halo-color': '#B45309',
+          'text-halo-width': 1,
+        },
+      });
+
+      // 3. Road routes: solid highway emerald (#027A48)
       map.addLayer({
         id: 'routes-road-glow',
         type: 'line',
@@ -850,7 +1197,6 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         },
       });
 
-      // Road routes: solid green (#00E676)
       map.addLayer({
         id: 'routes-road',
         type: 'line',
@@ -882,16 +1228,40 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         },
       });
 
-      // Rail routes: purple (#a855f7)
+      // 4. Rail routes: Dual-layer authentic Railway Track Cartography (Dark Bed + Silver Cross-Ties)
+      map.addLayer({
+        id: 'routes-rail-bed',
+        type: 'line',
+        source: 'routes',
+        filter: ['in', ['get', 'mode'], ['literal', ['RAIL', 'TRAIN']]],
+        paint: {
+          'line-color': '#0F172A',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 3.2, 5, 4.8, 10, 7.2],
+          'line-opacity': 0.95,
+        },
+      });
+
       map.addLayer({
         id: 'routes-rail',
         type: 'line',
         source: 'routes',
-        filter: ['==', ['get', 'mode'], 'RAIL'],
+        filter: ['in', ['get', 'mode'], ['literal', ['RAIL', 'TRAIN']]],
         paint: {
-          'line-color': '#4B515D',
-          'line-dasharray': [4, 2],
-          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 1.8, 5, 2.8, 10, 4.5],
+          'line-color': '#F8FAFC',
+          'line-dasharray': [1.2, 1.8],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 2.2, 5, 3.6, 10, 5.4],
+          'line-opacity': 0.95,
+        },
+      });
+
+      map.addLayer({
+        id: 'routes-rail-core',
+        type: 'line',
+        source: 'routes',
+        filter: ['in', ['get', 'mode'], ['literal', ['RAIL', 'TRAIN']]],
+        paint: {
+          'line-color': '#64748B',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 1.0, 5, 1.6, 10, 2.4],
           'line-opacity': 0.85,
         },
       });
@@ -914,27 +1284,31 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         type: 'symbol',
         source: 'trucks',
         layout: {
-          'text-field': ['concat', '🚚 ', ['get', 'truck_id']],
-          'text-size': 14,
+          'icon-image': 'truck-green',
+          'icon-size': 0.85,
+          'icon-allow-overlap': true,
+          'text-field': ['get', 'truck_id'],
+          'text-size': 10,
           'text-font': ['JetBrains Mono Bold', 'Open Sans Bold'],
-          'text-offset': [0, 0],
+          'text-offset': [0, 1.4],
+          'text-anchor': 'top',
           'text-allow-overlap': false,
         },
         paint: {
           'text-color': '#027A48',
           'text-halo-color': 'rgba(246,247,244,0.95)',
           'text-halo-width': 1.5,
-          'text-opacity': 0.9,
+          'text-opacity': 0.95,
         },
       });
 
-      // ── NexaFreight Ports Layer (Step 4) ──
+      // ── NexaFreight Ports Layer (Step 4 — Navigational Anchor Badge + Congestion Halo) ──
       map.addLayer({
-        id: 'ports-layer',
+        id: 'ports-glow',
         type: 'circle',
         source: 'ports',
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 3.5, 4, 5.5, 8, 8.5],
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 7, 5, 12, 10, 16],
           'circle-color': [
             'interpolate',
             ['linear'],
@@ -945,9 +1319,32 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
             1.4, '#B54708',   // elevated congestion: law amber
             2.0, '#B42318'    // severe congestion: exception red
           ],
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': 'rgba(246,247,244,0.95)',
-          'circle-opacity': 0.9,
+          'circle-opacity': 0.32,
+          'circle-blur': 0.8,
+        },
+      });
+
+      map.addLayer({
+        id: 'ports-layer',
+        type: 'symbol',
+        source: 'ports',
+        layout: {
+          'icon-image': 'port-anchor',
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 1, 0.75, 5, 0.9, 10, 1.15],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'text-field': ['get', 'un_locode'],
+          'text-size': 10,
+          'text-font': ['JetBrains Mono Bold', 'Open Sans Bold'],
+          'text-offset': [0, 1.4],
+          'text-anchor': 'top',
+          'text-allow-overlap': false,
+        },
+        paint: {
+          'text-color': '#16181D',
+          'text-halo-color': 'rgba(246,247,244,0.95)',
+          'text-halo-width': 1.5,
+          'text-opacity': 0.95,
         },
       });
 
@@ -957,17 +1354,17 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         source: 'ports',
         minzoom: 5,
         layout: {
-          'text-field': ['concat', '⚓ ', ['get', 'name']],
+          'text-field': ['get', 'name'],
           'text-size': 11,
-          'text-font': ['Open Sans Bold'],
-          'text-offset': [0, 1.2],
+          'text-font': ['Open Sans Bold', 'JetBrains Mono Bold'],
+          'text-offset': [0, 2.5],
           'text-anchor': 'top',
           'text-allow-overlap': false,
         },
         paint: {
           'text-color': '#16181D',
           'text-halo-color': 'rgba(246,247,244,0.95)',
-          'text-halo-width': 1.5,
+          'text-halo-width': 1.6,
         },
       });
 
@@ -978,7 +1375,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         source: 'airports',
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 5, 5, 8, 10, 12],
-          'circle-color': '#B54708',
+          'circle-color': '#D97706',
           'circle-opacity': 0.25,
           'circle-blur': 1,
         },
@@ -993,7 +1390,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
           'icon-size': ['interpolate', ['linear'], ['zoom'], 1, 0.75, 5, 0.9, 10, 1.15],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
-          'text-field': ['concat', '✈ ', ['get', 'code']],
+          'text-field': ['get', 'code'],
           'text-size': 10,
           'text-font': ['JetBrains Mono Bold', 'Open Sans Bold'],
           'text-offset': [0, 1.4],
@@ -1007,31 +1404,40 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         },
       });
 
-      ['routes-sea', 'routes-air', 'routes-road', 'routes-rail', 'routes-trucks-layer'].forEach(layer => {
+      ['routes-sea', 'routes-air', 'routes-road', 'routes-rail', 'routes-rail-bed', 'routes-trucks-layer', 'warehouses-layer', 'ports-layer', 'airports-layer'].forEach(layer => {
         map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
       });
+
+      // ── NexaFreight Inland Warehouses & Intermodal Depots Layer ──
       map.addLayer({
         id: 'warehouses-layer',
         type: 'symbol',
         source: 'warehouses',
         layout: {
-          'icon-image': 'warehouse-blue',
-          'icon-size': ['interpolate', ['linear'], ['zoom'], 1, 0.75, 5, 0.9, 10, 1.15],
+          'icon-image': [
+            'case',
+            ['==', ['get', 'facility_type'], 'INLAND_CONTAINER_DEPOT'],
+            'icd-rail',
+            ['==', ['get', 'facility_type'], 'AIR_FREIGHT_STAGING'],
+            'airport-orange',
+            'warehouse-blue'
+          ],
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 1, 0.8, 5, 0.95, 10, 1.2],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
           'text-field': ['get', 'name'],
           'text-size': 10,
           'text-font': ['JetBrains Mono Bold', 'Open Sans Bold'],
-          'text-offset': [0, 1.2],
+          'text-offset': [0, 1.4],
           'text-anchor': 'top',
         },
         paint: {
           'text-color': '#2547C8',
           'text-halo-color': 'rgba(246,247,244,0.95)',
           'text-halo-width': 1.5,
-          'icon-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.6, 5, 1],
-        }
+          'icon-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.7, 5, 1],
+        },
       });
 
       // ── Disruption Sonar Rings & Chokepoint Alerts (Concentric Red/Amber Radar) ──
@@ -1398,8 +1804,9 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     loadWarehouses();
 
     const loadRoutes = async () => {
-        try {
-          const routesResp = await getAllRoutes();
+      try {
+        const rawRoutes = await getAllRoutes();
+          const routesResp = preprocessRoutesFC(rawRoutes);
           const src = map.getSource('routes') as maplibregl.GeoJSONSource | undefined;
           if (src && routesResp?.type === 'FeatureCollection') {
             src.setData(routesResp as never);
@@ -1929,14 +2336,14 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     });
 
     // ── NexaFreight Shipment Routes Inspector (Step 5) ──
-    ['routes-sea', 'routes-air', 'routes-road', 'routes-rail', 'routes-trucks-layer'].forEach(layer => {
+    ['routes-sea', 'routes-air', 'routes-road', 'routes-rail', 'routes-rail-bed', 'routes-trucks-layer'].forEach(layer => {
       map.on('click', layer, async e => {
         if (!e.features?.length) return;
         const p = e.features[0].properties as any;
         const coords = [e.lngLat.lng, e.lngLat.lat] as [number, number];
         const shipmentId = p.shipment_id || p.id;
         const legId = p.leg_id || p.id || '—';
-        const mode = p.mode || (layer.includes('truck') ? 'ROAD' : 'SEA');
+        const mode = p.mode || (layer.includes('truck') ? 'ROAD' : layer.includes('rail') ? 'RAIL' : 'SEA');
         onEntityClick?.({
           type: 'route',
           id: legId,
@@ -1971,6 +2378,44 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
           Active International Airfreight Hub • Connected via Overland Drayage
         </div>
       </div>`);
+    });
+
+    // ── NexaFreight Warehouses & Inland Terminals Inspector ──
+    map.on('click', 'warehouses-layer', e => {
+      if (!e.features?.length) return;
+      const p = e.features[0].properties as any;
+      const coords = [e.lngLat.lng, e.lngLat.lat];
+      const isICD = p.facility_type === 'INLAND_CONTAINER_DEPOT' || (p.name && (p.name.includes('ICD') || p.name.includes('Rail')));
+      const isAir = p.facility_type === 'AIR_FREIGHT_STAGING' || (p.name && p.name.includes('Airport'));
+      const badgeColor = isICD ? '#2547C8' : isAir ? '#D97706' : '#027A48';
+      const badgeBg = isICD ? 'rgba(37,71,200,0.1)' : isAir ? 'rgba(217,119,6,0.1)' : 'rgba(2,122,72,0.1)';
+      const typeLabel = isICD ? 'INTERMODAL RAIL FREIGHT TERMINAL' : isAir ? 'AIR FREIGHT DRAYAGE STATION' : 'LOGISTICS HUB & DISTRIBUTION CENTER';
+      const locode = p.locode || '—';
+
+      popup(coords, `<div style="${pStyle}border:1px solid ${badgeColor}40;min-width:260px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="color:${badgeColor};font-size:10px;font-weight:700;letter-spacing:0.08em;">${typeLabel}</span>
+          <span style="background:${badgeBg};color:${badgeColor};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;font-family:'JetBrains Mono',monospace;">${htmlEsc(locode)}</span>
+        </div>
+        <div style="color:#16181D;font-size:15px;font-weight:bold;margin-bottom:6px;">${htmlEsc(p.name)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;margin-bottom:8px;">
+          <div><span style="color:#5C5A54;font-size:9px;">FACILITY TYPE</span><br/><span style="color:#16181D;font-weight:600;">${htmlEsc(p.type_description || (isICD ? 'Intermodal Rail ICD' : isAir ? 'Airport Drayage' : 'Fulfillment Cross-Dock'))}</span></div>
+          <div><span style="color:#5C5A54;font-size:9px;">STATUS</span><br/><span style="color:#027A48;font-weight:600;">● OPERATIONAL</span></div>
+        </div>
+        <div style="font-size:10px;color:${badgeColor};background:${badgeBg};padding:5px 8px;border-radius:4px;border:1px solid ${badgeColor}25;">
+          ${isICD ? 'Direct Rail Spur Connected • Dedicated Freight Corridor (DFC)' : isAir ? 'Direct Airport Airside Access • Bonded Cargo Staging' : 'Multi-Bay Commercial Truck Dock • Rapid Cross-Docking'}
+        </div>
+      </div>`);
+
+      onEntityClick?.({
+        type: 'warehouse',
+        id: p.warehouse_id || p.id,
+        name: p.name,
+        locode: p.locode,
+        facility_type: p.facility_type,
+        coords: { lat: coords[1], lng: coords[0] },
+        properties: p,
+      });
     });
 
     // ── Maritime Chokepoints ──
@@ -2206,8 +2651,8 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     setVis(['sdk-sea','sdk-sea-glow','sdk-sea-atmo'], activeLayers.sdk_sea === true);
     setVis(['sdk-air','sdk-air-glow','sdk-air-atmo'], activeLayers.sdk_air === true);
     setVis(['sdk-intel','sdk-intel-glow','sdk-intel-atmo'], activeLayers.sdk_naval === true);
-    setVis(['ports-layer', 'ports-label', 'airports-glow', 'airports-layer', 'warehouses-layer'], (activeLayers as any).ports !== false);
-    setVis(['routes-sea-glow', 'routes-sea', 'routes-air', 'routes-road-glow', 'routes-road', 'routes-rail', 'routes-trucks-glow', 'routes-trucks-layer'], (activeLayers as any).routes !== false);
+    setVis(['ports-glow', 'ports-layer', 'ports-label', 'airports-glow', 'airports-layer', 'warehouses-layer'], (activeLayers as any).ports !== false);
+    setVis(['routes-sea-glow', 'routes-sea', 'routes-sea-arrows', 'routes-air-glow', 'routes-air', 'routes-air-dash', 'routes-air-arrows', 'routes-road-glow', 'routes-road', 'routes-road-arrows', 'routes-rail-bed', 'routes-rail', 'routes-rail-core', 'routes-trucks-glow', 'routes-trucks-layer'], (activeLayers as any).routes !== false);
     setVis(['disruptions-outer-pulse', 'disruptions-inner-ring', 'disruptions-core', 'disruptions-label'], (activeLayers as any).disruptions !== false);
     // Sweep layers always visible when data is present (controlled by useEffect)
     setVis([], true);
@@ -2283,8 +2728,9 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     };
 
     const loadRoutes = () => {
-      getAllRoutes().then(routesResp => {
+      getAllRoutes().then(rawRoutes => {
         if (cancelled) return;
+        const routesResp = preprocessRoutesFC(rawRoutes);
         const src = map.getSource('routes') as maplibregl.GeoJSONSource | undefined;
         if (src && routesResp?.type === 'FeatureCollection') {
           src.setData(routesResp as never);
@@ -2455,33 +2901,29 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         (activeLayers as any).routes !== false &&
         (normType === 'VESSEL' ? (activeLayers as any).maritime !== false : true);
 
-      // Align marker with the route line pointing forward towards destination
+      // Align marker with the route line pointing forward towards destination (Swiggy / Zomato style)
       let effectiveLng = targetLng;
       let effectiveLat = targetLat;
       let alignedHeading = heading;
 
-      if (normType === 'VESSEL') {
-        const assignedFeat = vesselToRouteFeatureRef.current.get(rawAssetId);
-        const seaFeats = seaRoutesRef.current;
-        const proj = projectPointToLineFeatures(seaFeats, targetLng, targetLat, assignedFeat);
-        if (proj) {
-          effectiveLng = proj.snappedCoords[0];
-          effectiveLat = proj.snappedCoords[1];
-          alignedHeading = proj.bearing;
-        } else if (heading > 0) {
-          alignedHeading = heading;
-        }
-      } else {
-        // TRUCK and FLIGHT (kept completely untouched as requested)
-        const routeFeat = legToRouteFeatureRef.current.get(rawAssetId) || vesselToRouteFeatureRef.current.get(rawAssetId);
-        if (routeFeat) {
-          const lineBearing = getRouteLineBearing(routeFeat, targetLng, targetLat);
-          if (lineBearing != null) {
-            alignedHeading = lineBearing;
-          }
-        } else if (heading > 0) {
-          alignedHeading = heading;
-        }
+      const assignedFeat = legToRouteFeatureRef.current.get(rawAssetId) || vesselToRouteFeatureRef.current.get(rawAssetId);
+      const modeRoutes = (routesFeaturesRef.current || []).filter((f: any) => {
+        const m = f?.properties?.mode;
+        if (normType === 'VESSEL') return m === 'SEA';
+        if (normType === 'TRUCK') return m === 'ROAD';
+        if (normType === 'TRAIN') return m === 'RAIL';
+        if (normType === 'FLIGHT') return m === 'AIR';
+        return true;
+      });
+
+      const candidateRoutes = assignedFeat ? [assignedFeat] : (modeRoutes.length > 0 ? modeRoutes : routesFeaturesRef.current || []);
+      const proj = projectPointToLineFeatures(candidateRoutes, targetLng, targetLat, assignedFeat);
+      if (proj) {
+        effectiveLng = proj.snappedCoords[0];
+        effectiveLat = proj.snappedCoords[1];
+        alignedHeading = proj.bearing;
+      } else if (heading != null && !isNaN(Number(heading)) && Number(heading) > 0) {
+        alignedHeading = Number(heading);
       }
 
       const existing = liveMarkersRef.current.get(rawAssetId);
@@ -2497,7 +2939,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         const dist = Math.hypot(effectiveLng - startLng, effectiveLat - startLat);
 
         // If not aligned to a specific route feature and actively moving, derive direction from movement
-        if (normType !== 'VESSEL' && !legToRouteFeatureRef.current.get(rawAssetId) && dist > 0.0001) {
+        if (!proj && dist > 0.0001) {
           alignedHeading = calculateBearing(startLng, startLat, effectiveLng, effectiveLat);
         }
 
@@ -2555,7 +2997,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         innerEl.style.justifyContent = 'center';
         innerEl.style.transform = `rotate(${alignedHeading}deg)`;
         innerEl.style.transition = 'transform 4s linear';
-        innerEl.innerHTML = getAssetMarkerSvg(normType, alignedHeading, pos.speed_knots);
+        innerEl.innerHTML = getAssetMarkerSvg(normType, 0, pos.speed_knots);
         el.appendChild(innerEl);
 
         // Step 5: Attach provenance badge overlay near the icon

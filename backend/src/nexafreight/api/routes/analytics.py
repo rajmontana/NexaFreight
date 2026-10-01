@@ -369,14 +369,20 @@ async def summary(
             )
         )
 
-    # Orders late count
+    # Orders late count — apply active-world guard so historical DataCo orders
+    # (15k+ rows) don't inflate the breach count to ~35k.
     from nexafreight.models import Order as OrderModel
 
     late_count = len(
         list(
             (
                 await session.execute(
-                    select(OrderModel).where(OrderModel.sla_status == OrderSlaStatus.LATE)
+                    select(OrderModel)
+                    .join(Shipment, OrderModel.shipment_id == Shipment.id)
+                    .where(
+                        OrderModel.sla_status == OrderSlaStatus.LATE,
+                        _active_world_filter(),
+                    )
                 )
             )
             .scalars()

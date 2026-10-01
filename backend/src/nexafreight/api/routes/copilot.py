@@ -9,8 +9,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
 from nexafreight.database import get_db_session
 from nexafreight.dependencies import get_current_user
+from nexafreight.enums import ShipmentStatus
 from nexafreight.exceptions import ResourceNotFoundError
 from nexafreight.models import Shipment, User
 from nexafreight.schemas.ops import CopilotAskRequest, CopilotAskResponse
@@ -25,10 +27,33 @@ async def ask(
     session: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> CopilotAskResponse:
-    """Ask the copilot a question about a shipment."""
-    shipment = await session.get(Shipment, body.shipment_id)
+    """Ask the copilot a question about a shipment or active network state."""
+    shipment: Shipment | None = None
+    if body.shipment_id and body.shipment_id.strip():
+        shipment = await session.get(Shipment, body.shipment_id.strip())
+
+    # Fallback: if shipment_id is absent, mock/placeholder, or not found, resolve to
+    # the most relevant active delayed or in-transit shipment in the live database.
     if shipment is None:
-        raise ResourceNotFoundError("Shipment", body.shipment_id)
+        stmt = (
+            select(Shipment)
+            .where(
+                (Shipment.status == ShipmentStatus.DELAYED)
+                | (Shipment.status == "DELAYED")
+                | (Shipment.status == ShipmentStatus.IN_TRANSIT)
+                | (Shipment.status == "IN_TRANSIT")
+            )
+            .order_by(Shipment.updated_at.desc())
+            .limit(1)
+        )
+        shipment = (await session.execute(stmt)).scalars().first()
+
+    if shipment is None:
+        stmt_any = select(Shipment).limit(1)
+        shipment = (await session.execute(stmt_any)).scalars().first()
+
+    if shipment is None:
+        raise ResourceNotFoundError("Shipment", body.shipment_id or "fleet")
 
     result = await answer_shipment_question(
         session,
