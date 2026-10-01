@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from nexafreight.database import get_db_session
+from nexafreight.api.routes.analytics import _active_world_filter
 from nexafreight.dependencies import get_current_user
 from nexafreight.core import params
 from nexafreight.enums import ShipmentStatus, TransportMode
@@ -78,7 +79,10 @@ async def list_shipments(
     )
 
     # Apply filters (AND logic)
-    filters = []
+    # Active-world guard: the manifest is an OPERATIONS view. The 2015-2018
+    # HISTORICAL parcel era (DataCo ingest) has no legs/geometry and would
+    # otherwise bury the live fleet pages deep (full DB: ~15.6k rows).
+    filters = [_active_world_filter()]
     if status is not None:
         filters.append(Shipment.status == status)
     if mode is not None:
