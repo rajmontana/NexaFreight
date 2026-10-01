@@ -26,6 +26,7 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from nexafreight.core import params
 from nexafreight.database import get_db_session
@@ -208,7 +209,11 @@ async def _build_aggregates(
     session: AsyncSession, *, now: datetime
 ) -> list[ShipmentFinancialAggregate]:
     """Fetch shipments and roll up aggregates for window math."""
-    result = await session.execute(select(Shipment).where(_active_world_filter()))
+    result = await session.execute(
+        select(Shipment)
+        .options(selectinload(Shipment.legs), selectinload(Shipment.orders))
+        .where(_active_world_filter())
+    )
     shipments = list(result.scalars().all())
 
     decided_ids: set[str] = set()
@@ -218,7 +223,6 @@ async def _build_aggregates(
 
     aggregates: list[ShipmentFinancialAggregate] = []
     for shipment in shipments:
-        await session.refresh(shipment, ["legs", "orders"])
         freight, carbon = _shipment_freight_carbon(shipment)
         sla_est, dem_est, realized = _pending_exposure(shipment, now=now)
         realized_total = realized + freight
@@ -413,11 +417,20 @@ async def sla_board(
     """Per-shipment SLA risk rows (in transit, or any non-empty shipment)."""
     now = datetime.now(UTC)
     shipments = list(
-        (await session.execute(select(Shipment).where(_active_world_filter()))).scalars().all()
+        (
+            await session.execute(
+                select(Shipment)
+                .options(
+                    selectinload(Shipment.orders),
+                    selectinload(Shipment.legs),
+                    selectinload(Shipment.disruptions),
+                )
+                .where(_active_world_filter())
+            )
+        ).scalars().all()
     )
     rows: list[AnalyticsSlaRow] = []
     for s in shipments:
-        await session.refresh(s, ["orders", "legs", "disruptions"])
         if not s.orders:
             continue
         eta = latest_planned_arrival(s)
@@ -459,11 +472,18 @@ async def esg_rail(
     _user: User = Depends(get_current_user),
 ) -> AnalyticsEsgResponse:
     """CO2 per shipment + vs-air comparison."""
-    shipments = list((await session.execute(select(Shipment))).scalars().all())
+    shipments = list(
+        (
+            await session.execute(
+                select(Shipment)
+                .options(selectinload(Shipment.legs))
+                .where(_active_world_filter())
+            )
+        ).scalars().all()
+    )
     rows: list[AnalyticsEsgRow] = []
     breakdown: dict[str, int] = {}
     for s in shipments:
-        await session.refresh(s, ["legs"])
         weight_t = max(1, s.container_count) * TONNES_PER_CONTAINER
         from nexafreight.enums import LegStatus
 
