@@ -604,12 +604,12 @@ export async function getAnalyticsEsg(): Promise<AnalyticsEsgResponse> {
 
 /** POST /api/copilot/ask — Gemini with deterministic rules fallback */
 export async function askCopilot(
-  shipmentId: string,
+  shipmentId: string | null | undefined,
   question: string,
 ): Promise<CopilotAskResponse> {
   return apiFetch<CopilotAskResponse>(`/api/copilot/ask`, {
     method: 'POST',
-    body: { shipment_id: shipmentId, question },
+    body: { shipment_id: shipmentId || undefined, question },
   })
 }
 

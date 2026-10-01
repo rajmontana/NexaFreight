@@ -325,9 +325,7 @@ async def _execute_routes_query(session: AsyncSession) -> GeoJSONFeatureCollecti
         .outerjoin(Vessel, Leg.vessel_id == Vessel.id)
         .where(
             Leg.route_geometry_json.isnot(None),
-            (Leg.status.in_(statuses))
-            | (Leg.transport_mode == "RAIL")
-            | (Leg.transport_mode == TransportMode.RAIL),
+            Leg.status.in_(statuses),
         )
     )
     rows = (await session.execute(stmt)).all()

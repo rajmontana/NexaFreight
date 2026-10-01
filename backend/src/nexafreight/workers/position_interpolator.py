@@ -340,15 +340,11 @@ def _interpolate_linear(leg: _LegData, now: datetime, geometry: str) -> AssetPos
         departure = departure.replace(tzinfo=UTC)
     if now < departure:
         return None
-    if leg.planned_arrival is not None:
-        arrival = leg.planned_arrival if leg.planned_arrival.tzinfo else leg.planned_arrival.replace(tzinfo=UTC)
-        if now >= arrival:
-            return None
-
     duration_s = _compute_duration(leg)
     if not duration_s or duration_s <= 0:
         return None
-    progress = min(1.0, max(0.0, (now - departure).total_seconds() / duration_s))
+    # For active IN_PROGRESS legs, clamp progress up to 0.999 so the asset remains visible at destination
+    progress = min(0.999, max(0.0, (now - departure).total_seconds() / duration_s))
 
     # Walk cumulative segment lengths to locate the position at `progress`.
     seg_len: list[float] = []
