@@ -124,8 +124,8 @@ export interface PaginatedResponse<T> {
  */
 export interface ShipmentListItem {
   id: string                           // UUID string
-  origin: string                       // UN/LOCODE
-  destination: string                  // UN/LOCODE — backend field is "destination", not "dest"
+  origin: string | null                // UN/LOCODE (null for orphan rows without location)
+  destination: string | null           // UN/LOCODE (null for orphan rows without location)
   mode: TransportMode
   status: ShipmentStatus
   strictest_sla_deadline: string | null  // ISO-8601 datetime string

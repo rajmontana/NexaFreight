@@ -276,6 +276,8 @@ function ShipmentDossierPageContent() {
             <span className="text-[var(--border-hairline)]">/</span>
 
             <div className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/nexafreight-mark.svg" alt="NexaFreight" className="w-4 h-4 rounded-[2px]" />
               <span className="font-ui text-[13px] font-bold tracking-wider text-[var(--ink)]">
                 WAYBILL {refNumber}
               </span>
@@ -343,6 +345,7 @@ function ShipmentDossierPageContent() {
               routeData={routeData}
               origin={shipment?.origin}
               destination={shipment?.dest ?? shipment?.destination}
+              status={shipment?.status}
               legs={shipment?.legs || []}
             />
 
@@ -359,7 +362,7 @@ function ShipmentDossierPageContent() {
                     Machine Learning ETA & SLA Risk Prediction
                   </h3>
                 </div>
-                <ProvenanceChip provenance={prediction?.provenance || 'DERIVED'} size="sm" />
+                <ProvenanceChip provenance={shipment?.status === 'DELIVERED' ? 'REAL' : (prediction?.provenance || 'DERIVED')} size="sm" />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-[12px]">
@@ -370,10 +373,14 @@ function ShipmentDossierPageContent() {
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-[18px] font-bold text-[var(--ink)] tabular-nums">
-                      {prediction ? `${prediction.delay_p50_hours.toFixed(1)} h` : '0.0 h'}
+                      {shipment?.status === 'DELIVERED'
+                        ? '0.0 h'
+                        : prediction
+                        ? `${prediction.delay_p50_hours.toFixed(1)} h`
+                        : '0.0 h'}
                     </span>
                     <span className="text-[10px] text-[var(--text-secondary)]">
-                      quantile regression
+                      {shipment?.status === 'DELIVERED' ? 'voyage completed' : 'quantile regression'}
                     </span>
                   </div>
                 </div>
@@ -388,25 +395,33 @@ function ShipmentDossierPageContent() {
                       className="px-2 py-0.5 rounded-[2px] text-[12px] font-bold border"
                       style={{
                         backgroundColor:
-                          prediction?.sla_risk_level === 'BREACH' ||
-                          prediction?.sla_risk_level === 'HIGH'
+                          shipment?.status === 'DELIVERED'
+                            ? 'rgba(62, 107, 79, 0.08)'
+                            : prediction?.sla_risk_level === 'BREACH' ||
+                              prediction?.sla_risk_level === 'HIGH'
                             ? 'rgba(180, 69, 47, 0.08)'
                             : 'rgba(62, 107, 79, 0.08)',
                         borderColor:
-                          prediction?.sla_risk_level === 'BREACH' ||
-                          prediction?.sla_risk_level === 'HIGH'
+                          shipment?.status === 'DELIVERED'
+                            ? 'var(--moss-positive)'
+                            : prediction?.sla_risk_level === 'BREACH' ||
+                              prediction?.sla_risk_level === 'HIGH'
                             ? 'var(--oxide-risk)'
                             : 'var(--moss-positive)',
                         color:
-                          prediction?.sla_risk_level === 'BREACH' ||
-                          prediction?.sla_risk_level === 'HIGH'
+                          shipment?.status === 'DELIVERED'
+                            ? 'var(--moss-positive)'
+                            : prediction?.sla_risk_level === 'BREACH' ||
+                              prediction?.sla_risk_level === 'HIGH'
                             ? 'var(--oxide-risk)'
                             : 'var(--moss-positive)',
                       }}
                     >
-                      {prediction?.sla_risk_level || 'ON_TIME'}
+                      {shipment?.status === 'DELIVERED'
+                        ? 'FULFILLED'
+                        : prediction?.sla_risk_level || 'ON_TIME'}
                     </span>
-                    {prediction?.model_version && (
+                    {prediction?.model_version && shipment?.status !== 'DELIVERED' && (
                       <span className="text-[10px] text-[var(--text-secondary)]">
                         v{prediction.model_version}
                       </span>
@@ -419,20 +434,15 @@ function ShipmentDossierPageContent() {
                   <div className="flex justify-between items-center text-[10px] text-[var(--text-secondary)]">
                     <span>ON-TIME CONFIDENCE</span>
                     <span className="font-bold text-[var(--ink)] tabular-nums">
-                      {predConfidencePct}%
+                      {shipment?.status === 'DELIVERED' ? 100 : predConfidencePct}%
                     </span>
                   </div>
                   <div className="w-full h-2 rounded-[1px] bg-[var(--border-hairline)] overflow-hidden">
                     <div
                       className="h-full rounded-[1px] transition-all"
                       style={{
-                        width: `${predConfidencePct}%`,
-                        backgroundColor:
-                          predConfidencePct > 70
-                            ? 'var(--moss-positive)'
-                            : predConfidencePct > 40
-                            ? 'var(--cobalt)'
-                            : 'var(--oxide-risk)',
+                        width: `${shipment?.status === 'DELIVERED' ? 100 : predConfidencePct}%`,
+                        backgroundColor: 'var(--moss-positive)',
                       }}
                     />
                   </div>

@@ -168,14 +168,15 @@ function TacticalNavRailComponent({
       <div className="flex flex-col items-center gap-3 w-full">
         <Link
           href="/"
-          className="w-9 h-9 flex items-center justify-center rounded-[3px] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--cobalt)]"
-          style={{
-            backgroundColor: 'var(--cobalt)',
-            color: 'var(--paper)',
-          }}
+          className="w-9 h-9 flex items-center justify-center rounded-[3px] transition-transform hover:scale-105 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--cobalt)] overflow-hidden shadow-sm"
           title="NexaFreight Control Tower"
         >
-          <span className="font-mono text-[13px] font-bold tracking-tight">NF</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/nexafreight-mark.svg"
+            alt="NexaFreight"
+            className="w-full h-full object-cover rounded-[3px]"
+          />
         </Link>
 
         {/* Separator Hairline */}

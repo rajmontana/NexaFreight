@@ -143,8 +143,8 @@ async def list_shipments(
         items.append(
             ShipmentListItem(
                 id=shipment.id,
-                origin=shipment.origin.locode,  # Eager-loaded, no N+1
-                destination=shipment.destination.locode,  # Eager-loaded, no N+1
+                origin=shipment.origin.locode if shipment.origin else None,  # Eager-loaded, no N+1
+                destination=shipment.destination.locode if shipment.destination else None,  # Eager-loaded, no N+1
                 mode=shipment.primary_transport_mode,
                 status=shipment.status,
                 strictest_sla_deadline=shipment.strictest_sla_deadline,
@@ -589,11 +589,27 @@ async def predict_shipment_delay(
             p50_eta = datetime.now(UTC)
         model_version = None
 
-    if deadline is not None and p50_eta > deadline:
-        delay_p50_hours = (p50_eta - deadline).total_seconds() / 3600.0
-    delay_p50_hours = max(delay_p50_hours, 0.0)
+    if str(shipment.status).upper() == "DELIVERED":
+        # Delivered shipment — journey is completed; delay is settled
+        actual_delivered = None
+        for l in live_legs:
+            if l.actual_arrival:
+                actual_delivered = max(actual_delivered or l.actual_arrival, l.actual_arrival)
+        if actual_delivered and deadline:
+            act = actual_delivered if actual_delivered.tzinfo else actual_delivered.replace(tzinfo=UTC)
+            slip = (act - deadline).total_seconds() / 3600.0
+            delay_p50_hours = max(slip, 0.0)
+            risk = "BREACH" if slip > 0 else "ON_TIME"
+        else:
+            delay_p50_hours = 0.0
+            risk = "ON_TIME"
+        provenance = "REAL"
+    else:
+        if deadline is not None and p50_eta > deadline:
+            delay_p50_hours = (p50_eta - deadline).total_seconds() / 3600.0
+        delay_p50_hours = max(delay_p50_hours, 0.0)
+        risk = compute_sla_risk(deadline, p50_eta)
 
-    risk = compute_sla_risk(deadline, p50_eta)
     return ShipmentPredictResponse(
         shipment_id=shipment_id,
         delay_p50_hours=round(delay_p50_hours, 2),

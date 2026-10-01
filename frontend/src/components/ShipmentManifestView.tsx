@@ -118,6 +118,15 @@ export default function ShipmentManifestView({
     void fetchList();
   }, [fetchList]);
 
+  // Listen for auth_success event so manifest loads when credentials hydrate
+  useEffect(() => {
+    const handler = () => { void fetchList(); };
+    if (typeof globalThis.window !== 'undefined') {
+      globalThis.window.addEventListener('nexafreight:auth_success', handler);
+      return () => globalThis.window.removeEventListener('nexafreight:auth_success', handler);
+    }
+  }, [fetchList]);
+
   // Client-side text filter on current page rows
   const filteredShipments = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -147,6 +156,8 @@ export default function ShipmentManifestView({
 
         <div className="relative z-10 flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/nexafreight-mark.svg" alt="NexaFreight" className="w-5 h-5 rounded-[2px]" />
             <h1 className="font-ui text-[18px] font-semibold tracking-tight text-[var(--ink)]">
               Shipment Manifest & Waybill Ledger
             </h1>

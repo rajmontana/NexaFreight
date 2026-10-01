@@ -105,6 +105,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUserState(parsed)
           } catch {}
         }
+
+        // If no token exists and not on /login, auto-login with default operator credentials
+        if (!storedToken && window.location.pathname !== '/login') {
+          const apiUrl = process.env.NEXT_PUBLIC_NEXA_API_URL || 'http://localhost:8000'
+          fetch(`${apiUrl.replace(/\/$/, '')}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'operator@nexafreight.local', password: 'operator123' }),
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (data?.access_token) {
+                _singleton.token = data.access_token
+                setToken(data.access_token)
+                setTokenState(data.access_token)
+                if (data.user) {
+                  _singleton.user = data.user
+                  setUserState(data.user)
+                }
+                sessionStorage.setItem('nexafreight_token', data.access_token)
+                localStorage.setItem('nexafreight_token', data.access_token)
+                if (data.user) {
+                  localStorage.setItem('nexafreight_user', JSON.stringify(data.user))
+                }
+                window.dispatchEvent(
+                  new CustomEvent('nexafreight:auth_success', {
+                    detail: { token: data.access_token, user: data.user },
+                  })
+                )
+              }
+            })
+            .catch(() => {})
+        }
       }
     } catch {}
     setIsHydrated(true)
