@@ -2,10 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Compass, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import AlertCenter from '@/components/AlertCenter';
+import AlertFeed from '@/components/alerts/AlertFeed';
 import RerouteOptions from '@/components/RerouteOptions';
 import { ProvenanceChip } from '@/components/ProvenanceBadge';
 
@@ -34,7 +33,7 @@ function AlertsPageContent() {
       style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)' }}
     >
       <div className="pl-[58px] h-full flex flex-col relative overflow-hidden">
-        {/* Cockpit Status Header */}
+        {/* Cockpit chrome header */}
         <header
           className="h-12 border-b flex items-center justify-between px-4 z-[1040] select-none flex-shrink-0"
           style={{
@@ -49,74 +48,74 @@ function AlertsPageContent() {
               </span>
               <span className="text-[var(--border-hairline)]">/</span>
               <span className="hidden sm:inline font-mono text-[10px] text-[var(--text-secondary)]">
-                INCIDENT RECOVERY & 3-WAY DECISION LOG
+                INCIDENT RECOVERY &amp; 3-WAY DECISION LOG
               </span>
             </div>
             <ProvenanceChip provenance="REAL" size="sm" />
           </div>
 
-          <div className="flex items-center gap-2 font-mono text-[10px]">
-            <span className="px-2 py-0.5 rounded-[2px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
+          <div className="flex items-center gap-2 font-mono text-[10px] text-[var(--text-secondary)]">
+            <span className="px-2 py-0.5 rounded-[2px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)]">
               QUEUE ACTIVE
             </span>
           </div>
         </header>
 
-        {/* Full-Page Queue & Rerouting Desk */}
-        <main className="flex-1 p-6 flex flex-col overflow-hidden bg-[var(--paper)]">
-          <div className="mb-4">
-            <h1 className="font-ui text-[18px] font-semibold text-[var(--ink)]">
-              Active Maritime & Multimodal Disruptions
-            </h1>
-            <p className="font-ui text-[12px] text-[var(--text-secondary)] mt-0.5">
-              Review operational exceptions, acknowledge alerts, and compute 3-way recovery trade-offs (Accept Delay, Port Divert, Modal Shift).
-            </p>
-          </div>
-
-          <div className="flex-1 flex gap-6 overflow-hidden relative">
-            {/* Left Column: Full-Height Alert Queue */}
-            <div className="w-[420px] flex-shrink-0 flex flex-col">
-              <AlertCenter
-                onOpenInspector={(shipmentId) => router.push(`/shipments/${shipmentId}`)}
-                onOpenOptions={(alertId) => setActiveOptionsAlertId(alertId)}
-                refreshKey={opsVersion}
-                defaultOpen
-              />
-            </div>
-
-            {/* Right Column: Reroute Trade-Off Planner / Decision Area */}
-            <div
-              className="flex-1 border rounded-[3px] p-6 flex flex-col justify-center items-center text-center overflow-y-auto"
-              style={{
-                backgroundColor: 'var(--bg-subtle)',
-                borderColor: 'var(--border-hairline)',
-              }}
-            >
-              {activeOptionsAlertId ? (
-                <div className="w-full max-w-xl text-left">
-                  <RerouteOptions
-                    alertId={activeOptionsAlertId}
-                    onApproved={handleDecisionExecuted}
-                    onClose={() => setActiveOptionsAlertId(null)}
-                  />
-                </div>
-              ) : (
-                <div className="max-w-md flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-[3px] flex items-center justify-center mb-3 bg-black/5 text-[var(--text-secondary)]">
-                    <Compass className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-ui text-[14px] font-semibold text-[var(--ink)]">
-                    Select an Incident to Evaluate Recovery Alternatives
-                  </h3>
-                  <p className="font-ui text-[12px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
-                    Select an alert from the queue to run the multi-objective rerouting engine. 
-                    Compare alternative maritime routes, Cape of Good Hope detours, and rail/air shifts.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Full-width NAVTOWER incident feed */}
+        <main className="flex-1 overflow-y-auto bg-[var(--paper)]">
+          <AlertFeed
+            onOpenInspector={(shipmentId) => router.push(`/shipments/${shipmentId}`)}
+            onEvaluate={(alertId) => setActiveOptionsAlertId(alertId)}
+            refreshKey={opsVersion}
+          />
         </main>
+
+        {/* Reroute trade-off desk — overlay per DESIGN.md modal spec:
+            flat paper fill · 1px solid ink border · non-blurred scrim */}
+        {activeOptionsAlertId && (
+          <div
+            className="fixed inset-0 z-[1100] flex items-center justify-center p-6"
+            style={{ background: 'rgba(22, 24, 29, 0.4)' }}
+            onClick={() => setActiveOptionsAlertId(null)}
+            role="presentation"
+          >
+            <div
+              className="w-full max-w-2xl max-h-[85vh] overflow-y-auto"
+              style={{
+                backgroundColor: 'var(--paper)',
+                border: '1px solid var(--ink, #16181D)',
+                borderRadius: 0,
+              }}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Reroute trade-off desk"
+            >
+              <div
+                className="flex items-center justify-between px-4 py-2.5 border-b"
+                style={{ borderColor: 'var(--border-hairline)', background: 'var(--bg-subtle)' }}
+              >
+                <span className="font-mono text-[11px] tracking-[0.14em] text-[var(--text-secondary)]">
+                  RECOVERY DESK // 3-WAY TRADE-OFF
+                </span>
+                <button
+                  onClick={() => setActiveOptionsAlertId(null)}
+                  className="font-mono text-[11px] tracking-[0.1em]"
+                  style={{ border: '1px solid var(--border-hairline)', borderRadius: 2, padding: '4px 10px', cursor: 'pointer', background: 'var(--paper)' }}
+                >
+                  CLOSE ✕
+                </button>
+              </div>
+              <div className="p-5">
+                <RerouteOptions
+                  alertId={activeOptionsAlertId}
+                  onApproved={handleDecisionExecuted}
+                  onClose={() => setActiveOptionsAlertId(null)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

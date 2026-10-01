@@ -14,8 +14,6 @@ export async function GET() {
       '/api/news',
       '/api/gdelt',
       '/api/markets',
-      '/api/frontlines',
-      '/api/region-dossier',
     ],
   });
 }

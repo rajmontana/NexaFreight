@@ -12,6 +12,7 @@ from sqlalchemy.orm import joinedload
 
 from nexafreight.database import get_db_session
 from nexafreight.dependencies import get_current_user
+from nexafreight.core import params
 from nexafreight.enums import ShipmentStatus, TransportMode
 from nexafreight.models import Alert, AuditLog, Leg, Order, Shipment, User
 from nexafreight.schemas.common import PaginatedResponse

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+import InsightsCharts from '@/components/insights/InsightsCharts';
 import { ProvenanceChip } from '@/components/ProvenanceBadge';
 
 function InsightsPageContent() {
@@ -53,11 +53,9 @@ function InsightsPageContent() {
           </div>
         </header>
 
-        {/* Analytics Dashboard Surface */}
-        <main className="flex-1 relative overflow-hidden bg-[var(--paper)]">
-          <AnalyticsDashboard
-            onOpenInspector={(id) => router.push(`/shipments/${id}`)}
-          />
+        {/* Full-width analytics ledger — honest loading / NO DATA / retry */}
+        <main className="flex-1 overflow-y-auto bg-[var(--paper)]">
+          <InsightsCharts />
         </main>
       </div>
     </div>

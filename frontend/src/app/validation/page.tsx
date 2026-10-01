@@ -1,9 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getValidationMatrix, type ValidationMatrixResponse } from '@/lib/nexafreight/client'
 import { formatCheckValue, summarizeValidation } from '@/lib/nexafreight/validation'
 import { ProvenanceChip } from '@/components/ProvenanceBadge'
+import LoadingGlobe from '@/components/art/LoadingGlobe'
+
+/** Never hang forever on a stalled/cold backend — 12s honest timeout. */
+function withTimeout<T>(p: Promise<T>, ms = 12000): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, rej) => setTimeout(() => rej(new Error('TIMEOUT — calibration service unreachable')), ms)),
+  ])
+}
 
 /**
  * Task 17: public validation page — renders the LIVE reference-validation
@@ -17,20 +26,24 @@ import { ProvenanceChip } from '@/components/ProvenanceBadge'
 export default function ValidationPage() {
   const [matrix, setMatrix] = useState<ValidationMatrixResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-    getValidationMatrix()
-      .then((m) => {
-        if (!cancelled) setMatrix(m)
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message)
-      })
-    return () => {
-      cancelled = true
+  const load = useCallback(async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const m = await withTimeout(getValidationMatrix())
+      setMatrix(m)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setBusy(false)
     }
   }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const summary = matrix ? summarizeValidation(matrix) : null
 
@@ -49,14 +62,24 @@ export default function ValidationPage() {
             <div className="validation-status-banner__text">
               Failed to load the validation matrix: {error}
             </div>
+            <button
+              onClick={() => { void load() }}
+              disabled={busy}
+              className="font-mono"
+              style={{
+                marginLeft: 'auto', fontSize: 10, letterSpacing: '0.14em',
+                background: 'var(--cobalt, #2547C8)', color: '#fff', border: 'none',
+                borderRadius: 2, padding: '6px 14px', cursor: busy ? 'wait' : 'pointer',
+              }}
+            >
+              {busy ? 'SYNCING…' : 'RETRY'}
+            </button>
           </div>
         )}
 
         {!matrix && !error && (
-          <div className="empty-state-container">
-            <div className="empty-state__heading">LOADING</div>
-            <div className="skeleton-pulse skeleton-pulse--line" />
-            <div className="skeleton-pulse skeleton-pulse--line skeleton-pulse--short" />
+          <div className="empty-state-container" style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+            <LoadingGlobe caption="CALIBRATING CONSTANTS AGAINST PUBLISHED REFERENCES..." size={260} />
           </div>
         )}
 

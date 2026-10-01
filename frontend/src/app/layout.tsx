@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, IBM_Plex_Mono } from 'next/font/google';
+import GlobalBackdrop from '@/components/art/GlobalBackdrop';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/store/useAuthStore';
 import TacticalNavRail from '@/components/TacticalNavRail';
@@ -195,6 +196,8 @@ export default function RootLayout({
 
       </head>
       <body className="antialiased">
+        <GlobalBackdrop />
+        <div style={{ position: 'relative', zIndex: 1 }}>
         <ErrorBoundary name="NexaFreight Core">
           <AuthProvider>
             <TacticalNavRail />
@@ -202,6 +205,7 @@ export default function RootLayout({
             <CopilotQuickDock />
           </AuthProvider>
         </ErrorBoundary>
+      </div>
       </body>
     </html>
   );

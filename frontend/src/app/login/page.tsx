@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingGlobe from '@/components/art/LoadingGlobe';
+
 import { useState, useRef, useEffect, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -67,6 +69,9 @@ function LoginForm() {
 
   return (
     <div style={styles.page}>
+      <div className="hidden lg:block" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <LoadingGlobe size={400} caption="OPERATOR ACCESS" progress="SECURE CHANNEL READY" />
+      </div>
       <motion.main
         className="login-card"
         style={styles.card}
@@ -216,7 +221,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'var(--paper)',
+    gap: 40,
+    background: 'transparent',
     fontFamily: 'var(--font-ui)',
     position: 'relative',
     overflow: 'hidden',

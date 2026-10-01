@@ -50,23 +50,26 @@ export const BASE_URL = (
 let _token: string | null = null
 
 export function setToken(token: string): void {
+  // Module var FIRST — it is the primary credential store; browser storage is
+  // a reload convenience. Sandboxed preview iframes (opaque origin) throw on
+  // storage PROPERTY access, so every touch lives inside the try.
   _token = token
-  if (typeof window !== 'undefined' && window.sessionStorage) {
-    try {
-      window.sessionStorage.setItem('nexafreight_token', token)
-      window.localStorage.setItem('nexafreight_token', token)
-    } catch {}
-  }
+  try {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage?.setItem('nexafreight_token', token)
+      window.localStorage?.setItem('nexafreight_token', token)
+    }
+  } catch {}
 }
 
 export function clearToken(): void {
   _token = null
-  if (typeof window !== 'undefined' && window.sessionStorage) {
-    try {
-      window.sessionStorage.removeItem('nexafreight_token')
-      window.localStorage.removeItem('nexafreight_token')
-    } catch {}
-  }
+  try {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage?.removeItem('nexafreight_token')
+      window.localStorage?.removeItem('nexafreight_token')
+    }
+  } catch {}
 }
 
 export function getToken(): string | null {
@@ -116,9 +119,11 @@ export async function apiFetch<T>(path: string, opts: FetchOptions = {}): Promis
   }
 
   if (auth === 'required') {
-    if (!_token && typeof window !== 'undefined' && window.sessionStorage) {
+    if (!_token && typeof window !== 'undefined') {
+      // Sandboxed preview iframes (opaque origin) throw on storage PROPERTY
+      // access — keep every touch inside the try so degradation is graceful.
       try {
-        _token = window.sessionStorage.getItem('nexafreight_token') || window.localStorage.getItem('nexafreight_token') || null
+        _token = window.sessionStorage?.getItem('nexafreight_token') || window.localStorage?.getItem('nexafreight_token') || null
       } catch {}
     }
     if (!_token) {
@@ -143,7 +148,11 @@ export async function apiFetch<T>(path: string, opts: FetchOptions = {}): Promis
     if (!url.startsWith('/api/nexa') && typeof window !== 'undefined') {
       try {
         const subPath = path.startsWith('/api') ? path.replace(/^\/api/, '') : path
-        const proxyUrl = `/api/nexa${subPath}${qs_str ? `?${qs_str}` : ''}`
+        let proxyUrl = `/api/nexa${subPath}${qs_str ? `?${qs_str}` : ''}`
+        // Preview tunnels (sandboxed ingress) can strip the Authorization
+        // header in transit; the backend natively accepts ?token= (the same
+        // fallback SSE uses), so credential proxy calls redundantly.
+        if (_token) proxyUrl += `${proxyUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(_token)}`
         response = await fetch(proxyUrl, {
           method,
           headers,
