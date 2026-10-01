@@ -175,7 +175,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build backend image
+      - name: Resolve immutable image tag
+        id: imagetag
+        run: |
+          SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "tag=sha-${SHA:0:12}-${{ matrix.arch }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build backend image (immutable sha tag)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: docker/Dockerfile.backend
+          platforms: linux/${{ matrix.arch }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/nexafreight-backend:${{ steps.imagetag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend image (immutable sha tag)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: docker/Dockerfile.frontend
+          platforms: linux/${{ matrix.arch }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/nexafreight-frontend:${{ steps.imagetag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Promote backend :latest (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -184,9 +213,9 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/nexafreight-backend:latest-${{ matrix.arch }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-      - name: Build frontend image
+      - name: Promote frontend :latest (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -195,21 +224,21 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/nexafreight-frontend:latest-${{ matrix.arch }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Smoke test backend and frontend
         run: |
+          SHA_TAG="${{ steps.imagetag.outputs.tag }}"
           docker run -d --name smoke-backend -p 8080:8000 \
             -e DATABASE_PATH=/tmp/smoke.db \
             -e JWT_SECRET=x \
-            ghcr.io/${{ github.repository_owner }}/nexafreight-backend:latest-${{ matrix.arch }}
-          
+            ghcr.io/${{ github.repository_owner }}/nexafreight-backend:$SHA_TAG
+
           timeout 60s bash -c 'until curl -s http://localhost:8080/healthz; do sleep 2; done'
-          
+
           docker run -d --name smoke-frontend -p 3001:3000 \
             -e NEXT_PUBLIC_API_URL=http://localhost:8080 \
-            ghcr.io/${{ github.repository_owner }}/nexafreight-frontend:latest-${{ matrix.arch }}
-          
+            ghcr.io/${{ github.repository_owner }}/nexafreight-frontend:$SHA_TAG
+
           sleep 5
           if ! docker inspect -f '{{.State.Running}}' smoke-frontend | grep -q true; then
             docker logs smoke-frontend
