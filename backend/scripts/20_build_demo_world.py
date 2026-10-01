@@ -380,25 +380,28 @@ async def seed_congestion_story(spike_port: str = "INJNP", ratio: float = 1.8) -
 
 
 async def dress_legs_for_reality() -> dict:
-    """Make the map and manifests tell the same story as the clock (wave 5D).
+    """Fill legs with REAL routing-engine geometry + clock-true statuses (wave 5D/5E).
 
-    The demo world shipped three gaps that read as "out of sync" on the
-    control tower: the legs table had no route_geometry (map/routes returned
-    zero features), every leg stayed PLANNED forever, and every shipment was
-    DELIVERED while most legs arrived in the future. This pass:
+    Every leg gets geometry from the production routing adapters — the same
+    engines the planner and reroute APIs use:
+      SEA  → searoute (real maritime lanes: Suez / Malacca / Panama)
+      AIR  → great-circle arcs (geodesic interpolation)
+      ROAD/RAIL → OpenRouteService when ORS_API_KEY is set, otherwise the
+                   adapter's great-circle APPROXIMATE fallback.
+    If an engine raises, the leg falls back to a mode-flavoured bend and is
+    counted as FALLBACK_BEND in the log so nothing is silently fake.
 
-    1. Fills legs.route_geometry_json with a mode-flavoured LineString
-       (SEA gets a long detour bend, AIR a great-circle-ish lift, ROAD small
-       road bends) between origin/destination Locations.
-    2. Grades leg status against wall-clock (COMPLETED / IN_PROGRESS / PLANNED).
-    3. Derives shipment status from its legs (any active → IN_TRANSIT, all
-       past → DELIVERED, otherwise PLANNED).
-
-    Idempotent: geometry is regenerated, statuses recomputed, every run.
+    Also grades leg status against wall-clock (COMPLETED / IN_PROGRESS /
+    PLANNED) and derives shipment status from its legs. Idempotent.
     """
     import json as _json
     import math as _math
 
+    from nexafreight.adapters.routing import (
+        RoadRouter,
+        compute_air_route,
+        compute_sea_route,
+    )
     from nexafreight.models.leg import Leg
     from nexafreight.models.location import Location
     from nexafreight.models.shipment import Shipment
@@ -412,7 +415,14 @@ async def dress_legs_for_reality() -> dict:
         nx, ny = -(b[1] - a[1]) / d, (b[0] - a[0]) / d
         return [round(lon + nx * off * d, 4), round(lat + ny * off * d, 4)]
 
+    settings = get_settings()
+    ors_key = None
+    if getattr(settings, "ors_api_key", None):
+        ors_key = settings.ors_api_key.get_secret_value()
+    road_router = RoadRouter(api_key=ors_key)
+
     now = datetime.now(UTC).replace(tzinfo=None)
+    sources: dict[str, int] = {}
     async with get_session_factory()() as session:
         locs = {
             row.id: (float(row.longitude), float(row.latitude))
@@ -427,13 +437,36 @@ async def dress_legs_for_reality() -> dict:
             b = locs.get(leg.destination_id)
             if a and b:
                 mode = str(leg.transport_mode).split(".")[-1]
-                if mode == "SEA":
-                    coords = [list(a), _bend(a, b, 0.35, 0.18), _bend(a, b, 0.65, 0.22), list(b)]
-                elif mode == "AIR":
-                    coords = [list(a), _bend(a, b, 0.5, 0.10), list(b)]
-                else:
-                    coords = [list(a), _bend(a, b, 0.3, 0.06), _bend(a, b, 0.7, -0.05), list(b)]
-                leg.route_geometry_json = _json.dumps({"type": "LineString", "coordinates": coords})
+                source = "FALLBACK_BEND"
+                geom_str: str | None = None
+                try:
+                    if mode == "SEA":
+                        res = compute_sea_route(a[1], a[0], b[1], b[0])
+                        geom_str = res.geometry_geojson
+                        source = "SEAROUTE"
+                    elif mode == "AIR":
+                        res = compute_air_route(a[1], a[0], b[1], b[0])
+                        geom_str = res.geometry_geojson
+                        source = "GREAT_CIRCLE"
+                    else:
+                        res = road_router.compute((a[1], a[0]), (b[1], b[0]))
+                        geom_str = res.geometry_geojson
+                        source = "ORS" if res.source == "OPENROUTESERVICE" else "ROAD_FALLBACK"
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("Real routing failed for leg %s (%s): %s — using bend fallback", leg.id, mode, exc)
+                if geom_str is None or "LineString" not in geom_str:
+                    coords = [list(a)]
+                    if mode == "SEA":
+                        coords += [_bend(a, b, 0.35, 0.18), _bend(a, b, 0.65, 0.22)]
+                    elif mode == "AIR":
+                        coords += [_bend(a, b, 0.5, 0.10)]
+                    else:
+                        coords += [_bend(a, b, 0.3, 0.06), _bend(a, b, 0.7, -0.05)]
+                    coords.append(list(b))
+                    geom_str = _json.dumps({"type": "LineString", "coordinates": coords})
+                    source = "FALLBACK_BEND"
+                leg.route_geometry_json = geom_str
+                sources[source] = sources.get(source, 0) + 1
                 filled += 1
 
             dep = leg.planned_departure.replace(tzinfo=None) if leg.planned_departure.tzinfo else leg.planned_departure
@@ -447,7 +480,7 @@ async def dress_legs_for_reality() -> dict:
             by_shipment.setdefault(str(leg.shipment_id), []).append((dep, arr))
 
         shipments = (await session.execute(select(Shipment))).scalars().all()
-        counts = {"IN_TRANSIT": 0, "PLANNED": 0, "DELIVERED": 0}
+        counts: dict[str, int] = {"IN_TRANSIT": 0, "PLANNED": 0, "DELIVERED": 0}
         for sh in shipments:
             windows = by_shipment.get(str(sh.id), [])
             if any(dep <= now < arr for dep, arr in windows):
@@ -461,11 +494,12 @@ async def dress_legs_for_reality() -> dict:
         await session.commit()
 
     log.info(
-        "Legs dressed for reality: %d geometries filled; shipments %s",
+        "Legs dressed for reality: %d geometries from %s; shipments %s",
         filled,
+        sources or "{}",
         counts,
     )
-    return {"geometries": filled, "shipments": counts}
+    return {"geometries": filled, "sources": sources, "shipments": counts}
 
 
 async def main() -> int:
