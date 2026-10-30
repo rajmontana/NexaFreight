@@ -255,8 +255,19 @@ export default function RouteMiniMap({
           {!isDelivered ? (
             <g transform={`translate(${midPt[0]}, ${midPt[1]})`}>
               {/* Radar pulse rings */}
-              <circle cx="0" cy="0" r="14" stroke="#2547C8" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
-              <circle cx="0" cy="0" r="5" fill="#2547C8" />
+              <circle cx="0" cy="0" r="16" stroke="#2547C8" strokeWidth="1" strokeDasharray="3 3" opacity="0.35" />
+              <circle cx="0" cy="0" r="10" fill="#FFFFFF" stroke="#2547C8" strokeWidth="1.5" />
+              
+              {/* High-visibility maritime vessel icon */}
+              <g transform="translate(-5, -5.5)">
+                <path d="M5 1.2 C4.6 2.0 3.2 3.2 3.2 4.2 V9.2 C3.2 9.8 3.8 10.2 5 10.2 C6.2 10.2 6.8 9.8 6.8 9.2 V4.2 C6.8 3.2 5.4 2.0 5 1.2 Z" fill="#2547C8" />
+                <polygon points="5,1.8 4.4,2.8 5.6,2.8" fill="#FFFFFF" />
+                <rect x="3.8" y="3.8" width="1.0" height="1.5" rx="0.2" fill="#FFFFFF" />
+                <rect x="5.2" y="3.8" width="1.0" height="1.5" rx="0.2" fill="#FFFFFF" />
+                <rect x="3.8" y="5.8" width="1.0" height="1.5" rx="0.2" fill="#FFFFFF" />
+                <rect x="5.2" y="5.8" width="1.0" height="1.5" rx="0.2" fill="#FFFFFF" />
+                <rect x="3.6" y="8.2" width="2.8" height="0.8" rx="0.2" fill="#FFFFFF" />
+              </g>
 
               {/* Boxed label positioned ABOVE the line so it never overlaps nodes */}
               <g transform="translate(-40, -32)">

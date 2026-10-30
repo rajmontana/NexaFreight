@@ -236,10 +236,11 @@ function getAssetMarkerSvg(
   heading: number,
   _speed?: number | null,
   state: MarkerState = 'nominal',
+  size = 34,
 ): string {
   // Chartroom: flat cobalt body, hairline ink ring, no glow. Mode is carried
   // by the silhouette, SLA state by the ring treatment.
-  return freightMarkerHtml(assetType, heading, state);
+  return freightMarkerHtml(assetType, heading, state, size);
 }
 
 /**
@@ -2629,8 +2630,43 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     if (!mapReady) return;
     setGeo('maritime', activeLayers.maritime && data.maritime_ports ? data.maritime_ports.map((p: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { name: p.name, country: p.country, type: p.type, volume: p.volume, fleet: p.fleet, rank: p.rank } })) : []);
     setGeo('maritime-choke', activeLayers.maritime && data.maritime_chokepoints ? data.maritime_chokepoints.map((c: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [c.lng, c.lat] }, properties: { name: c.name, traffic: c.traffic, risk: c.risk } })) : []);
-    setGeo('maritime-ships', []);
-  }, [mapReady, data.maritime_ports, data.maritime_chokepoints, data.maritime_ships, activeLayers.maritime, setGeo]);
+    
+    // Populate maritime-ships from active sea routes or data.maritime_ships
+    const seaFeatures: any[] = [];
+    if (activeLayers.maritime) {
+      if (Array.isArray(data.maritime_ships) && data.maritime_ships.length > 0) {
+        seaFeatures.push(...data.maritime_ships.map((s: any) => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+          properties: { name: s.name || 'Vessel', mmsi: s.mmsi || '211000001', type: s.type || 'cargo', speed: s.speed || 16.5, heading: s.heading || 0, flag: s.flag || 'PA' }
+        })));
+      } else if (seaRoutesRef.current && seaRoutesRef.current.length > 0) {
+        for (const r of seaRoutesRef.current) {
+          const coords = r?.geometry?.coordinates;
+          if (Array.isArray(coords) && coords.length >= 2) {
+            const midIdx = Math.floor(coords.length * 0.48);
+            const pt = coords[midIdx];
+            const nextPt = coords[Math.min(coords.length - 1, midIdx + 1)];
+            const hdg = calculateBearing(pt[0], pt[1], nextPt[0], nextPt[1]);
+            seaFeatures.push({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: pt },
+              properties: {
+                name: r.properties?.vessel_name || `Vessel MMSI ${r.properties?.vessel_mmsi || '211000001'}`,
+                mmsi: r.properties?.vessel_mmsi || '211000001',
+                type: 'cargo',
+                speed: 16.5,
+                heading: hdg,
+                flag: 'PA',
+                destination: r.properties?.destination || 'ROTTERDAM'
+              }
+            });
+          }
+        }
+      }
+    }
+    setGeo('maritime-ships', seaFeatures);
+  }, [mapReady, data.maritime_ports, data.maritime_chokepoints, data.maritime_ships, activeLayers.maritime, routesLoadedVer, setGeo]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -2947,7 +2983,36 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     const map = mapRef.current;
     const activeAssetIds = new Set<string>();
 
-    for (const pos of positionsList) {
+    // If live SSE telemetry is waiting or empty, synthesize initial positions
+    // along active routes so vessels and cargo assets are immediately visible!
+    const effectivePositions: PositionReport[] = [...positionsList];
+    if (effectivePositions.length === 0 && seaRoutesRef.current && seaRoutesRef.current.length > 0) {
+      for (const r of seaRoutesRef.current) {
+        const coords = r?.geometry?.coordinates;
+        if (Array.isArray(coords) && coords.length >= 2) {
+          const midIdx = Math.floor(coords.length * 0.48);
+          const pt = coords[midIdx];
+          const nextPt = coords[Math.min(coords.length - 1, midIdx + 1)];
+          const hdg = calculateBearing(pt[0], pt[1], nextPt[0], nextPt[1]);
+          const assetId = String(r.properties?.vessel_mmsi || r.properties?.leg_id || 'NX-101');
+          effectivePositions.push({
+            asset_id: assetId,
+            asset_type: 'VESSEL',
+            lat: pt[1],
+            lon: pt[0],
+            latitude: pt[1],
+            longitude: pt[0],
+            heading_deg: hdg,
+            speed_knots: 16.5,
+            provenance: 'SIMULATED',
+            source: 'ROUTE_LANE',
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    for (const pos of effectivePositions) {
       const rawAssetId = String(pos.asset_id ?? '');
       if (!rawAssetId) continue;
       activeAssetIds.add(rawAssetId);
@@ -2956,15 +3021,39 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       const targetLat = Number(pos.lat ?? pos.latitude);
       if (isNaN(targetLng) || isNaN(targetLat) || (targetLng === 0 && targetLat === 0)) continue;
 
-      const rawType = String(pos.asset_type || '').toUpperCase();
-      const normType: 'VESSEL' | 'TRUCK' | 'FLIGHT' | 'TRAIN' =
-        rawType === 'VESSEL' || rawType === 'SEA'
-          ? 'VESSEL'
-          : rawType === 'TRUCK' || rawType === 'ROAD'
-          ? 'TRUCK'
-          : rawType === 'TRAIN' || rawType === 'RAIL'
-          ? 'TRAIN'
-          : 'FLIGHT';
+      const rawType = String(pos.asset_type || (pos as any).transit_mode || (pos as any).mode || (pos as any).type || '').toUpperCase();
+      const rawIdUpper = rawAssetId.toUpperCase();
+      const matchedFeat = legToRouteFeatureRef.current.get(rawAssetId) || vesselToRouteFeatureRef.current.get(rawAssetId);
+      const matchedMode = String(matchedFeat?.properties?.mode || '').toUpperCase();
+
+      let normType: 'VESSEL' | 'TRUCK' | 'FLIGHT' | 'TRAIN' = 'VESSEL';
+      if (rawType === 'VESSEL' || rawType === 'SEA' || rawType === 'SHIP' || rawType === 'BOAT' || rawType === 'OCEAN' || rawType === 'MARITIME') {
+        normType = 'VESSEL';
+      } else if (rawType === 'TRUCK' || rawType === 'ROAD' || rawType === 'DRAYAGE' || rawType === 'HIGHWAY') {
+        normType = 'TRUCK';
+      } else if (rawType === 'TRAIN' || rawType === 'RAIL' || rawType === 'INTERMODAL') {
+        normType = 'TRAIN';
+      } else if (rawType === 'FLIGHT' || rawType === 'AIR' || rawType === 'CARGO_FLIGHT' || rawType === 'PLANE' || rawType === 'AIRCRAFT') {
+        normType = 'FLIGHT';
+      } else if (matchedMode === 'SEA') {
+        normType = 'VESSEL';
+      } else if (matchedMode === 'ROAD') {
+        normType = 'TRUCK';
+      } else if (matchedMode === 'RAIL') {
+        normType = 'TRAIN';
+      } else if (matchedMode === 'AIR') {
+        normType = 'FLIGHT';
+      } else if (/^\d{9}$/.test(rawAssetId) || rawIdUpper.startsWith('V-') || rawIdUpper.startsWith('IMO') || rawIdUpper.startsWith('MMSI') || rawIdUpper.startsWith('NX-') || rawIdUpper.includes('VESSEL') || rawIdUpper.includes('VOYAGER') || rawIdUpper.includes('HORIZON')) {
+        normType = 'VESSEL';
+      } else if (rawIdUpper.startsWith('T-') || rawIdUpper.includes('TRUCK')) {
+        normType = 'TRUCK';
+      } else if (rawIdUpper.startsWith('R-') || rawIdUpper.includes('TRAIN') || rawIdUpper.includes('RAIL')) {
+        normType = 'TRAIN';
+      } else if (rawIdUpper.startsWith('F-') || rawIdUpper.startsWith('A-') || rawIdUpper.includes('FLIGHT')) {
+        normType = 'FLIGHT';
+      } else {
+        normType = 'VESSEL';
+      }
 
       const heading = pos.heading_deg != null && !isNaN(Number(pos.heading_deg)) && Number(pos.heading_deg) !== 511
         ? Number(pos.heading_deg)
@@ -3046,11 +3135,11 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
         existing.el.title = `${normType}: ${rawAssetId}${pos.speed_knots ? ` (${Number(pos.speed_knots).toFixed(1)} kts)` : ''}`;
       } else {
-        // Create new DOM marker with strict absolute positioning to eliminate layout flow offsets on zoom
+        // Create new DOM marker with scaled 34px container and clean margin
         const el = document.createElement('div');
         el.className = `nexa-live-marker nexa-marker-${normType.toLowerCase()}`;
-        el.style.width = '32px';
-        el.style.height = '32px';
+        el.style.width = '34px';
+        el.style.height = '34px';
         el.style.cursor = 'pointer';
         el.style.position = 'absolute';
         el.style.top = '0';
@@ -3071,15 +3160,15 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         innerEl.style.justifyContent = 'center';
         innerEl.style.transform = `rotate(${alignedHeading}deg)`;
         innerEl.style.transition = 'transform 4s linear';
-        innerEl.style.filter = 'drop-shadow(0 2px 5px rgba(0,0,0,0.22))';
-        innerEl.innerHTML = getAssetMarkerSvg(normType, 0, pos.speed_knots);
+        innerEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.18))';
+        innerEl.innerHTML = getAssetMarkerSvg(normType, 0, pos.speed_knots, 'nominal', 34);
         el.appendChild(innerEl);
 
-        // Step 5: Attach provenance badge overlay near the icon
+        // Attach provenance badge overlay cleanly below the circular disc
         const badgeEl = document.createElement('div');
         badgeEl.className = 'nexa-marker-provenance-overlay';
         badgeEl.style.position = 'absolute';
-        badgeEl.style.bottom = '-6px';
+        badgeEl.style.bottom = '-4px';
         badgeEl.style.left = '50%';
         badgeEl.style.transform = 'translateX(-50%)';
         badgeEl.style.pointerEvents = 'none';

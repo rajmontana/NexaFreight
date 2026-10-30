@@ -35,6 +35,7 @@ import type {
   DelayPrediction,
   EtaPrediction,
   DemandForecastResponse,
+  PositionOut,
 } from './types'
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
@@ -344,6 +345,15 @@ export async function getAllRoutes(): Promise<RouteFeatureCollection> {
 }
 
 /**
+ * GET /api/map/positions/snapshot
+ *
+ * One-time position snapshot of all currently active moving freight assets.
+ */
+export async function getPositionsSnapshot(): Promise<PositionOut[]> {
+  return apiFetch<PositionOut[]>('/api/map/positions/snapshot')
+}
+
+/**
  * GET /api/map/feed-health
  *
  * Returns health status for all active position feed adapters
@@ -468,6 +478,7 @@ export const nexaClient = {
   getPorts,
   getWarehouses,
   getAllRoutes,
+  getPositionsSnapshot,
   getFeedHealth,
   getDelayPrediction,
   getEtaPrediction,

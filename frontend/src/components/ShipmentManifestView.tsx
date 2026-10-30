@@ -5,6 +5,7 @@ import {
   Ship,
   Plane,
   Truck,
+  Train,
   Search,
   AlertTriangle,
   ArrowRight,
@@ -34,7 +35,7 @@ const MODE_ICONS: Record<string, typeof Ship> = {
   SEA: Ship,
   AIR: Plane,
   ROAD: Truck,
-  RAIL: Truck,
+  RAIL: Train,
 };
 
 function computeShipmentRiskAndConfidence(item: ShipmentListItem): {
@@ -334,7 +335,7 @@ export default function ShipmentManifestView({
                     {/* 3. Mode */}
                     <td className="py-3 px-4">
                       <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] bg-[var(--bg-subtle)] border border-[var(--border-hairline)] text-[11px]">
-                        <ModeIcon className="w-3 h-3 text-[var(--cobalt)]" />
+                        <ModeIcon className="w-3.5 h-3.5 text-[var(--cobalt)] flex-shrink-0" />
                         <span>{shipment.mode}</span>
                       </div>
                     </td>

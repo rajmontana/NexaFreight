@@ -235,6 +235,26 @@ export function useSSEPositions(
     const connect = async () => {
       if (isCancelled) return
 
+      // Immediate snapshot bootstrap so assets appear immediately on mount without waiting for SSE tick
+      try {
+        const snapUrl = apiUrl.startsWith('/')
+          ? `${apiUrl.replace(/\/$/, '')}/map/positions/snapshot`
+          : `${apiUrl.replace(/\/$/, '')}/api/map/positions/snapshot`
+        const snapHeaders: Record<string, string> = {}
+        if (activeToken) snapHeaders['Authorization'] = `Bearer ${activeToken}`
+        fetch(snapUrl, { headers: snapHeaders })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data && !isCancelled) {
+              setPositions((prev) => {
+                const { updatedMap, hasChanges } = parsePositionPayload(data, prev)
+                return hasChanges ? updatedMap : prev
+              })
+            }
+          })
+          .catch(() => undefined)
+      } catch {}
+
       try {
         const ticket = await fetchStreamTicket(apiUrl, activeToken)
         if (isCancelled) return

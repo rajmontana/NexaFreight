@@ -14,14 +14,23 @@ interface ShipmentMilestoneTrackerProps {
 }
 
 const getModeIcon = (mode: TransportMode | string) => {
-  switch (mode) {
+  const m = String(mode || '').toUpperCase();
+  switch (m) {
     case 'SEA':
+    case 'VESSEL':
+    case 'OCEAN':
+    case 'MARITIME':
       return Ship;
     case 'ROAD':
+    case 'TRUCK':
+    case 'DRAYAGE':
       return Truck;
     case 'RAIL':
+    case 'TRAIN':
       return Train;
     case 'AIR':
+    case 'FLIGHT':
+    case 'PLANE':
       return Plane;
     default:
       return Ship;
@@ -162,7 +171,7 @@ function ShipmentMilestoneTracker({
                         color: 'var(--ink)',
                       }}
                     >
-                      <ModeIcon className="w-3 h-3" />
+                      <ModeIcon className="w-3.5 h-3.5 flex-shrink-0" />
                     </span>
                     <span className="text-[11px] font-bold font-mono tracking-wider text-[var(--ink)]">
                       LEG {idx + 1}: {leg.mode}

@@ -42,6 +42,8 @@ function ringFor(state: MarkerState): { stroke: string; dash: string; width: num
 /**
  * Bold, high-contrast silhouettes on a 24×24 grid.
  * Solid cobalt body with white cutouts for sharp recognition.
+ * All silhouettes are dimensioned to sit comfortably inside the 10.6px radius
+ * disc with generous breathing room, preventing any ring collision or rotation clipping.
  */
 function bodyFor(asset: FreightAsset): string {
   const fill = CHARTROOM.cobalt;
@@ -49,57 +51,58 @@ function bodyFor(asset: FreightAsset): string {
 
   switch (asset) {
     case 'VESSEL':
-      // Bold container cargo ship: bulbous bow cutwater, cargo bay grid, aft bridge.
+      // Distinct container cargo ship: pointed flared bow cutwater, 3 tiers of container cargo bays, aft navigation bridge with wings.
       return `
-        <path d="M12 2.2 C9.2 6.8 7.8 12.5 7.8 18.2 C7.8 20.4 9.5 21.4 12 21.4 C14.5 21.4 16.2 20.4 16.2 18.2 C16.2 12.5 14.8 6.8 12 2.2 Z" fill="${fill}"/>
-        <polygon points="12,2.8 11.2,4.8 12.8,4.8" fill="${cut}"/>
-        <rect x="9.4" y="6.4" width="2.3" height="3.2" rx="0.3" fill="${cut}"/>
-        <rect x="12.3" y="6.4" width="2.3" height="3.2" rx="0.3" fill="${cut}"/>
-        <rect x="9.4" y="10.2" width="2.3" height="3.2" rx="0.3" fill="${cut}"/>
-        <rect x="12.3" y="10.2" width="2.3" height="3.2" rx="0.3" fill="${cut}"/>
-        <rect x="9.6" y="14.4" width="4.8" height="2.8" rx="0.4" fill="${cut}"/>
-        <rect x="11.2" y="18.0" width="1.6" height="1.4" rx="0.2" fill="${cut}"/>
+        <path d="M12 3.6 C11.2 5.0 8.4 7.2 8.4 9.0 V17.4 C8.4 18.8 9.4 19.6 12 19.6 C14.6 19.6 15.6 18.8 15.6 17.4 V9.0 C15.6 7.2 12.8 5.0 12 3.6 Z" fill="${fill}"/>
+        <polygon points="12,4.4 11.2,6.2 12.8,6.2" fill="${cut}"/>
+        <rect x="9.5" y="7.4" width="2.2" height="2.8" rx="0.3" fill="${cut}"/>
+        <rect x="12.3" y="7.4" width="2.2" height="2.8" rx="0.3" fill="${cut}"/>
+        <rect x="9.5" y="10.8" width="2.2" height="2.8" rx="0.3" fill="${cut}"/>
+        <rect x="12.3" y="10.8" width="2.2" height="2.8" rx="0.3" fill="${cut}"/>
+        <rect x="9.5" y="14.2" width="2.2" height="2.6" rx="0.3" fill="${cut}"/>
+        <rect x="12.3" y="14.2" width="2.2" height="2.6" rx="0.3" fill="${cut}"/>
+        <rect x="9.2" y="17.4" width="5.6" height="1.4" rx="0.3" fill="${cut}"/>
+        <rect x="11.2" y="17.8" width="1.6" height="0.8" rx="0.2" fill="${fill}"/>
       `;
     case 'TRUCK':
-      // Class-8 heavy cargo semi-truck: tractor cab, mirrors, 53ft trailer container.
+      // Class-8 heavy cargo semi-truck: tractor cab, aero mirrors, 53ft trailer with container ribs.
       return `
-        <path d="M8.0 2.2 C8.0 1.8 8.5 1.4 9.2 1.4 H14.8 C15.5 1.4 16.0 1.8 16.0 2.2 V6.8 H8.0 Z" fill="${fill}"/>
-        <rect x="9.2" y="2.5" width="5.6" height="2.0" rx="0.3" fill="${cut}"/>
-        <line x1="6.8" y1="4.0" x2="8.0" y2="4.0" stroke="${fill}" stroke-width="1.0"/>
-        <line x1="16.0" y1="4.0" x2="17.2" y2="4.0" stroke="${fill}" stroke-width="1.0"/>
-        <rect x="6.6" y="7.6" width="10.8" height="13.8" rx="0.8" fill="${fill}"/>
-        <line x1="7.8" y1="10.2" x2="16.2" y2="10.2" stroke="${cut}" stroke-width="0.85"/>
-        <line x1="7.8" y1="13.2" x2="16.2" y2="13.2" stroke="${cut}" stroke-width="0.85"/>
-        <line x1="7.8" y1="16.2" x2="16.2" y2="16.2" stroke="${cut}" stroke-width="0.85"/>
-        <line x1="7.8" y1="19.2" x2="16.2" y2="19.2" stroke="${cut}" stroke-width="0.85"/>
+        <path d="M8.2 4.2 C8.2 3.8 8.7 3.5 9.4 3.5 H14.6 C15.3 3.5 15.8 3.8 15.8 4.2 V8.2 H8.2 Z" fill="${fill}"/>
+        <rect x="9.3" y="4.5" width="5.4" height="1.8" rx="0.3" fill="${cut}"/>
+        <line x1="7.2" y1="5.8" x2="8.2" y2="5.8" stroke="${fill}" stroke-width="1.0" stroke-linecap="round"/>
+        <line x1="15.8" y1="5.8" x2="16.8" y2="5.8" stroke="${fill}" stroke-width="1.0" stroke-linecap="round"/>
+        <rect x="7.8" y="8.8" width="8.4" height="10.4" rx="0.8" fill="${fill}"/>
+        <line x1="8.8" y1="11.2" x2="15.2" y2="11.2" stroke="${cut}" stroke-width="0.8"/>
+        <line x1="8.8" y1="13.8" x2="15.2" y2="13.8" stroke="${cut}" stroke-width="0.8"/>
+        <line x1="8.8" y1="16.4" x2="15.2" y2="16.4" stroke="${cut}" stroke-width="0.8"/>
       `;
     case 'TRAIN':
-      // Locomotive engine and intermodal container consist.
+      // Locomotive engine and intermodal container consist on scaled rail tracks.
       return `
-        <rect x="6.4" y="2.2" width="11.2" height="13.4" rx="1.4" fill="${fill}"/>
-        <path d="M8.0 3.4 H16.0 V5.2 C16.0 5.6 15.6 6.0 15.2 6.0 H8.8 C8.4 6.0 8.0 5.6 8.0 5.2 Z" fill="${cut}"/>
-        <circle cx="9.6" cy="4.4" r="0.6" fill="${fill}"/>
-        <circle cx="14.4" cy="4.4" r="0.6" fill="${fill}"/>
-        <rect x="7.8" y="7.4" width="8.4" height="3.2" rx="0.4" fill="${cut}"/>
-        <line x1="9.9" y1="7.4" x2="9.9" y2="10.6" stroke="${fill}" stroke-width="0.6"/>
-        <line x1="12.0" y1="7.4" x2="12.0" y2="10.6" stroke="${fill}" stroke-width="0.6"/>
-        <line x1="14.1" y1="7.4" x2="14.1" y2="10.6" stroke="${fill}" stroke-width="0.6"/>
-        <rect x="7.8" y="11.4" width="8.4" height="2.8" rx="0.4" fill="${cut}"/>
-        <path d="M4.4 17.6 H19.6" stroke="${fill}" stroke-width="1.6" stroke-linecap="round"/>
-        <path d="M4.4 20.6 H19.6" stroke="${fill}" stroke-width="1.6" stroke-linecap="round"/>
-        <line x1="6.6" y1="16.8" x2="6.6" y2="21.4" stroke="${cut}" stroke-width="0.9"/>
-        <line x1="10.2" y1="16.8" x2="10.2" y2="21.4" stroke="${cut}" stroke-width="0.9"/>
-        <line x1="13.8" y1="16.8" x2="13.8" y2="21.4" stroke="${cut}" stroke-width="0.9"/>
-        <line x1="17.4" y1="16.8" x2="17.4" y2="21.4" stroke="${cut}" stroke-width="0.9"/>
+        <rect x="7.8" y="4.2" width="8.4" height="11.2" rx="1.2" fill="${fill}"/>
+        <path d="M9.0 5.2 H15.0 V6.8 C15.0 7.2 14.6 7.5 14.2 7.5 H9.8 C9.4 7.5 9.0 7.2 9.0 6.8 Z" fill="${cut}"/>
+        <circle cx="10.2" cy="6.2" r="0.5" fill="${fill}"/>
+        <circle cx="13.8" cy="6.2" r="0.5" fill="${fill}"/>
+        <rect x="8.8" y="8.6" width="6.4" height="2.4" rx="0.3" fill="${cut}"/>
+        <line x1="10.4" y1="8.6" x2="10.4" y2="11.0" stroke="${fill}" stroke-width="0.6"/>
+        <line x1="12.0" y1="8.6" x2="12.0" y2="11.0" stroke="${fill}" stroke-width="0.6"/>
+        <line x1="13.6" y1="8.6" x2="13.6" y2="11.0" stroke="${fill}" stroke-width="0.6"/>
+        <rect x="8.8" y="12.0" width="6.4" height="2.2" rx="0.3" fill="${cut}"/>
+        <path d="M6.2 17.2 H17.8" stroke="${fill}" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M6.2 19.4 H17.8" stroke="${fill}" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="8.0" y1="16.5" x2="8.0" y2="20.1" stroke="${cut}" stroke-width="0.8"/>
+        <line x1="10.7" y1="16.5" x2="10.7" y2="20.1" stroke="${cut}" stroke-width="0.8"/>
+        <line x1="13.3" y1="16.5" x2="13.3" y2="20.1" stroke="${cut}" stroke-width="0.8"/>
+        <line x1="16.0" y1="16.5" x2="16.0" y2="20.1" stroke="${cut}" stroke-width="0.8"/>
       `;
     case 'FLIGHT':
     default:
-      // High-aspect swept-wing widebody cargo freighter with twin turbofan engines.
+      // High-aspect swept-wing widebody cargo freighter with twin turbofan engines, safely scaled to avoid clipping.
       return `
-        <path d="M12 1.8 C11.3 1.8 10.8 2.6 10.8 3.8 V8.6 L2.2 13.8 V15.6 L10.8 12.8 V18.6 L8.2 20.4 V21.8 L12 21.0 L15.8 21.8 V20.4 L13.2 18.6 V12.8 L21.8 15.6 V13.8 L13.2 8.6 V3.8 C13.2 2.6 12.7 1.8 12 1.8 Z" fill="${fill}"/>
-        <rect x="7.2" y="11.2" width="1.6" height="3.2" rx="0.6" fill="${cut}"/>
-        <rect x="15.2" y="11.2" width="1.6" height="3.2" rx="0.6" fill="${cut}"/>
-        <polygon points="12,2.8 11.4,4.6 12.6,4.6" fill="${cut}"/>
+        <path d="M12 3.8 C11.3 3.8 10.8 4.6 10.8 5.6 V9.6 L4.6 13.8 V15.2 L10.8 12.8 V17.4 L8.6 19.0 V20.2 L12 19.5 L15.4 20.2 V19.0 L13.2 17.4 V12.8 L19.4 15.2 V13.8 L13.2 9.6 V5.6 C13.2 4.6 12.7 3.8 12 3.8 Z" fill="${fill}"/>
+        <rect x="7.8" y="11.6" width="1.4" height="2.6" rx="0.5" fill="${cut}"/>
+        <rect x="14.8" y="11.6" width="1.4" height="2.6" rx="0.5" fill="${cut}"/>
+        <polygon points="12,4.8 11.4,6.4 12.6,6.4" fill="${cut}"/>
       `;
   }
 }
@@ -124,8 +127,8 @@ export function freightMarkerHtml(
 
   return (
     `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;pointer-events:none;">` +
-      `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="transform:rotate(${rot}deg);transform-origin:50% 50%;">` +
-        `<circle cx="12" cy="12" r="10.8" fill="${CHARTROOM.paper}" stroke="${ring.stroke}" stroke-width="${ring.width}"${dashAttr}/>` +
+      `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="transform:rotate(${rot}deg);transform-origin:50% 50%;overflow:visible;">` +
+        `<circle cx="12" cy="12" r="10.6" fill="${CHARTROOM.paper}" stroke="${ring.stroke}" stroke-width="${ring.width}"${dashAttr}/>` +
         bodyFor(asset) +
       `</svg>` +
     `</div>`

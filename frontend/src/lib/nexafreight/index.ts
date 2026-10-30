@@ -69,6 +69,7 @@ export {
   getPorts,
   getWarehouses,
   getAllRoutes,
+  getPositionsSnapshot,
   getFeedHealth,
   getDelayPrediction,
   getEtaPrediction,

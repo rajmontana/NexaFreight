@@ -14,19 +14,28 @@ def activate_legs() -> None:
     cur = con.cursor()
     cur.execute(
         "UPDATE shipments SET status = 'IN_TRANSIT' "
-        "WHERE id IN (SELECT id FROM shipments LIMIT 500);"
+        "WHERE id IN (SELECT id FROM shipments WHERE status != 'DELAYED' LIMIT 500);"
     )
+    # Fast road/air legs: active over hours
     cur.execute(
         "UPDATE legs SET status = 'IN_PROGRESS', "
         "actual_departure = datetime('now', '-30 minutes'), "
         "planned_departure = datetime('now', '-30 minutes'), "
         "planned_arrival = datetime('now', '+6 hours') "
-        "WHERE shipment_id IN (SELECT id FROM shipments WHERE status = 'IN_TRANSIT') "
-        "AND sequence_number IN (1, 2);"
+        "WHERE status = 'IN_PROGRESS' AND transport_mode IN ('ROAD', 'AIR', 'RAIL');"
+    )
+    # Maritime sea legs: multi-day oceanic voyages active over days
+    cur.execute(
+        "UPDATE legs SET status = 'IN_PROGRESS', "
+        "actual_departure = datetime('now', '-2 days'), "
+        "planned_departure = datetime('now', '-2 days'), "
+        "planned_arrival = datetime('now', '+5 days') "
+        "WHERE status = 'IN_PROGRESS' AND transport_mode = 'SEA';"
     )
     con.commit()
     in_prog = cur.execute("SELECT COUNT(*) FROM legs WHERE status = 'IN_PROGRESS';").fetchone()[0]
-    print(f"Active IN_PROGRESS legs: {in_prog}")
+    sea_in_prog = cur.execute("SELECT COUNT(*) FROM legs WHERE status = 'IN_PROGRESS' AND transport_mode = 'SEA';").fetchone()[0]
+    print(f"Active IN_PROGRESS legs: {in_prog} (Maritime SEA legs: {sea_in_prog})")
     con.close()
 
 
