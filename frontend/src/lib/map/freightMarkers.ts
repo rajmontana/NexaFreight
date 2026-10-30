@@ -16,11 +16,31 @@
 
 /** Chartroom tokens, mirrored from globals.css :root. */
 export const CHARTROOM = {
-  paper: '#FFFFFF',
+  paper: '#F6F7F4',
   ink: '#16181D',
   cobalt: '#2547C8',
   cobaltPressed: '#1D3AA6',
   hairline: '#D4D5D0',
+} as const;
+
+/** Corridor-matched high-contrast palette for multimodal freight assets. */
+export const ASSET_PALETTE = {
+  VESSEL: {
+    fill: '#1D4ED8', // Maritime Cobalt (matches sea lanes #2547C8)
+    ring: '#1E3A8A',
+  },
+  TRUCK: {
+    fill: '#059669', // Highway Emerald (matches road corridors #027A48)
+    ring: '#064E3B',
+  },
+  FLIGHT: {
+    fill: '#D97706', // Aviation Gold / Amber (matches air corridors #D97706)
+    ring: '#78350F',
+  },
+  TRAIN: {
+    fill: '#475569', // Freight Rail Slate (matches rail tracks #0F172A)
+    ring: '#0F172A',
+  },
 } as const;
 
 export type FreightAsset = 'VESSEL' | 'TRUCK' | 'FLIGHT' | 'TRAIN';
@@ -119,7 +139,7 @@ export function freightMarkerHtml(
   asset: FreightAsset,
   heading = 0,
   state: MarkerState = 'nominal',
-  size = 32
+  size = 26
 ): string {
   const ring = ringFor(state);
   const rot = Number.isFinite(heading) ? heading : 0;

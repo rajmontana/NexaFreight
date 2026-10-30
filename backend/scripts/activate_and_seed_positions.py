@@ -16,13 +16,27 @@ def activate_legs() -> None:
         "UPDATE shipments SET status = 'IN_TRANSIT' "
         "WHERE id IN (SELECT id FROM shipments WHERE status != 'DELAYED' LIMIT 500);"
     )
-    # Fast road/air legs: active over hours
+    # Activate road, air, rail and sea legs with fresh ongoing timelines
     cur.execute(
         "UPDATE legs SET status = 'IN_PROGRESS', "
         "actual_departure = datetime('now', '-30 minutes'), "
         "planned_departure = datetime('now', '-30 minutes'), "
         "planned_arrival = datetime('now', '+6 hours') "
-        "WHERE status = 'IN_PROGRESS' AND transport_mode IN ('ROAD', 'AIR', 'RAIL');"
+        "WHERE id IN (SELECT id FROM legs WHERE transport_mode = 'ROAD' LIMIT 30);"
+    )
+    cur.execute(
+        "UPDATE legs SET status = 'IN_PROGRESS', "
+        "actual_departure = datetime('now', '-45 minutes'), "
+        "planned_departure = datetime('now', '-45 minutes'), "
+        "planned_arrival = datetime('now', '+8 hours') "
+        "WHERE id IN (SELECT id FROM legs WHERE transport_mode = 'AIR' LIMIT 15);"
+    )
+    cur.execute(
+        "UPDATE legs SET status = 'IN_PROGRESS', "
+        "actual_departure = datetime('now', '-1 hours'), "
+        "planned_departure = datetime('now', '-1 hours'), "
+        "planned_arrival = datetime('now', '+12 hours') "
+        "WHERE id IN (SELECT id FROM legs WHERE transport_mode = 'RAIL' LIMIT 8);"
     )
     # Maritime sea legs: multi-day oceanic voyages active over days
     cur.execute(

@@ -236,7 +236,7 @@ function getAssetMarkerSvg(
   heading: number,
   _speed?: number | null,
   state: MarkerState = 'nominal',
-  size = 34,
+  size = 26,
 ): string {
   // Chartroom: flat cobalt body, hairline ink ring, no glow. Mode is carried
   // by the silhouette, SLA state by the ring treatment.
@@ -2984,26 +2984,32 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
     const activeAssetIds = new Set<string>();
 
     // If live SSE telemetry is waiting or empty, synthesize initial positions
-    // along active routes so vessels and cargo assets are immediately visible!
+    // along active routes for all multimodal corridors (TRUCKS, PLANES, SHIPS, TRAINS)!
     const effectivePositions: PositionReport[] = [...positionsList];
-    if (effectivePositions.length === 0 && seaRoutesRef.current && seaRoutesRef.current.length > 0) {
-      for (const r of seaRoutesRef.current) {
+    const candidateRoutes = (routesFeaturesRef.current && routesFeaturesRef.current.length > 0)
+      ? routesFeaturesRef.current
+      : (seaRoutesRef.current || []);
+
+    if (effectivePositions.length === 0 && candidateRoutes.length > 0) {
+      for (const r of candidateRoutes) {
         const coords = r?.geometry?.coordinates;
         if (Array.isArray(coords) && coords.length >= 2) {
           const midIdx = Math.floor(coords.length * 0.48);
           const pt = coords[midIdx];
           const nextPt = coords[Math.min(coords.length - 1, midIdx + 1)];
           const hdg = calculateBearing(pt[0], pt[1], nextPt[0], nextPt[1]);
-          const assetId = String(r.properties?.vessel_mmsi || r.properties?.leg_id || 'NX-101');
+          const mode = String(r.properties?.mode || 'SEA').toUpperCase();
+          const assetType = mode === 'ROAD' ? 'TRUCK' : mode === 'AIR' ? 'FLIGHT' : mode === 'RAIL' ? 'TRAIN' : 'VESSEL';
+          const assetId = String(r.properties?.vessel_mmsi || r.properties?.leg_id || `ROUTE-${mode}-${r.properties?.leg_id || Math.random().toString(36).substring(7)}`);
           effectivePositions.push({
             asset_id: assetId,
-            asset_type: 'VESSEL',
+            asset_type: assetType,
             lat: pt[1],
             lon: pt[0],
             latitude: pt[1],
             longitude: pt[0],
             heading_deg: hdg,
-            speed_knots: 16.5,
+            speed_knots: mode === 'ROAD' ? 52.0 : mode === 'AIR' ? 480.0 : mode === 'RAIL' ? 42.0 : 16.5,
             provenance: 'SIMULATED',
             source: 'ROUTE_LANE',
             timestamp: new Date().toISOString(),
@@ -3135,11 +3141,11 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
         existing.el.title = `${normType}: ${rawAssetId}${pos.speed_knots ? ` (${Number(pos.speed_knots).toFixed(1)} kts)` : ''}`;
       } else {
-        // Create new DOM marker with scaled 34px container and clean margin
+        // Create new DOM marker with refined 26px compact container and sleek margin
         const el = document.createElement('div');
         el.className = `nexa-live-marker nexa-marker-${normType.toLowerCase()}`;
-        el.style.width = '34px';
-        el.style.height = '34px';
+        el.style.width = '26px';
+        el.style.height = '26px';
         el.style.cursor = 'pointer';
         el.style.position = 'absolute';
         el.style.top = '0';
@@ -3160,15 +3166,15 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         innerEl.style.justifyContent = 'center';
         innerEl.style.transform = `rotate(${alignedHeading}deg)`;
         innerEl.style.transition = 'transform 4s linear';
-        innerEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.18))';
-        innerEl.innerHTML = getAssetMarkerSvg(normType, 0, pos.speed_knots, 'nominal', 34);
+        innerEl.style.filter = 'drop-shadow(0 1.5px 3px rgba(0,0,0,0.22))';
+        innerEl.innerHTML = getAssetMarkerSvg(normType, 0, pos.speed_knots, 'nominal', 26);
         el.appendChild(innerEl);
 
         // Attach provenance badge overlay cleanly below the circular disc
         const badgeEl = document.createElement('div');
         badgeEl.className = 'nexa-marker-provenance-overlay';
         badgeEl.style.position = 'absolute';
-        badgeEl.style.bottom = '-4px';
+        badgeEl.style.bottom = '-3px';
         badgeEl.style.left = '50%';
         badgeEl.style.transform = 'translateX(-50%)';
         badgeEl.style.pointerEvents = 'none';
