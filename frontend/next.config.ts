@@ -2,7 +2,7 @@
 import type { NextConfig } from "next";
 
 const isProd = process.env.NODE_ENV === "production";
-const rawOrigin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || (isProd ? "" : "http://localhost:8000");
+const rawOrigin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || (isProd ? "https://nexafreight-backend.onrender.com" : "http://localhost:8000");
 // Strip surrounding single/double quotes, trailing slashes, and trim whitespace
 const backendOrigin = rawOrigin.replace(/^["']|["']$/g, '').trim().replace(/\/$/, '');
 
@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   async rewrites() {
-    const rawBackendUrl = process.env.NEXA_BACKEND_URL || process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+    const rawBackendUrl = process.env.NEXA_BACKEND_URL || process.env.BACKEND_URL || (isProd ? 'https://nexafreight-backend.onrender.com' : 'http://127.0.0.1:8000');
     const backendUrl = rawBackendUrl.replace(/^["']|["']$/g, '').trim().replace(/\/$/, '');
     return [
       {

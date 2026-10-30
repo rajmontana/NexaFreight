@@ -49,7 +49,7 @@ const rawBaseUrl = (
     ? (process.env.NEXT_PUBLIC_NEXA_API_URL || 'http://localhost:8000')
     : isBrowser
       ? '/api/nexa'
-      : (process.env.NEXA_BACKEND_URL || process.env.BACKEND_URL || process.env.NEXT_PUBLIC_NEXA_API_URL || 'http://127.0.0.1:8000')
+      : (process.env.NEXA_BACKEND_URL || process.env.BACKEND_URL || process.env.NEXT_PUBLIC_NEXA_API_URL || (process.env.NODE_ENV === 'production' ? 'https://nexafreight-backend.onrender.com' : 'http://127.0.0.1:8000'))
 )
 export const BASE_URL = rawBaseUrl.replace(/^[\"\']|[\"\']$/g, '').trim().replace(/\/$/, '')
 

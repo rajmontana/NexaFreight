@@ -570,8 +570,9 @@ class AISStreamAdapter:
                 "Set AISSTREAM_API_KEY in your environment or .env file. "
                 "Do not attempt to start the adapter without a key."
             )
-        # Unwrap SecretStr at the last possible moment.
-        return settings.aisstream_api_key.get_secret_value()
+        # Unwrap SecretStr at the last possible moment and sanitize quotes/whitespace.
+        raw_key = settings.aisstream_api_key.get_secret_value()
+        return raw_key.strip().strip('"\'').strip() if isinstance(raw_key, str) else raw_key
 
     # ------------------------------------------------------------------
     # Internal: receive loop
@@ -752,9 +753,21 @@ def _default_connection_factory() -> ConnectionFactory:
     websockets >= 10 and present in 13.x.
     """
     try:
+        import ssl  # noqa: PLC0415
         import websockets  # noqa: PLC0415
 
-        return websockets.connect
+        try:
+            import certifi  # noqa: PLC0415
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            ssl_context = ssl.create_default_context()
+
+        def _connect(uri: str, **kwargs: Any) -> Any:
+            if uri.startswith("wss://") and "ssl" not in kwargs:
+                kwargs["ssl"] = ssl_context
+            return websockets.connect(uri, **kwargs)
+
+        return _connect
     except ImportError as exc:
         raise ImportError(
             "The 'websockets' package is required for AISStreamAdapter. "

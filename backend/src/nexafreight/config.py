@@ -191,6 +191,8 @@ class Settings(BaseSettings):
     @field_validator("aisstream_api_key", "ors_api_key", "gemini_api_key", "groq_api_key", mode="before")
     @classmethod
     def empty_str_to_none(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            v = v.strip().strip('"\'').strip()
         if v == "" or (isinstance(v, SecretStr) and not v.get_secret_value()):
             return None
         return v
