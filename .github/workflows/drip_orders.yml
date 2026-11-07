@@ -46,6 +46,10 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'nexafreight-production-jwt-secret-min32chars' }}
         run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning::DATABASE_URL secret is not configured in repository secrets. Skipping order drip."
+            exit 0
+          fi
           if [ "${{ github.event.inputs.backfill }}" != "" ] && [ "${{ github.event.inputs.backfill }}" != "0" ]; then
             echo "Running drip simulation with backfill ${{ github.event.inputs.backfill }} days..."
             python scripts/21_drip_orders.py --backfill ${{ github.event.inputs.backfill }} --per-day ${{ github.event.inputs.per_day || 8 }}

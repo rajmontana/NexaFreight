@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -92,24 +93,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         engine = getattr(app.state, "engine", None) or get_engine() if (settings == get_settings()) else create_engine(settings)
         app.state.engine = engine
-        async with engine.begin() as conn:
-            await conn.execute(text("SELECT 1"))
+        async with asyncio.timeout(5.0):
+            async with engine.begin() as conn:
+                await conn.execute(text("SELECT 1"))
         logger.info("Database connectivity verified: dialect=%s, host=%s", db_dialect, db_host)
     except Exception as e:
         clean_err = f"dialect={db_dialect}, host={db_host}"
         logger.error("Database connectivity check failed: %s (type=%s)", clean_err, type(e).__name__)
-        raise RuntimeError(f"Cannot connect to database: {clean_err}") from None
+        if not settings.is_production:
+            raise RuntimeError(f"Cannot connect to database: {clean_err}") from None
 
     # Refresh parameters cache using the engine selected for this app instance.
     try:
         session_factory = create_session_factory(engine)
-        async with session_factory() as session:
-            await refresh_parameters(session)
+        async with asyncio.timeout(5.0):
+            async with session_factory() as session:
+                await refresh_parameters(session)
     except Exception as exc:
         logger.error(
             "Failed to refresh parameter cache: %s", exc, exc_info=True,
         )
-        raise RuntimeError(f"Cannot load parameters: {exc}") from exc
+        if not settings.is_production:
+            raise RuntimeError(f"Cannot load parameters: {exc}") from exc
 
     # Initialize position tracker singleton and start AIS listener (T-029).
     try:

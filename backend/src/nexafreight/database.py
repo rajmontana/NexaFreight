@@ -90,7 +90,7 @@ def create_engine(settings: Settings | None = None, *, echo: bool | None = None)
     # incompatible with cached prepared statements.  Values must be
     # INTs - the URL string form crashes asyncpg at connect.
     _pg_connect_args = (
-        {"statement_cache_size": 0, "prepared_statement_cache_size": 0}
+        {"statement_cache_size": 0, "prepared_statement_cache_size": 0, "timeout": 10, "command_timeout": 10}
         if database_url.startswith("postgresql+asyncpg")
         else {}
     )

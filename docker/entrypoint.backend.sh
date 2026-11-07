@@ -12,8 +12,14 @@ else
 fi
 
 # Run the command passed or default uvicorn
+# When running on Render / Cloud Run / PaaS, the platform injects $PORT (e.g. 10000).
+# Always bind to $PORT when set so health checks and traffic routing succeed.
+PORT_TO_USE="${PORT:-8000}"
+
 if [ $# -eq 0 ]; then
-    exec uvicorn nexafreight.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+    exec uvicorn nexafreight.main:app --host 0.0.0.0 --port "$PORT_TO_USE"
+elif [ "$1" = "uvicorn" ]; then
+    exec uvicorn nexafreight.main:app --host 0.0.0.0 --port "$PORT_TO_USE"
 else
     exec "$@"
 fi
