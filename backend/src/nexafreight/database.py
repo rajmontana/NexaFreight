@@ -104,12 +104,14 @@ def create_engine(settings: Settings | None = None, *, echo: bool | None = None)
             "timeout": 15,
             "command_timeout": 30,
         }
-        try:
-            import certifi
-            import ssl
-            _pg_connect_args["ssl"] = ssl.create_default_context(cafile=certifi.where())
-        except Exception:
-            pass
+        is_loopback = "localhost" in database_url or "127.0.0.1" in database_url
+        if not is_loopback:
+            try:
+                import certifi
+                import ssl
+                _pg_connect_args["ssl"] = ssl.create_default_context(cafile=certifi.where())
+            except Exception:
+                pass
     engine = create_async_engine(database_url, connect_args=_pg_connect_args, **engine_kwargs)
 
     if is_sqlite:
@@ -147,12 +149,14 @@ def create_test_engine(database_url: str = "sqlite+aiosqlite:///:memory:") -> As
             "statement_cache_size": 0,
             "prepared_statement_cache_size": 0,
         }
-        try:
-            import certifi
-            import ssl
-            connect_args["ssl"] = ssl.create_default_context(cafile=certifi.where())
-        except Exception:
-            pass
+        is_loopback = "localhost" in database_url or "127.0.0.1" in database_url
+        if not is_loopback:
+            try:
+                import certifi
+                import ssl
+                connect_args["ssl"] = ssl.create_default_context(cafile=certifi.where())
+            except Exception:
+                pass
     else:
         connect_args = {}
 

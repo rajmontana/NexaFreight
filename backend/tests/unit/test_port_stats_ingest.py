@@ -10,7 +10,8 @@ from nexafreight.models.base import Base
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import importlib.util
-spec = importlib.util.spec_from_file_location("ingest_port_data", "scripts/03_ingest_port_data.py")
+_script_path = Path(__file__).resolve().parents[2] / "scripts" / "03_ingest_port_data.py"
+spec = importlib.util.spec_from_file_location("ingest_port_data", str(_script_path))
 ingest_port_data = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ingest_port_data)
 

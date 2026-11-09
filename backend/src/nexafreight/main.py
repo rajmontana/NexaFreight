@@ -96,14 +96,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         async with asyncio.timeout(5.0):
             async with engine.begin() as conn:
                 await conn.execute(text("SELECT 1"))
-                from nexafreight.models.base import Base
-                await conn.run_sync(Base.metadata.create_all)
+                if hasattr(conn, "run_sync") and not settings.is_test:
+                    from nexafreight.models.base import Base
+                    await conn.run_sync(Base.metadata.create_all)
         logger.info("Database connectivity verified and schema ensured: dialect=%s, host=%s", db_dialect, db_host)
     except Exception as e:
         clean_err = f"dialect={db_dialect}, host={db_host}"
         logger.error("Primary database check failed: %s (type=%s)", clean_err, type(e).__name__)
         # Resilient fallback: if remote Postgres fails/over-quota, fall back to embedded SQLite
-        if not db_dialect.startswith("sqlite"):
+        if not db_dialect.startswith("sqlite") and not settings.is_test:
             try:
                 from sqlalchemy.ext.asyncio import create_async_engine
                 from sqlalchemy import event
@@ -127,7 +128,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception as fb_err:
                 logger.error("Fallback to SQLite also failed: %s", fb_err)
 
-        if not settings.is_production and engine is None:
+        if not settings.is_production and (engine is None or settings.is_test):
             raise RuntimeError(f"Cannot connect to database: {clean_err}") from None
 
     # Refresh parameters cache using the engine selected for this app instance.

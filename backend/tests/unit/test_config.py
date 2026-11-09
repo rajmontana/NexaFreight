@@ -33,7 +33,7 @@ def test_jwt_secret_required(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("JWT_SECRET", raising=False)
     with pytest.raises(ValidationError, match="jwt_secret"):
-        Settings()  # type: ignore[call-arg]
+        Settings(_env_file=None)  # type: ignore[call-arg]
 
 
 def test_jwt_secret_is_secret_str() -> None:
