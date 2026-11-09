@@ -1,63 +1,132 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
-import { Activity, CheckCircle, RefreshCw, X } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { CheckCircle, RefreshCw, X } from 'lucide-react';
+
+/**
+ * Resolves the health check endpoint, safely preventing localhost mixed-content in cloud.
+ */
+export function resolveHealthUrl(
+  hostname: string = typeof window !== 'undefined' ? (window.location?.hostname || '') : '',
+  protocol: string = typeof window !== 'undefined' ? (window.location?.protocol || 'http:') : 'http:',
+  envOrigin?: string
+): string {
+  const isCloud = hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== '';
+
+  const rawOrigin = envOrigin !== undefined
+    ? envOrigin
+    : (process.env.NEXT_PUBLIC_BACKEND_ORIGIN || process.env.NEXT_PUBLIC_NEXA_API_URL || '');
+  const backendOrigin = rawOrigin.replace(/^["']|["']$/g, '').trim().replace(/\/$/, '');
+  const isInvalid = !backendOrigin || backendOrigin.includes('your-backend') || backendOrigin.includes('example.com');
+  const isLocalhostOrigin = backendOrigin.includes('localhost') || backendOrigin.includes('127.0.0.1');
+
+  if (isCloud) {
+    // In cloud deployments (e.g. Vercel), avoid mixed-content or unreachable localhost
+    if (isLocalhostOrigin || isInvalid) {
+      return hostname.includes('vercel.app')
+        ? 'https://nexafreight-backend.onrender.com/healthz'
+        : '/api/nexa/healthz';
+    }
+    if (protocol === 'https:' && backendOrigin.startsWith('http://')) {
+      return '/api/nexa/healthz';
+    }
+    return `${backendOrigin}/healthz`;
+  }
+
+  if (backendOrigin && !isInvalid) {
+    return `${backendOrigin}/healthz`;
+  }
+  return '/api/nexa/healthz';
+}
 
 export default function BackendColdStartBanner() {
   const [status, setStatus] = useState<'idle' | 'waking' | 'connected' | 'dismissed'>('idle');
   const [elapsed, setElapsed] = useState(0);
+
+  const isDismissedRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const coldStartTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleDismiss = useCallback(() => {
+    isDismissedRef.current = true;
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (coldStartTimerRef.current) {
+      clearTimeout(coldStartTimerRef.current);
+      coldStartTimerRef.current = null;
+    }
+    setStatus('dismissed');
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    let pollInterval: NodeJS.Timeout | null = null;
     const startTime = Date.now();
 
     // Threshold timer: if health check doesn't succeed within 3.5s, show "waking up"
-    const coldStartTimer = setTimeout(() => {
-      if (!cancelled && status !== 'connected') {
+    coldStartTimerRef.current = setTimeout(() => {
+      if (!cancelled && !isDismissedRef.current && status !== 'connected') {
         setStatus('waking');
       }
     }, 3500);
 
     // Elapsed counter
     timerRef.current = setInterval(() => {
+      if (isDismissedRef.current) return;
       setElapsed(Math.round((Date.now() - startTime) / 1000));
     }, 1000);
 
     const checkBackend = async () => {
+      if (cancelled || isDismissedRef.current) return;
+
       try {
-        const rawOrigin = process.env.NEXT_PUBLIC_NEXA_API_URL || process.env.NEXT_PUBLIC_BACKEND_ORIGIN || '';
-        const backendOrigin = rawOrigin.replace(/^["']|["']$/g, '').trim().replace(/\/$/, '');
-        const isInvalidDummy = backendOrigin.includes('your-backend') || backendOrigin.includes('example.com');
-        const healthUrl = (backendOrigin && !isInvalidDummy) ? `${backendOrigin}/healthz` : '/api/nexa/healthz';
+        const healthUrl = resolveHealthUrl();
         const res = await fetch(healthUrl, {
           cache: 'no-store',
           signal: AbortSignal.timeout(5000),
         });
 
-        if (res.ok) {
-          if (!cancelled) {
-            clearTimeout(coldStartTimer);
-            if (pollInterval) clearInterval(pollInterval);
-            if (timerRef.current) clearInterval(timerRef.current);
+        if (cancelled || isDismissedRef.current) return;
 
-            // If we showed the waking banner, give positive confirmation before fading out
-            setStatus((prev) => {
-              if (prev === 'waking') {
-                setTimeout(() => setStatus('dismissed'), 2500);
-                return 'connected';
-              }
-              return 'idle'; // Was fast, never showed
-            });
+        if (res.ok) {
+          if (coldStartTimerRef.current) {
+            clearTimeout(coldStartTimerRef.current);
+            coldStartTimerRef.current = null;
           }
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+
+          // If we showed the waking banner, give positive confirmation before fading out
+          setStatus((prev) => {
+            if (prev === 'waking') {
+              setTimeout(() => {
+                if (!cancelled) setStatus('dismissed');
+              }, 2500);
+              return 'connected';
+            }
+            return 'idle'; // Was fast, never showed
+          });
         } else if (res.status === 502 || res.status === 503 || res.status === 504) {
           // Render gateway waiting on container
-          if (!cancelled) setStatus('waking');
+          if (!cancelled && !isDismissedRef.current) {
+            setStatus('waking');
+          }
         }
       } catch {
         // Network timeout / waiting on cold start
-        if (!cancelled && Date.now() - startTime >= 3500) {
+        if (!cancelled && !isDismissedRef.current && Date.now() - startTime >= 3500) {
           setStatus('waking');
         }
       }
@@ -67,12 +136,12 @@ export default function BackendColdStartBanner() {
     checkBackend();
 
     // Poll every 4 seconds while active
-    pollInterval = setInterval(checkBackend, 4000);
+    pollIntervalRef.current = setInterval(checkBackend, 4000);
 
     return () => {
       cancelled = true;
-      clearTimeout(coldStartTimer);
-      if (pollInterval) clearInterval(pollInterval);
+      if (coldStartTimerRef.current) clearTimeout(coldStartTimerRef.current);
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
@@ -120,7 +189,7 @@ export default function BackendColdStartBanner() {
         </div>
         <button
           type="button"
-          onClick={() => setStatus('dismissed')}
+          onClick={handleDismiss}
           className="text-gray-400 hover:text-white p-0.5 rounded transition-colors"
           title="Dismiss status banner"
         >

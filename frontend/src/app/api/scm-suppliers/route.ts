@@ -28,8 +28,13 @@ const SUPPLIERS = [
   { id: 'sup-panasonic-nevada', name: 'Panasonic Giga (Tier 1)', city: 'Sparks', country: 'US', lat: 39.539, lng: -119.439, category: 'Battery' },
 ];
 
-export async function GET() {
+export async function GET(req: Request) {
   const dynamicSuppliers = [...SUPPLIERS].map(s => ({ ...s, risk_level: 'NORMAL', active_threats: [] as string[] }));
+
+  // Resolve base origin safely across local, container, and cloud serverless
+  const origin = req?.url
+    ? new URL(req.url).origin
+    : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://127.0.0.1:3000');
 
   // Fast distance approximation (km)
   const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
@@ -58,9 +63,9 @@ export async function GET() {
 
     // 2. Fetch Active Fires (NASA FIRMS mock proxy from local or direct)
     // For performance, we'll fetch from the local fires endpoint since it already aggregates FIRMS
-    const fireRes = await fetch('http://127.0.0.1:3000/api/fires', { signal: AbortSignal.timeout(5000) });
-    if (fireRes.ok) {
-      const fireData = await fireRes.json();
+    const fireRes = await fetch(`${origin}/api/fires`, { signal: AbortSignal.timeout(5000) }).catch(() => null);
+    if (fireRes && fireRes.ok) {
+      const fireData = await fireRes.json().catch(() => ({}));
       const fires = fireData.data || [];
       dynamicSuppliers.forEach(sup => {
         const nearbyFires = fires.filter((f: any) => getDistanceKm(sup.lat, sup.lng, f.lat, f.lng) < 50); // 50km fire zone
@@ -72,9 +77,9 @@ export async function GET() {
     }
 
     // 3. Fetch Conflict Zones (GDELT)
-    const gdeltRes = await fetch('http://127.0.0.1:3000/api/gdelt', { signal: AbortSignal.timeout(5000) });
-    if (gdeltRes.ok) {
-      const gdeltData = await gdeltRes.json();
+    const gdeltRes = await fetch(`${origin}/api/gdelt`, { signal: AbortSignal.timeout(5000) }).catch(() => null);
+    if (gdeltRes && gdeltRes.ok) {
+      const gdeltData = await gdeltRes.json().catch(() => ({}));
       const conflicts = gdeltData.events || [];
       dynamicSuppliers.forEach(sup => {
         const nearbyConflicts = conflicts.filter((c: any) => getDistanceKm(sup.lat, sup.lng, c.lat, c.lng) < 100);

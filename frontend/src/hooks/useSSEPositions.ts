@@ -42,11 +42,15 @@ export function buildSSEUrl(apiUrl: string = BASE_URL, ticket?: string | null): 
   // Serverless optimization: direct-origin connection bypasses Vercel 15s function timeout cliff.
   // In browser production, connect directly to Render backend if origin is known.
   let url: URL
+  const hostname = typeof window !== 'undefined' ? (window.location?.hostname || '') : ''
+  const isCloud = hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== ''
+  const isLocalhostTarget = apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1')
+
   const directOrigin = typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_BACKEND_ORIGIN || (window.location.hostname.includes('vercel.app') ? 'https://nexafreight-backend.onrender.com' : ''))
+    ? (process.env.NEXT_PUBLIC_BACKEND_ORIGIN || (hostname.includes('vercel.app') ? 'https://nexafreight-backend.onrender.com' : ''))
     : ''
 
-  if (directOrigin && !apiUrl.startsWith('http')) {
+  if (directOrigin && (!apiUrl.startsWith('http') || (isCloud && isLocalhostTarget))) {
     url = new URL(`${directOrigin.replace(/\/$/, '')}/api/map/positions/stream`)
   } else if (apiUrl.startsWith('/')) {
     const origin =
@@ -68,13 +72,18 @@ export async function fetchStreamTicket(
   apiUrl: string = BASE_URL,
   token?: string | null
 ): Promise<string> {
+  const hostname = typeof window !== 'undefined' ? (window.location?.hostname || '') : ''
+  const isCloud = hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== ''
+  const isLocalhostTarget = apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1')
+  const effectiveApiUrl = (isCloud && isLocalhostTarget) ? '/api/nexa' : apiUrl
+
   let endpoint: string
-  if (apiUrl.startsWith('/')) {
+  if (effectiveApiUrl.startsWith('/')) {
     const origin =
-      typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
-    endpoint = new URL(`${apiUrl.replace(/\/$/, '')}/map/positions/stream-ticket`, origin).toString()
+      typeof window !== 'undefined' ? (window.location?.origin || 'http://localhost') : 'http://localhost'
+    endpoint = new URL(`${effectiveApiUrl.replace(/\/$/, '')}/map/positions/stream-ticket`, origin).toString()
   } else {
-    endpoint = `${apiUrl.replace(/\/$/, '')}/api/map/positions/stream-ticket`
+    endpoint = `${effectiveApiUrl.replace(/\/$/, '')}/api/map/positions/stream-ticket`
   }
 
   const headers: Record<string, string> = {
