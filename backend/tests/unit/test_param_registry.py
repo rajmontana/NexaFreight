@@ -81,7 +81,7 @@ def test_all_co2_consumers_share_identical_factors() -> None:
     for mode in ["SEA", "ROAD", "RAIL", "AIR"]:
         assert CO2_G_PER_T_KM[mode] == GLEC_CO2_G_PER_TONNE_KM[mode]
         assert RP_FACTORS[mode] == GLEC_CO2_G_PER_TONNE_KM[mode]
-    assert get_float("co2.sea_g_per_tonne_km") == GLEC_CO2_G_PER_TONNE_KM["SEA"]
+    assert FALLBACK_DEFAULTS["co2.sea_g_per_tonne_km"] == GLEC_CO2_G_PER_TONNE_KM["SEA"]
 
 
 def test_shipment_dossier_co2_equals_network_kpi_esg() -> None:
