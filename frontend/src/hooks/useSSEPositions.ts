@@ -39,15 +39,18 @@ export interface UseSSEPositionsReturn {
  * The URL carries ONLY the single-use ticket, NEVER the user JWT.
  */
 export function buildSSEUrl(apiUrl: string = BASE_URL, ticket?: string | null): string {
-  // Path-prefix mode (reverse-proxy deployments): a base starting with '/'
-  // (e.g. NEXT_PUBLIC_NEXA_API_URL='/api/nexa' + the Next rewrite
-  // /api/nexa/:path* -> backend /api/:path*) already carries the API prefix,
-  // so only the route tail is appended — the browser never needs the
-  // backend's own host:port.
+  // Serverless optimization: direct-origin connection bypasses Vercel 15s function timeout cliff.
+  // In browser production, connect directly to Render backend if origin is known.
   let url: URL
-  if (apiUrl.startsWith('/')) {
+  const directOrigin = typeof window !== 'undefined'
+    ? (process.env.NEXT_PUBLIC_BACKEND_ORIGIN || (window.location.hostname.includes('vercel.app') ? 'https://nexafreight-backend.onrender.com' : ''))
+    : ''
+
+  if (directOrigin && !apiUrl.startsWith('http')) {
+    url = new URL(`${directOrigin.replace(/\/$/, '')}/api/map/positions/stream`)
+  } else if (apiUrl.startsWith('/')) {
     const origin =
-      typeof window !== 'undefined' ? window.location.origin : 'http://localhost' // SSR/tests
+      typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
     url = new URL(`${apiUrl.replace(/\/$/, '')}/map/positions/stream`, origin)
   } else {
     url = new URL(`${apiUrl.replace(/\/$/, '')}/api/map/positions/stream`)

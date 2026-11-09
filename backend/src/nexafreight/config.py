@@ -76,6 +76,10 @@ class Settings(BaseSettings):
         default=True,
         description="Enable/disable the background AIS listener worker",
     )
+    enable_position_db_persistence: bool = Field(
+        default=False,
+        description="Persist high-frequency 5s/30s telemetry pings to database. False preserves serverless compute.",
+    )
     enable_position_interpolator: bool = Field(
         default=True,
         description="Enable/disable the background position interpolator worker",

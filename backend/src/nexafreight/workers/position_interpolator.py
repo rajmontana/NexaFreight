@@ -641,31 +641,29 @@ async def _run_interpolation_job(session: AsyncSession | None = None) -> None:
             except Exception as leg_exc:
                 logger.warning("Error interpolating leg %d: %s", leg.leg_id, leg_exc)
 
-        # ── Step 3: Batch write all computed positions ──────────────────
+        # ── Step 3: Batch write / update in-memory cache ─────────────────
+        settings = get_settings()
         for leg_id, position in computed:
-            try:
-                success = await _write_position(sess, leg_id, position, now)
-                if success:
-                    positions_written += 1
-                    # Update in-memory cache immediately after write.
-                    _position_cache[str(leg_id)] = position
-                    logger.debug(
-                        "Wrote and cached position for leg %d (lat=%.4f, lon=%.4f, mode=%s).",
-                        leg_id,
-                        position.lat,
-                        position.lon,
-                        position.asset_type.value
-                        if hasattr(position.asset_type, "value")
-                        else str(position.asset_type),
-                    )
-            except Exception as write_exc:
-                logger.warning("Error writing position for leg %d: %s", leg_id, write_exc)
+            # Always update in-memory cache immediately so map stream has fresh coordinates
+            _position_cache[str(leg_id)] = position
 
-        # ── Step 4: Stale data cleanup ─────────────────────────────────
-        await _cleanup_stale_positions(sess, now)
+            if settings.enable_position_db_persistence:
+                try:
+                    success = await _write_position(sess, leg_id, position, now)
+                    if success:
+                        positions_written += 1
+                except Exception as write_exc:
+                    logger.warning("Error writing position for leg %d: %s", leg_id, write_exc)
 
-        # Commit the parent transaction covering all successful writes.
-        await sess.commit()
+        # Memory hygiene: bound cache size to avoid Render 512MB RAM leak
+        if len(_position_cache) > 500:
+            for k in list(_position_cache.keys())[:250]:
+                _position_cache.pop(k, None)
+
+        # ── Step 4: Stale data cleanup (only if persisting to DB) ────────
+        if settings.enable_position_db_persistence:
+            await _cleanup_stale_positions(sess, now)
+            await sess.commit()
 
     try:
         if session is not None:

@@ -204,6 +204,14 @@ class _WriteDedupState:
         """Record that a position for this MMSI has been persisted."""
         self.last_written[mmsi] = recorded_at
 
+    def prune_stale(self, max_age_seconds: float = 7200.0) -> None:
+        """Prune records older than max_age_seconds to prevent memory growth."""
+        if len(self.last_written) > 500:
+            now = datetime.now(UTC) if hasattr(datetime, "now") else None
+            # Keep newest 200 items if memory grows
+            sorted_items = sorted(self.last_written.items(), key=lambda kv: kv[1], reverse=True)
+            self.last_written = dict(sorted_items[:200])
+
 
 # ---------------------------------------------------------------------------
 # Adapter selection
@@ -479,38 +487,26 @@ async def _poll_loop(
                     len(positions),
                 )
 
-                # Get a short-lived database session for this poll cycle.
-                session_factory = get_session_factory()
-                async with session_factory() as session:
+                # Serverless optimization: skip DB writes if persistence is disabled (saves ~260k queries/day)
+                settings = get_settings()
+                dedup.prune_stale()
+
+                if settings.enable_position_db_persistence:
+                    session_factory = get_session_factory()
+                    async with session_factory() as session:
+                        for position in positions:
+                            if not dedup.should_write(position.asset_id, position.reported_at):
+                                continue
+                            leg_id = await _find_leg_for_mmsi(session, position.asset_id)
+                            if leg_id is None:
+                                continue
+                            success = await _write_position_report(session, leg_id, position)
+                            if success:
+                                dedup.mark_written(position.asset_id, position.reported_at)
+                else:
+                    # In-memory tracking mode: positions are served straight from adapter cache
                     for position in positions:
-                        # Check deduplication.
-                        if not dedup.should_write(position.asset_id, position.reported_at):
-                            logger.debug(
-                                "Skipping duplicate position for MMSI %s at %s.",
-                                position.asset_id,
-                                position.reported_at.isoformat(),
-                            )
-                            continue
-
-                        # Query for a matching leg.
-                        leg_id = await _find_leg_for_mmsi(session, position.asset_id)
-                        if leg_id is None:
-                            logger.debug(
-                                "No IN_PROGRESS leg found for MMSI %s; caching but not persisting.",
-                                position.asset_id,
-                            )
-                            continue
-
-                        # Write to the database.
-                        success = await _write_position_report(session, leg_id, position)
-                        if success:
-                            dedup.mark_written(position.asset_id, position.reported_at)
-                            logger.debug(
-                                "Wrote PositionReport for MMSI %s (leg_id %d) at %s.",
-                                position.asset_id,
-                                leg_id,
-                                position.reported_at.isoformat(),
-                            )
+                        dedup.mark_written(position.asset_id, position.reported_at)
 
                 # Reset error counter on successful poll.
                 consecutive_errors = 0

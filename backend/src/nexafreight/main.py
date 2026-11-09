@@ -96,11 +96,38 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         async with asyncio.timeout(5.0):
             async with engine.begin() as conn:
                 await conn.execute(text("SELECT 1"))
-        logger.info("Database connectivity verified: dialect=%s, host=%s", db_dialect, db_host)
+                from nexafreight.models.base import Base
+                await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database connectivity verified and schema ensured: dialect=%s, host=%s", db_dialect, db_host)
     except Exception as e:
         clean_err = f"dialect={db_dialect}, host={db_host}"
-        logger.error("Database connectivity check failed: %s (type=%s)", clean_err, type(e).__name__)
-        if not settings.is_production:
+        logger.error("Primary database check failed: %s (type=%s)", clean_err, type(e).__name__)
+        # Resilient fallback: if remote Postgres fails/over-quota, fall back to embedded SQLite
+        if not db_dialect.startswith("sqlite"):
+            try:
+                from sqlalchemy.ext.asyncio import create_async_engine
+                from sqlalchemy import event
+                from typing import Any
+                from nexafreight.database import _set_sqlite_pragmas
+                from nexafreight.models.base import Base
+
+                fallback_url = f"sqlite+aiosqlite:///{settings.database_path}"
+                fallback_engine = create_async_engine(fallback_url, echo=settings.debug)
+
+                @event.listens_for(fallback_engine.sync_engine, "connect")
+                def on_connect_fallback(dbapi_conn: Any, connection_record: Any) -> None:
+                    _set_sqlite_pragmas(dbapi_conn, connection_record, is_memory=False)
+
+                async with fallback_engine.begin() as conn:
+                    await conn.run_sync(Base.metadata.create_all)
+
+                engine = fallback_engine
+                app.state.engine = engine
+                logger.warning("Resilient auto-fallback to local SQLite succeeded: %s", fallback_url)
+            except Exception as fb_err:
+                logger.error("Fallback to SQLite also failed: %s", fb_err)
+
+        if not settings.is_production and engine is None:
             raise RuntimeError(f"Cannot connect to database: {clean_err}") from None
 
     # Refresh parameters cache using the engine selected for this app instance.

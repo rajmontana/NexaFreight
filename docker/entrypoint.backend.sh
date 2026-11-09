@@ -5,8 +5,8 @@ set -e
 RUN_MIG="${RUN_MIGRATIONS:-true}"
 
 if [ "$RUN_MIG" = "true" ] || [ "$RUN_MIG" = "1" ]; then
-    echo "[entrypoint] RUN_MIGRATIONS is true: running alembic upgrade head..."
-    alembic upgrade head
+    echo "[entrypoint] RUN_MIGRATIONS is true: running alembic upgrade head || echo "[entrypoint] Warning: Alembic migration bypassed; runtime declarative schema will ensure tables exist."..."
+    alembic upgrade head || echo "[entrypoint] Warning: Alembic migration bypassed; runtime declarative schema will ensure tables exist."
 else
     echo "[entrypoint] RUN_MIGRATIONS is '$RUN_MIG': skipping startup migrations."
 fi

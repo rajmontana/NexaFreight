@@ -80,17 +80,24 @@ def create_engine(settings: Settings | None = None, *, echo: bool | None = None)
     }
 
     if not is_sqlite:
-        engine_kwargs.update(
-            pool_size=5,
-            max_overflow=10,
-            pool_pre_ping=True,
-        )
+        # Serverless optimization: use NullPool on pooled Neon endpoints or in production
+        # to allow compute to scale to 0 when idle without holding open TCP connections
+        if "-pooler." in database_url or settings.is_production:
+            from sqlalchemy.pool import NullPool
+            engine_kwargs["poolclass"] = NullPool
+        else:
+            engine_kwargs.update(
+                pool_size=5,
+                max_overflow=10,
+                pool_recycle=300,
+                pool_pre_ping=True,
+            )
 
     # PgBouncer transaction mode (e.g. Neon pooled endpoint) is
-    # incompatible with cached prepared statements.  Values must be
-    # INTs - the URL string form crashes asyncpg at connect.
+    # incompatible with cached prepared statements. Values must be INTs.
+    # command_timeout=30 gives sleeping serverless instances time to wake up.
     _pg_connect_args = (
-        {"statement_cache_size": 0, "prepared_statement_cache_size": 0, "timeout": 10, "command_timeout": 10}
+        {"statement_cache_size": 0, "prepared_statement_cache_size": 0, "timeout": 15, "command_timeout": 30}
         if database_url.startswith("postgresql+asyncpg")
         else {}
     )

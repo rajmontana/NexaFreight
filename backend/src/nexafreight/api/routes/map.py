@@ -774,7 +774,7 @@ async def stream_positions() -> StreamingResponse:
         _sse_generator(max_lifetime_s=900.0),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-transform",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable Nginx buffering for SSE
         },
