@@ -96,11 +96,20 @@ def create_engine(settings: Settings | None = None, *, echo: bool | None = None)
     # PgBouncer transaction mode (e.g. Neon pooled endpoint) is
     # incompatible with cached prepared statements. Values must be INTs.
     # command_timeout=30 gives sleeping serverless instances time to wake up.
-    _pg_connect_args = (
-        {"statement_cache_size": 0, "prepared_statement_cache_size": 0, "timeout": 15, "command_timeout": 30}
-        if database_url.startswith("postgresql+asyncpg")
-        else {}
-    )
+    _pg_connect_args: dict[str, Any] = {}
+    if database_url.startswith("postgresql+asyncpg"):
+        _pg_connect_args = {
+            "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
+            "timeout": 15,
+            "command_timeout": 30,
+        }
+        try:
+            import certifi
+            import ssl
+            _pg_connect_args["ssl"] = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            pass
     engine = create_async_engine(database_url, connect_args=_pg_connect_args, **engine_kwargs)
 
     if is_sqlite:
@@ -138,6 +147,12 @@ def create_test_engine(database_url: str = "sqlite+aiosqlite:///:memory:") -> As
             "statement_cache_size": 0,
             "prepared_statement_cache_size": 0,
         }
+        try:
+            import certifi
+            import ssl
+            connect_args["ssl"] = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            pass
     else:
         connect_args = {}
 

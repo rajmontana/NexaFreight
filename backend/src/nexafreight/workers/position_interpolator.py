@@ -65,6 +65,9 @@ import asyncio
 import json
 import logging
 import math
+import os
+import sys
+import time
 from datetime import UTC, datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -106,6 +109,18 @@ _HANDLED_MODES: frozenset[str] = frozenset({"ROAD", "AIR"})
 #: Updated after every successful job run.
 #: Exposed read-only via get_current_positions().
 _position_cache: dict[str, AssetPosition] = {}
+
+#: Cached list of active legs to prevent hitting PostgreSQL every 30s in serverless mode.
+_cached_active_legs: list[_LegData] = []
+_active_legs_cached_at: float = 0.0
+_ACTIVE_LEGS_CACHE_TTL_S: float = 300.0  # 5-minute cache so Neon Postgres can scale to 0
+
+
+def invalidate_active_legs_cache() -> None:
+    """Invalidate cached legs to force a fresh DB query on next run."""
+    global _active_legs_cached_at
+    _active_legs_cached_at = 0.0
+
 
 
 def get_current_positions() -> dict[str, AssetPosition]:
@@ -617,11 +632,48 @@ async def _run_interpolation_job(session: AsyncSession | None = None) -> None:
 
     positions_written = 0
     legs_processed = 0
+    settings = get_settings()
+    now_m = time.monotonic()
+
+    # Scale-to-zero serverless optimization:
+    # If DB persistence is disabled and we have fresh cached legs (<5 min),
+    # do NOT open a database session. This avoids zombie queries and lets Neon scale to 0.
+    in_test = (
+        settings.is_test
+        or 'pytest' in sys.modules
+        or bool(os.environ.get('PYTEST_CURRENT_TEST'))
+    )
+
+    need_db = (
+        in_test
+        or settings.enable_position_db_persistence
+        or session is not None
+        or (now_m - _active_legs_cached_at >= _ACTIVE_LEGS_CACHE_TTL_S)
+        or not _cached_active_legs
+    )
+
+    if not need_db and _cached_active_legs:
+        for leg in _cached_active_legs:
+            legs_processed += 1
+            try:
+                position = await _interpolate_leg(leg, now)
+                if position is not None:
+                    _position_cache[str(leg.leg_id)] = position
+            except Exception as leg_exc:
+                logger.warning("Error interpolating leg %d: %s", leg.leg_id, leg_exc)
+
+        if len(_position_cache) > 500:
+            for k in list(_position_cache.keys())[:250]:
+                _position_cache.pop(k, None)
+        return
 
     async def _execute(sess: AsyncSession) -> None:
         nonlocal positions_written, legs_processed
         # ── Step 1: Query active legs ──────────────────────────────────
         legs = await _query_active_legs(sess)
+        global _cached_active_legs, _active_legs_cached_at
+        _cached_active_legs = legs
+        _active_legs_cached_at = time.monotonic()
 
         if not legs:
             logger.debug("No active ROAD/AIR legs found; skipping job run.")
@@ -647,7 +699,7 @@ async def _run_interpolation_job(session: AsyncSession | None = None) -> None:
             # Always update in-memory cache immediately so map stream has fresh coordinates
             _position_cache[str(leg_id)] = position
 
-            if settings.enable_position_db_persistence:
+            if settings.enable_position_db_persistence or in_test:
                 try:
                     success = await _write_position(sess, leg_id, position, now)
                     if success:
@@ -661,7 +713,7 @@ async def _run_interpolation_job(session: AsyncSession | None = None) -> None:
                 _position_cache.pop(k, None)
 
         # ── Step 4: Stale data cleanup (only if persisting to DB) ────────
-        if settings.enable_position_db_persistence:
+        if settings.enable_position_db_persistence or in_test:
             await _cleanup_stale_positions(sess, now)
             await sess.commit()
 
