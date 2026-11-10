@@ -30,8 +30,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-road-us-001",
         "order_num": "ORD-GLOB-US-001",
-        "origin_id": 37,  # USNYC
-        "dest_id": 38,    # USLAX
+        "origin_locode": "USNYC",
+        "dest_locode": "USLAX",
         "mode": "ROAD",
         "edge_id": 133,
         "flight_num": None,
@@ -43,8 +43,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-road-eu-001",
         "order_num": "ORD-GLOB-EU-001",
-        "origin_id": 40,  # NLRTM
-        "dest_id": 39,    # DEHAM
+        "origin_locode": "NLRTM",
+        "dest_locode": "DEHAM",
         "mode": "ROAD",
         "edge_id": 135,
         "flight_num": None,
@@ -56,8 +56,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-sea-pac-001",
         "order_num": "ORD-GLOB-PAC-001",
-        "origin_id": 42,  # CNSHA
-        "dest_id": 38,    # USLAX
+        "origin_locode": "CNSHA",
+        "dest_locode": "USLAX",
         "mode": "SEA",
         "edge_id": 121,
         "flight_num": None,
@@ -69,8 +69,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-sea-atl-001",
         "order_num": "ORD-GLOB-ATL-001",
-        "origin_id": 37,  # USNYC
-        "dest_id": 40,    # NLRTM
+        "origin_locode": "USNYC",
+        "dest_locode": "NLRTM",
         "mode": "SEA",
         "edge_id": 125,
         "flight_num": None,
@@ -82,8 +82,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-sea-me-001",
         "order_num": "ORD-GLOB-ME-001",
-        "origin_id": 46,  # AEBUE
-        "dest_id": 2,     # INMUN
+        "origin_locode": "AEBUE",
+        "dest_locode": "INMUN",
         "mode": "SEA",
         "edge_id": 114,
         "flight_num": None,
@@ -95,8 +95,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-sea-sg-001",
         "order_num": "ORD-GLOB-SG-001",
-        "origin_id": 47,  # SGSIN
-        "dest_id": 1,     # INBOM
+        "origin_locode": "SGSIN",
+        "dest_locode": "INJNP",
         "mode": "SEA",
         "edge_id": 112,
         "flight_num": None,
@@ -108,8 +108,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-sea-sa-001",
         "order_num": "ORD-GLOB-SA-001",
-        "origin_id": 43,  # BRSSZ
-        "dest_id": 45,    # ZADUR
+        "origin_locode": "BRSSZ",
+        "dest_locode": "ZADUR",
         "mode": "SEA",
         "edge_id": 131,
         "flight_num": None,
@@ -121,8 +121,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-air-eu-001",
         "order_num": "ORD-GLOB-AIREU-001",
-        "origin_id": 4,   # INDEL
-        "dest_id": 39,    # DEHAM
+        "origin_locode": "INDEL",
+        "dest_locode": "DEHAM",
         "mode": "AIR",
         "edge_id": None,
         "flight_num": "NX-801",
@@ -134,8 +134,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-air-asia-001",
         "order_num": "ORD-GLOB-AIRAS-001",
-        "origin_id": 47,  # SGSIN
-        "dest_id": 41,    # JPTYO
+        "origin_locode": "SGSIN",
+        "dest_locode": "JPTYO",
         "mode": "AIR",
         "edge_id": None,
         "flight_num": "NX-502",
@@ -147,8 +147,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-air-us-001",
         "order_num": "ORD-GLOB-AIRUS-001",
-        "origin_id": 38,  # USLAX
-        "dest_id": 4,     # INDEL
+        "origin_locode": "USLAX",
+        "dest_locode": "INDEL",
         "mode": "AIR",
         "edge_id": None,
         "flight_num": "NX-104",
@@ -160,8 +160,8 @@ GLOBAL_SHIPMENT_SPECS = [
     {
         "id": "glob-air-oce-001",
         "order_num": "ORD-GLOB-AIROC-001",
-        "origin_id": 44,  # AUSYD
-        "dest_id": 47,    # SGSIN
+        "origin_locode": "AUSYD",
+        "dest_locode": "SGSIN",
         "mode": "AIR",
         "edge_id": None,
         "flight_num": "NX-308",
@@ -178,9 +178,10 @@ def ensure_global_shipments(conn, now: datetime):
     from nexafreight.adapters.routing.sea_route import compute_sea_route
     from nexafreight.adapters.routing._geometry import great_circle_geojson_str
 
-    # Fetch nodes for lat/lons
-    nodes_res = conn.execute(text("SELECT id, latitude, longitude FROM network_nodes")).fetchall()
-    nodes_map = {r[0]: (float(r[1]), float(r[2])) for r in nodes_res}
+    # Fetch locations for IDs and lat/lons
+    locs_res = conn.execute(text("SELECT id, locode, latitude, longitude FROM locations WHERE locode IS NOT NULL")).fetchall()
+    loc_id_map = {r[1]: r[0] for r in locs_res}
+    loc_coord_map = {r[1]: (float(r[2]), float(r[3])) for r in locs_res}
 
     # Fetch edge geometries
     edges_res = conn.execute(text("SELECT id, geometry_json FROM network_edges WHERE geometry_json IS NOT NULL")).fetchall()
@@ -190,8 +191,14 @@ def ensure_global_shipments(conn, now: datetime):
 
     for spec in GLOBAL_SHIPMENT_SPECS:
         s_id = spec["id"]
-        o_id = spec["origin_id"]
-        d_id = spec["dest_id"]
+        o_code = spec["origin_locode"]
+        d_code = spec["dest_locode"]
+        o_id = loc_id_map.get(o_code)
+        d_id = loc_id_map.get(d_code)
+        if not o_id or not d_id:
+            logger.warning("Could not resolve location IDs for %s -> %s", o_code, d_code)
+            continue
+
         mode = spec["mode"]
 
         # 1. Ensure shipment exists
@@ -215,17 +222,17 @@ def ensure_global_shipments(conn, now: datetime):
         geom_json = None
         if spec["edge_id"] and spec["edge_id"] in edges_geom:
             geom_json = edges_geom[spec["edge_id"]]
-        elif mode == "SEA" and o_id in nodes_map and d_id in nodes_map:
-            o_lat, o_lon = nodes_map[o_id]
-            d_lat, d_lon = nodes_map[d_id]
+        elif mode == "SEA" and o_code in loc_coord_map and d_code in loc_coord_map:
+            o_lat, o_lon = loc_coord_map[o_code]
+            d_lat, d_lon = loc_coord_map[d_code]
             try:
                 res = compute_sea_route(o_lat, o_lon, d_lat, d_lon)
                 geom_json = res.geometry_geojson
             except Exception:
                 geom_json = great_circle_geojson_str(o_lat, o_lon, d_lat, d_lon)
-        elif mode == "AIR" and o_id in nodes_map and d_id in nodes_map:
-            o_lat, o_lon = nodes_map[o_id]
-            d_lat, d_lon = nodes_map[d_id]
+        elif mode == "AIR" and o_code in loc_coord_map and d_code in loc_coord_map:
+            o_lat, o_lon = loc_coord_map[o_code]
+            d_lat, d_lon = loc_coord_map[d_code]
             geom_json = great_circle_geojson_str(o_lat, o_lon, d_lat, d_lon, n=24)
 
         if not geom_json:
@@ -267,7 +274,8 @@ def ensure_global_shipments(conn, now: datetime):
                 SET status = 'IN_PROGRESS',
                     planned_departure = '{dep_time}',
                     actual_departure = '{dep_time}',
-                    planned_arrival = '{arr_time}'
+                    planned_arrival = '{arr_time}',
+                    route_geometry_json = '{escaped_geom}'
                 WHERE shipment_id = '{s_id}'
                 """)
             )
@@ -379,23 +387,34 @@ def activate():
             """)
         )
 
-        # Upgrade existing ROAD legs with matching real highway geometries
-        road_edges = conn.execute(
-            text("SELECT from_node_id, to_node_id, geometry_json FROM network_edges WHERE mode = 'ROAD' AND geometry_json IS NOT NULL")
-        ).fetchall()
+        # Upgrade existing ROAD legs with matching real highway geometries via locode mapping
+        locode_to_node = {r[1]: r[0] for r in conn.execute(text("SELECT id, locode FROM network_nodes WHERE locode IS NOT NULL")).fetchall()}
+        edge_geoms = {
+            (r[0], r[1]): r[2]
+            for r in conn.execute(
+                text("SELECT from_node_id, to_node_id, geometry_json FROM network_edges WHERE mode = 'ROAD' AND geometry_json IS NOT NULL")
+            ).fetchall()
+        }
+
+        road_legs = conn.execute(text("""
+            SELECT l.id, loc1.locode, loc2.locode
+            FROM legs l
+            JOIN locations loc1 ON l.origin_id = loc1.id
+            JOIN locations loc2 ON l.destination_id = loc2.id
+            WHERE l.transport_mode = 'ROAD'
+        """)).fetchall()
+
         synced_road_legs = 0
-        for r_edge in road_edges:
-            up_res = conn.execute(
-                text("""
-                UPDATE legs
-                SET route_geometry_json = :geom
-                WHERE transport_mode = 'ROAD'
-                  AND origin_id = :from_id
-                  AND destination_id = :to_id
-                """),
-                {"geom": r_edge[2], "from_id": r_edge[0], "to_id": r_edge[1]}
-            )
-            synced_road_legs += up_res.rowcount or 0
+        for leg_id, orig_code, dest_code in road_legs:
+            from_node = locode_to_node.get(orig_code)
+            to_node = locode_to_node.get(dest_code)
+            if from_node and to_node and (from_node, to_node) in edge_geoms:
+                geom = edge_geoms[(from_node, to_node)]
+                conn.execute(
+                    text("UPDATE legs SET route_geometry_json = :geom WHERE id = :leg_id"),
+                    {"geom": geom, "leg_id": leg_id}
+                )
+                synced_road_legs += 1
         if synced_road_legs > 0:
             print(f"Synced real curved highway geometry to {synced_road_legs} road legs.")
 

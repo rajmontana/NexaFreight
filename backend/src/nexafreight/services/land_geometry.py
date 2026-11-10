@@ -202,14 +202,26 @@ async def fill_road_edge_geometries(session: AsyncSession) -> dict[str, Any]:
             )
         ).scalars().all()
 
+        node_id_to_locode = {n.id: n.locode for n in node_rows if n.locode}
+        locode_to_loc_id = {l.locode: l.id for l in loc_rows if l.locode}
+
         updated_legs = 0
         for re in all_road_edges:
+            from_code = node_id_to_locode.get(re.from_node_id)
+            to_code = node_id_to_locode.get(re.to_node_id)
+            if not from_code or not to_code:
+                continue
+            orig_loc_id = locode_to_loc_id.get(from_code)
+            dest_loc_id = locode_to_loc_id.get(to_code)
+            if not orig_loc_id or not dest_loc_id:
+                continue
+
             res = await session.execute(
                 update(Leg)
                 .where(
                     Leg.transport_mode == "ROAD",
-                    Leg.origin_id == re.from_node_id,
-                    Leg.destination_id == re.to_node_id,
+                    Leg.origin_id == orig_loc_id,
+                    Leg.destination_id == dest_loc_id,
                 )
                 .values(route_geometry_json=re.geometry_json)
             )
