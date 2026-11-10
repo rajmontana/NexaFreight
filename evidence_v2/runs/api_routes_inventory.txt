@@ -1,0 +1,66 @@
+# Date: 2026-11-10T09:58:17.611898+00:00
+# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Command: introspect app.routes from nexafreight.main
+
+Total FastAPI Routes Count: 58
+
+Method(s) | Path | Handler | Auth Dependency
+----------+------+---------+----------------
+GET        | /api/alerts                         | nexafreight.api.routes.alerts.list_alerts     | get_current_user
+GET        | /api/alerts/                        | nexafreight.api.routes.alerts.list_alerts     | get_current_user
+GET        | /api/alerts/{alert_id}              | nexafreight.api.routes.alerts.get_alert       | get_current_user
+PATCH      | /api/alerts/{alert_id}/acknowledge  | nexafreight.api.routes.alerts.acknowledge_alert | get_current_user
+POST       | /api/alerts/{alert_id}/approve      | nexafreight.api.routes.alerts.approve_option  | get_current_user
+GET        | /api/alerts/{alert_id}/decision     | nexafreight.api.routes.alerts.get_alert_decision | get_current_user
+GET        | /api/alerts/{alert_id}/options      | nexafreight.api.routes.alerts.get_options     | get_current_user
+GET        | /api/analytics/esg                  | nexafreight.api.routes.analytics.esg_rail     | get_current_user
+GET        | /api/analytics/financial            | nexafreight.api.routes.analytics.financial    | get_current_user
+GET        | /api/analytics/scorecard            | nexafreight.api.routes.analytics.scorecard    | get_current_user
+GET        | /api/analytics/sla                  | nexafreight.api.routes.analytics.sla_board    | get_current_user
+GET        | /api/analytics/summary              | nexafreight.api.routes.analytics.summary      | get_current_user
+POST       | /api/auth/login                     | nexafreight.api.routes.auth.login             | None
+GET        | /api/auth/me                        | nexafreight.api.routes.auth.get_me            | get_current_user
+POST       | /api/copilot/ask                    | nexafreight.api.routes.copilot.ask            | get_current_user
+GET        | /api/decisions                      | nexafreight.api.routes.decisions.list_decisions | get_current_user
+GET        | /api/decisions/                     | nexafreight.api.routes.decisions.list_decisions | get_current_user
+GET        | /api/decisions/{decision_id}        | nexafreight.api.routes.decisions.get_decision | get_current_user
+GET        | /api/demand/forecast                | nexafreight.api.routes.predictions.demand_forecast | get_current_user
+GET        | /api/disruptions                    | nexafreight.api.routes.disruptions.list_disruptions | get_current_user
+POST       | /api/disruptions                    | nexafreight.api.routes.disruptions.report_disruption | get_current_user
+GET        | /api/disruptions/                   | nexafreight.api.routes.disruptions.list_disruptions | get_current_user
+POST       | /api/disruptions/                   | nexafreight.api.routes.disruptions.report_disruption | get_current_user
+GET        | /api/disruptions/{disruption_id}    | nexafreight.api.routes.disruptions.get_disruption | get_current_user
+GET        | /api/health                         | nexafreight.api.routes.health.health_check    | None
+GET        | /api/health                         | nexafreight.main.root_health_check            | None
+GET        | /api/health/                        | nexafreight.api.routes.health.health_check    | None
+GET        | /api/health/validation              | nexafreight.api.routes.health.validation_matrix | No deps
+GET        | /api/healthz                        | nexafreight.main.healthz_check                | No deps
+GET        | /api/map/feed-health                | nexafreight.api.routes.map.get_feed_health    | get_current_user
+GET        | /api/map/ports                      | nexafreight.api.routes.map.get_ports          | get_current_user
+GET        | /api/map/positions/snapshot         | nexafreight.api.routes.map.snapshot_positions | get_current_user
+GET        | /api/map/positions/stream           | nexafreight.api.routes.map.stream_positions   | _verify_stream_auth, _verify_stream_auth
+POST       | /api/map/positions/stream-ticket    | nexafreight.api.routes.map.create_position_stream_ticket | get_current_user
+GET        | /api/map/routes                     | nexafreight.api.routes.map.get_routes         | get_current_user
+GET        | /api/map/warehouses                 | nexafreight.api.routes.map.get_warehouses     | get_current_user
+GET        | /api/plan                           | nexafreight.api.routes.plan.list_route_plans  | get_current_user
+POST       | /api/plan                           | nexafreight.api.routes.plan.create_route_plan | get_current_user
+POST       | /api/predict/delay                  | nexafreight.api.routes.predictions.predict_delay | get_current_user
+POST       | /api/predict/eta                    | nexafreight.api.routes.predictions.predict_eta | get_current_user
+GET        | /api/readyz                         | nexafreight.main.readyz_check                 | No deps
+GET        | /api/shipments                      | nexafreight.api.routes.shipments.list_shipments | get_current_user
+GET        | /api/shipments/                     | nexafreight.api.routes.shipments.list_shipments | get_current_user
+GET        | /api/shipments/{shipment_id}        | nexafreight.api.routes.shipments.get_shipment_detail | get_current_user
+GET        | /api/shipments/{shipment_id}/events | nexafreight.api.routes.shipments.get_shipment_events | get_current_user
+GET        | /api/shipments/{shipment_id}/financials | nexafreight.api.routes.shipments.shipment_financials | get_current_user
+GET        | /api/shipments/{shipment_id}/predict | nexafreight.api.routes.shipments.predict_shipment_delay | get_current_user
+GET        | /api/shipments/{shipment_id}/route  | nexafreight.api.routes.shipments.get_shipment_route | get_current_user
+GET, HEAD  | /docs                               | fastapi.applications.swagger_ui_html          | No deps
+GET, HEAD  | /docs/oauth2-redirect               | fastapi.applications.swagger_ui_redirect      | No deps
+GET        | /health                             | nexafreight.main.root_health_check            | None
+GET        | /health/                            | nexafreight.main.root_health_check            | None
+GET        | /healthz                            | nexafreight.main.healthz_check                | No deps
+POST       | /internal/activate-fleet            | nexafreight.api.routes.internal.trigger_activate_fleet | No deps
+POST       | /internal/nightly                   | nexafreight.api.routes.internal.trigger_nightly | None
+GET, HEAD  | /openapi.json                       | fastapi.applications.openapi                  | No deps
+GET        | /readyz                             | nexafreight.main.readyz_check                 | No deps
+GET, HEAD  | /redoc                              | fastapi.applications.redoc_html               | No deps

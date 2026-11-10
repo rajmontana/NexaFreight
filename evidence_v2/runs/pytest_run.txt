@@ -1,0 +1,154 @@
+# Date: 2026-11-10T10:01:13.131282+00:00
+# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Command: pytest --collect-only -q; pytest -v; pytest -m postgres
+
+=== PYTEST SUMMARY RESULTS ===
+Total Tests Collected: 889 (across 90 test files)
+Passed:                884
+Xfailed:               5 (ALG-01: Yen Pareto-dominated itineraries in tests/unit/test_planner_pareto.py)
+Failed:                0
+Skipped:               0
+Total Result:          884 passed, 5 xfailed in 233.53s
+
+=== POSTGRES SUITE (pytest -m postgres) ===
+Result: 0 tests collected (889 deselected).
+Note: No tests carry the `@pytest.mark.postgres` marker; PostgreSQL testing in CI is enabled by setting `DATABASE_URL=postgresql+asyncpg://...` rather than marker-filtering.
+
+=== PER-FILE TEST COUNTS (889 tests across 90 files) ===
+tests/integration/test_ais_listener.py: 15
+tests/integration/test_app.py: 9
+tests/integration/test_audit_log_immutability.py: 1
+tests/integration/test_auth_api.py: 10
+tests/integration/test_congestion_scan.py: 1
+tests/integration/test_corridors_and_red_sea.py: 3
+tests/integration/test_decision_outcome.py: 4
+tests/integration/test_map_endpoints.py: 56
+tests/integration/test_map_ticket_flow.py: 1
+tests/integration/test_migrations.py: 8
+tests/integration/test_parties.py: 3
+tests/integration/test_phase8_verification_local.py: 1
+tests/integration/test_phase9_integration.py: 1
+tests/integration/test_position_interpolator.py: 41
+tests/integration/test_preference.py: 4
+tests/integration/test_shipment_detail_api.py: 12
+tests/integration/test_shipments_api.py: 13
+tests/integration/test_sse_position_stream.py: 2
+tests/integration/test_validation_endpoint.py: 2
+tests/unit/test_aisstream.py: 4
+tests/unit/test_aisstream_adapter.py: 69
+tests/unit/test_alert_engine.py: 8
+tests/unit/test_analytics.py: 6
+tests/unit/test_analytics_era.py: 2
+tests/unit/test_api_predictions.py: 20
+tests/unit/test_auth.py: 8
+tests/unit/test_auth_rate_limit.py: 4
+tests/unit/test_calibration_registry.py: 6
+tests/unit/test_clock.py: 9
+tests/unit/test_co2_goldens.py: 6
+tests/unit/test_config.py: 14
+tests/unit/test_congestion_source.py: 2
+tests/unit/test_consolidation.py: 13
+tests/unit/test_copilot.py: 5
+tests/unit/test_copilot_hardening.py: 7
+tests/unit/test_copilot_rate_limit.py: 3
+tests/unit/test_database.py: 11
+tests/unit/test_database_url_normalization.py: 5
+tests/unit/test_decision_conflict.py: 1
+tests/unit/test_decision_executor.py: 7
+tests/unit/test_delay_benchmark_lib.py: 8
+tests/unit/test_demand_forecast.py: 42
+tests/unit/test_demurrage_unification.py: 2
+tests/unit/test_disruption_detector.py: 9
+tests/unit/test_eta_model.py: 27
+tests/unit/test_eta_serves_lane_quantiles.py: 4
+tests/unit/test_faithfulness_lib.py: 7
+tests/unit/test_feature_contract.py: 7
+tests/unit/test_financial_engine.py: 23
+tests/unit/test_forecast_benchmark_lib.py: 8
+tests/unit/test_fx_ops_fix_1.py: 3
+tests/unit/test_golden_routes.py: 6
+tests/unit/test_graph_cache.py: 3
+tests/unit/test_health.py: 4
+tests/unit/test_internal_nightly.py: 8
+tests/unit/test_land_geometry.py: 8
+tests/unit/test_linear_mover.py: 7
+tests/unit/test_main_db_url_logging.py: 2
+tests/unit/test_ml_features.py: 31
+tests/unit/test_ml_governance.py: 6
+tests/unit/test_ml_registry_independent.py: 3
+tests/unit/test_mock_adapter.py: 7
+tests/unit/test_models.py: 10
+tests/unit/test_network_seed.py: 8
+tests/unit/test_no_password_literals_in_scripts.py: 1
+tests/unit/test_package_structure.py: 4
+tests/unit/test_param_registry.py: 5
+tests/unit/test_params_calibration.py: 5
+tests/unit/test_planner.py: 26
+tests/unit/test_planner_heap_ties.py: 1
+tests/unit/test_planner_invariants.py: 4
+tests/unit/test_planner_oracle.py: 33
+tests/unit/test_planner_pareto.py: 10
+tests/unit/test_port_stats_ingest.py: 2
+tests/unit/test_production_docs_404.py: 2
+tests/unit/test_rail_air_geometry.py: 3
+tests/unit/test_registry.py: 10
+tests/unit/test_replay_adapter.py: 91
+tests/unit/test_replay_dataco.py: 2
+tests/unit/test_reroute_engine.py: 11
+tests/unit/test_rotate_passwords.py: 1
+tests/unit/test_route_planner.py: 9
+tests/unit/test_routers.py: 4
+tests/unit/test_runner_rollback.py: 1
+tests/unit/test_sla_checker.py: 8
+tests/unit/test_sla_checker_ml_path.py: 2
+tests/unit/test_smoke.py: 5
+tests/unit/test_sse_stream_ticket.py: 3
+tests/unit/test_weather_db_ports.py: 4
+tests/unit/test_workers.py: 2
+
+=== RAW PYTEST EXECUTION LOG (TAIL) ===
+tests/unit/test_routers.py::test_unknown_alert_returns_404 PASSED        [ 97%]
+tests/unit/test_routers.py::test_decisions_admin_only PASSED             [ 97%]
+tests/unit/test_runner_rollback.py::test_run_nightly_rollbacks_on_job_failure PASSED [ 97%]
+tests/unit/test_sla_checker.py::test_compute_sla_risk_bands PASSED       [ 97%]
+tests/unit/test_sla_checker.py::test_check_all_in_transit_updates_statuses PASSED [ 97%]
+tests/unit/test_sla_checker.py::test_check_all_in_transit_skips_delivered PASSED [ 97%]
+tests/unit/test_sla_checker.py::test_breach_status_marks_shipment_delayed PASSED [ 97%]
+tests/unit/test_sla_checker.py::test_escalate_unacknowledged_critical_writes_audit PASSED [ 97%]
+tests/unit/test_sla_checker.py::test_escalate_skips_fresh_and_low_severity PASSED [ 97%]
+tests/unit/test_sla_checker.py::test_escalate_skips_acknowledged PASSED  [ 98%]
+tests/unit/test_sla_checker.py::test_sweep_escalates_stale_alerts PASSED [ 98%]
+tests/unit/test_sla_checker_ml_path.py::test_ml_path_actually_runs PASSED [ 98%]
+tests/unit/test_sla_checker_ml_path.py::test_legstatus_is_imported PASSED [ 98%]
+tests/unit/test_smoke.py::test_health_endpoint PASSED                    [ 98%]
+tests/unit/test_smoke.py::test_stub_routers_return_200 PASSED            [ 98%]
+tests/unit/test_smoke.py::test_db_creates_user_table PASSED              [ 98%]
+tests/unit/test_smoke.py::test_login_returns_valid_jwt PASSED            [ 98%]
+tests/unit/test_smoke.py::test_login_wrong_password_fails PASSED         [ 98%]
+tests/unit/test_sse_stream_ticket.py::test_stream_ticket_single_use PASSED [ 99%]
+tests/unit/test_sse_stream_ticket.py::test_access_token_rejected_as_stream_ticket PASSED [ 99%]
+tests/unit/test_sse_stream_ticket.py::test_stream_ticket_rejected_as_access_token PASSED [ 99%]
+tests/unit/test_weather_db_ports.py::test_weather_rotation PASSED        [ 99%]
+tests/unit/test_weather_db_ports.py::test_weather_breach_idempotent PASSED [ 99%]
+tests/unit/test_weather_db_ports.py::test_weather_429_twice_then_success PASSED [ 99%]
+tests/unit/test_weather_db_ports.py::test_weather_all_fail PASSED        [ 99%]
+tests/unit/test_workers.py::test_disruption_detector_worker_contract PASSED [ 99%]
+tests/unit/test_workers.py::test_sla_monitor_worker_contract PASSED      [100%]
+
+============================== warnings summary ===============================
+..\..\..\..\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\testclient.py:40
+  C:\Users\RAJ KUMAR MERUGU\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\testclient.py:40: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+tests/integration/test_phase9_integration.py::test_remaining_definitive_flow
+  C:\Users\RAJ KUMAR MERUGU\AppData\Local\Programs\Python\Python311\Lib\site-packages\google\api_core\_python_version_support.py:254: FutureWarning: You are using a Python version (3.11.9) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2027-10-24). Please upgrade to the latest Python version, or at least Python 3.12, to continue receiving updates for google.api_core past that date.
+    warnings.warn(message, FutureWarning)
+
+tests/unit/test_decision_conflict.py::test_execute_decision_catches_integrity_error_and_raises_conflict
+  C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\src\nexafreight\services\decision_executor.py:320: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    session.add(decision)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========== 884 passed, 5 xfailed, 3 warnings in 233.53s (0:03:53) ============

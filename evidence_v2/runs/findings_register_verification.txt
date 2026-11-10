@@ -1,0 +1,37 @@
+# Date: 2026-11-10T10:06:59.845226+00:00
+# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Command: cross-reference findings register against recovered AUDIT.md and active repository code/tests
+
+=== FINDINGS REGISTER AUDIT & VERIFICATION ===
+True Total Number of Findings in Register: 22 findings
+Breakdown: SEC: 10, DEP: 3, DOC: 4, ML: 4, ALG: 1
+
+Finding ID | Severity | Category | Status in Code / Test | Proving File:Line or Test Name
+-----------+----------+----------+-----------------------+-------------------------------------------------------------------------------------
+SEC-01     | CRITICAL | RESOLVED              | backend/scripts/rotate_passwords.py; backend/tests/unit/test_no_password_literals_in_scripts.py::test_no_password_literals_in_scripts
+SEC-02     | CRITICAL | RESOLVED (MITIGATED)  | backend/tests/unit/test_rotate_passwords.py::test_rotate_passwords_updates_target_accounts (passwords rotated in DB; git history immutable)
+SEC-03     | HIGH     | RESOLVED              | backend/src/nexafreight/api/routes/map.py:35-65 (/api/map/stream-ticket); backend/tests/unit/test_sse_stream_ticket.py::test_stream_ticket_single_use
+SEC-04     | HIGH     | RESOLVED              | backend/src/nexafreight/api/routes/decisions.py:50; backend/tests/unit/test_routers.py::test_decisions_admin_only
+SEC-05     | HIGH     | RESOLVED              | backend/src/nexafreight/services/copilot.py:80-120; backend/tests/unit/test_copilot_hardening.py::test_prompt_injection_sanitization
+SEC-06     | HIGH     | RESOLVED              | backend/src/nexafreight/api/routes/copilot.py:20-40 (@limiter.limit('10/minute')); backend/tests/unit/test_copilot_rate_limit.py::test_copilot_rate_limit
+SEC-07     | HIGH     | RESOLVED              | frontend/package.json overrides/resolutions; npm audit zero vulnerabilities
+SEC-08     | MEDIUM   | RESOLVED              | Git commit a2f3f16 (chore: prune agent charters, scrub root artifacts)
+SEC-09     | MEDIUM   | RESOLVED              | backend/migrations/versions/20261029_1400_a1b2c3d4e5f6_immutable_audit_logs_trigger.py; backend/tests/integration/test_audit_log_immutability.py::test_audit_log_triggers_prevent_update_and_delete
+SEC-10     | LOW      | RESOLVED              | backend/src/nexafreight/core/config.py:35; backend/tests/unit/test_config.py::test_jwt_secret_required
+DEP-01     | HIGH     | RESOLVED              | frontend/src/lib/nexafreight/client.ts:10; frontend/Dockerfile
+DEP-02     | MEDIUM   | RESOLVED              | backend/Dockerfile (USER nexafreight / USER appuser)
+DEP-03     | MEDIUM   | RESOLVED              | backend/migrations/env.py:32-45 (pg_advisory_xact_lock(982734123))
+DOC-01     | HIGH     | RESOLVED              | README.md:120; backend/scripts/seed_user.py
+DOC-02     | MEDIUM   | RESOLVED              | README.md; backend/src/nexafreight/services/demand_forecaster.py
+DOC-03     | MEDIUM   | RESOLVED              | README.md
+DOC-04     | LOW      | RESOLVED              | Git commit 0b1f48e (deleted diagram (1).png)
+ML-01      | HIGH     | RESOLVED              | backend/migrations/versions/20261029_1200_e4f5a6b7c8d9_relabel_reconstructed_legs_provenance.py; backend/tests/unit/test_route_planner.py::test_primary_path_provenance_is_derived
+ML-02      | HIGH     | RESOLVED              | backend/src/nexafreight/services/eta_predictor.py:45-80 (serves empirical LANE_QUANTILES_TABLE with DERIVED provenance); backend/tests/unit/test_eta_serves_lane_quantiles.py
+ML-03      | MEDIUM   | RESOLVED              | backend/migrations/versions/20261029_1300_f7a8b9c0d1e2_backfill_glec_v3_co2_factors.py; backend/src/nexafreight/core/constants.py (unified to SEA 8.0, ROAD 62.0, RAIL 28.0, AIR 602.0)
+ML-04      | LOW      | RESOLVED              | backend/src/nexafreight/ml/feature_contract.py; backend/tests/unit/test_congestion_source.py::test_port_congestion_fallback
+ALG-01     | MEDIUM   | KNOWN LIMITATION (XFAIL) | backend/src/nexafreight/services/routing.py; backend/tests/unit/test_planner_pareto.py (5 xfailed tests in suite)
+
+=== COMPARISON AGAINST RECOVERED AUDIT.md ===
+- Recovered AUDIT.md Location: evidence_v2/recovered/backend/eval/AUDIT.md
+- Findings Match: Exactly 22 out of 22 findings matched in ID, severity rating, and description.
+- Resolution Status: 21 findings resolved via code/migrations/docs; 1 finding (ALG-01) documented as active known limitation with 5 xfailed tests.

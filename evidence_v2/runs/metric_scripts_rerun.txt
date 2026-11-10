@@ -1,0 +1,83 @@
+# Date: 2026-11-10T10:05:52.318800+00:00
+# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Command: python scripts/compute_delay_leakage_and_ablation.py; python scripts/investigate_audit_revisions.py; python scripts/recompute_pinball_and_coverage.py; inspect models/demand_forecast/metadata.json
+
+=== SUMMARY OF RE-RUN METRIC CLAIMS VS REPORT.pdf CLAIMS ===
+
+Metric Description                               | REPORT.pdf Value       | Re-run Actual Value    | Status
+-------------------------------------------------+------------------------+------------------------+-------
+Delay Model Full 14-Feature ROC-AUC              | 0.7273                 | 0.7273                 | MATCH
+Best Single-Feature ROC-AUC (scheduled_shipping) | 0.7289                 | 0.7289                 | MATCH
+Shipping-Mode-Only Baseline ROC-AUC              | 0.7095                 | 0.7095                 | MATCH
+Incremental Lift Bootstrap 95% CI (14f vs 1f)    | [-0.0075, +0.0044]     | [-0.0075, +0.0044]     | MATCH
+Ablation AUC (without mode & scheduled days)     | 0.5007                 | 0.5007                 | MATCH
+ETA Quantile P10 Pinball Loss Lift vs Baseline   | -0.23%                 | -0.23%                 | MATCH
+ETA Quantile P50 Pinball Loss Lift vs Baseline   | -0.36%                 | -0.36%                 | MATCH
+ETA Quantile P85 Pinball Loss Lift vs Baseline   | -1.94%                 | -1.94%                 | MATCH
+Demand Forecasting WAPE (AutoETS)                | 32.16%                 | 32.16%                 | MATCH
+Demand Forecasting SeasonalNaive Baseline WAPE   | 44.02%                 | 44.02%                 | MATCH
+Demand Forecasting Lift over Baseline            | +26.94%                | +26.94%                | MATCH
+
+=== 1. DELAY MODEL ROC-AUC, SINGLE-FEATURE RANKING, & ABLATION (scripts/compute_delay_leakage_and_ablation.py) ===
+Full model test AUC: 0.7273
+Shipping-mode-only baseline test AUC: 0.7095
+Excess AUC over random: Baseline = 0.2095, Full = 0.2273
+Share of learnable AUC from shipping_mode alone: 92.2%
+
+Single-Feature Test AUC (Ranked):
+   1. scheduled_shipping_days    AUC = 0.7289
+   2. shipping_mode              AUC = 0.7095
+   3. order_profit               AUC = 0.5045
+   4. shipping_cost              AUC = 0.5042
+   5. sla_month                  AUC = 0.5038
+   6. revenue                    AUC = 0.5034
+   7. order_country              AUC = 0.5024
+   8. sla_quarter                AUC = 0.5007
+   9. total_distance_km          AUC = 0.5000
+  10. leg_count                  AUC = 0.5000
+  11. cargo_class                AUC = 0.4990
+  12. sla_weekday                AUC = 0.4988
+  13. product_price              AUC = 0.4946
+  14. customer_country           AUC = 0.4944
+
+Ablation without shipping_mode & scheduled_shipping_days: AUC = 0.5007 (drop: +0.2265)
+
+=== 2. BOOTSTRAP 95% CONFIDENCE INTERVALS (scripts/investigate_audit_revisions.py) ===
+Seed: 42, Bootstrap resamples: 1000
+Full Model (14 features) vs Single Feature (scheduled_shipping_days):
+  Delta AUC mean: -0.0016
+  95% CI: [-0.007507, 0.004428]
+Full Model vs Joint (Mode x Days):
+  Delta AUC mean: -0.0016
+  95% CI: [-0.007507, 0.004428]
+Full Model vs shipping_mode alone:
+  Delta AUC mean: +0.0178
+  95% CI: [0.010507, 0.025448]
+
+=== 3. ETA PINBALL LOSS AND COVERAGE (scripts/recompute_pinball_and_coverage.py) ===
+Test set rows: 8,109
+Quantile P10 (alpha=0.10):
+  Baseline Loss:           0.1681
+  Raw LightGBM Loss:       0.1686  --> Lift: -0.33%
+  Monotonic-Corrected Loss: 0.1685  --> Lift: -0.23%
+Quantile P50 (alpha=0.50):
+  Baseline Loss:           0.5036
+  Raw LightGBM Loss:       0.5053  --> Lift: -0.35%
+  Monotonic-Corrected Loss: 0.5054  --> Lift: -0.36%
+Quantile P85 (alpha=0.85):
+  Baseline Loss:           0.2513
+  Raw LightGBM Loss:       0.2568  --> Lift: -2.18%
+  Monotonic-Corrected Loss: 0.2562  --> Lift: -1.94%
+
+Coverage on Test Set:
+  Empirical Lane Quantiles (Shipped): P10: 32.85%, P50: 66.40%, P85: 100.00%
+  LightGBM Monotonic-Corrected:       P10:  9.66%, P50: 51.77%, P85:  83.66%
+
+=== 4. DEMAND FORECASTING AUTOETS BENCHMARK (models/demand_forecast/metadata.json) ===
+Model: StatsForecast AutoETS
+Lanes Evaluated: 79 qualified lanes (min_series_len >= 26)
+Holdout Horizon: 13 weeks (2017-10-30 to 2018-01-29)
+WAPE: 32.16%
+SeasonalNaive 4-week Baseline WAPE: 44.02%
+Lift over Baseline: +26.94%
+Median Lane MAPE: 52.47%

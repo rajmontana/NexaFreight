@@ -1,0 +1,37 @@
+# Date: 2026-11-10T09:54:33.312230+00:00
+# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Command: git tag -l; git rev-parse <tag>; git cat-file -t <hash> for hashes in REPORT.pdf
+
+=== GIT TAGS AND RESOLVED COMMITS ===
+Tag Name    | Commit SHA                               | Object Type
+------------+------------------------------------------+------------
+freeze-p2   | 4441c133e60bb1795c3b3bad1a6c1244e3e5eb93 | tag
+v1.0.0      | 2f6ece91b0a9c5427129590e49dc29de25065fdd | tag
+v1.0.1      | b63bf10688fbfde2fe5feff73782a6666009d623 | tag
+v1.0.2      | 6451fb8c4ffe3ebe22c7bff0311906f1c1eaf612 | commit
+
+=== COMMIT HASHES APPEARING IN REPORT.pdf (VERIFIED VIA git cat-file -t) ===
+Cited Hash | Status in Git | Object Type | Resolved Summary / Note
+-----------+---------------+-------------+-----------------------------------------------------------
+09786eb    | FOUND         | commit      | 09786eb feat(release): NexaFreight SmartTrack AI multi-modal predictive logistics platform
+ee69012    | FOUND         | commit      | ee69012 feat: NexaFreight AI Control Tower â€” production codebase & documentation
+4441c13    | FOUND         | commit      | 4441c13 Merge pull request #13 from rajmontana/rebuild/day13-paper
+a2f3f16    | FOUND         | commit      | a2f3f16 chore: prune agent charters, scrub root artifacts, and add real-world fleet sync
+7e6921c    | FOUND         | commit      | 7e6921c fix(release): resolve Phase 5 release blockers and harden security
+2f6ece9    | FOUND         | commit      | 2f6ece9 docs(evidence): add raw alembic heads, CO2 backfill, and pytest summary
+b63bf10    | FOUND         | commit      | b63bf10 fix(v1.0.1): apply production hardening, SSE single-use tickets, and security fixes
+6451fb8    | FOUND         | commit      | 6451fb8 fix(auth): add password visibility toggle, sanitize env quotes, and enhance login form
+93ec1a7    | FOUND         | commit      | 93ec1a7 feat: add daily order drip workflow & in-transit active ports map filter
+0b1f48e    | FOUND         | commit      | 0b1f48e fix(pr1): honesty and provenance baseline
+35fe96e    | FOUND         | commit      | 35fe96e feat(security): add audit log immutability triggers, SSE stream tickets, and copilot rate limits
+9e7b231    | NOT FOUND     | NONE        | NOT IN GIT REPO (Non-existent git object: synthetic/placeholder SHA in report)
+f8c201a    | NOT FOUND     | NONE        | NOT IN GIT REPO (Non-existent git object: synthetic/placeholder SHA in report)
+3c2d4e5    | NOT FOUND     | NONE        | NOT IN GIT REPO (Non-existent git object: synthetic/placeholder SHA in report)
+a1b2c3d    | NOT FOUND     | NONE        | NOT IN GIT REPO (Non-existent git object: synthetic/placeholder SHA in report)
+d4e5f6a    | NOT FOUND     | NONE        | NOT IN GIT REPO (Non-existent git object: synthetic/placeholder SHA in report)
+b7c8d9e    | NOT FOUND     | NONE        | NOT IN GIT REPO (Non-existent git object: synthetic/placeholder SHA in report)
+e8f9a0b    | NOT FOUND     | NONE        | NOT IN GIT REPO (Non-existent git object: synthetic/placeholder SHA in report)
+c1d2e3f    | NOT FOUND     | NONE        | NOT IN GIT REPO (Non-existent git object: synthetic/placeholder SHA in report)
+7c5f4bd3   | NOT FOUND     | NONE        | NOT IN GIT REPO (Antigravity conversation/brain ID, not a git commit)
+d645e5a9   | NOT FOUND     | NONE        | NOT IN GIT REPO (Antigravity conversation/brain ID, not a git commit)
+9d63c5aa   | NOT FOUND     | NONE        | NOT IN GIT REPO (Antigravity conversation/brain ID, not a git commit)

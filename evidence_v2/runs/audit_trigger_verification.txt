@@ -1,0 +1,107 @@
+# Date: 2026-11-10T09:57:48.477428+00:00
+# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Command: inspect migration 20261029_1400_a1b2c3d4e5f6_immutable_audit_logs_trigger.py
+
+=== AUDIT TRIGGER AND DATABASE PERMISSIONS AUDIT ===
+
+1. Migration SQL & Triggers:
+   - PostgreSQL Trigger Names: trg_audit_logs_no_update, trg_audit_logs_no_delete
+     (REPORT.pdf cites: "trg_prevent_decision_audit_logs_mutation" -> MISMATCH in trigger name)
+   - SQLite Trigger Names: trg_audit_logs_no_update, trg_audit_logs_no_delete
+   - Trigger Timing: BEFORE UPDATE, BEFORE DELETE (FOR EACH ROW)
+
+2. ERRCODE Analysis:
+   - PostgreSQL plpgsql function: prevent_audit_log_modification() executes:
+     "RAISE EXCEPTION 'audit_logs is an append-only table: UPDATE and DELETE are prohibited';"
+   - ERRCODE Used: Default PostgreSQL error code P0001 (raise_exception). No custom SQLSTATE ERRCODE specified via USING ERRCODE.
+   - SQLite function: RAISE(FAIL, ...)
+
+3. TRUNCATE and DB Role Ownership / Permissions State:
+   - Is TRUNCATE prevented by trigger? NO. Row triggers (FOR EACH ROW) do NOT fire on TRUNCATE, and no BEFORE TRUNCATE statement-level trigger exists.
+   - Is TRUNCATE revoked from app DB role? NO. There are zero REVOKE or GRANT statements in migration a1b2c3d4e5f6 or anywhere in backend/migrations/.
+   - Does the app DB role own the table? YES. The connection running the migration creates the table, making the app DB role the table owner. In PostgreSQL, table owners cannot have TRUNCATE privileges revoked from themselves unless table ownership is transferred to a distinct administrative role.
+
+=== FULL MIGRATION SOURCE CODE ===
+"""Enforce append-only immutability on audit_logs via database triggers.
+
+Revision ID: a1b2c3d4e5f6
+Revises: f7a8b9c0d1e2
+Create Date: 2026-10-29 14:00:00.000000
+"""
+
+from __future__ import annotations
+
+from alembic import op
+
+# revision identifiers, used by Alembic.
+revision = "a1b2c3d4e5f6"
+down_revision = "f7a8b9c0d1e2"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    bind = op.get_bind()
+    dialect = bind.dialect.name
+
+    if dialect == "postgresql":
+        op.execute(
+            """
+            CREATE OR REPLACE FUNCTION prevent_audit_log_modification()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                RAISE EXCEPTION 'audit_logs is an append-only table: UPDATE and DELETE are prohibited';
+            END;
+            $$ LANGUAGE plpgsql;
+            """
+        )
+        op.execute(
+            """
+            CREATE TRIGGER trg_audit_logs_no_update
+            BEFORE UPDATE ON audit_logs
+            FOR EACH ROW
+            EXECUTE FUNCTION prevent_audit_log_modification();
+            """
+        )
+        op.execute(
+            """
+            CREATE TRIGGER trg_audit_logs_no_delete
+            BEFORE DELETE ON audit_logs
+            FOR EACH ROW
+            EXECUTE FUNCTION prevent_audit_log_modification();
+            """
+        )
+    elif dialect == "sqlite":
+        op.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS trg_audit_logs_no_update
+            BEFORE UPDATE ON audit_logs
+            FOR EACH ROW
+            BEGIN
+                SELECT RAISE(FAIL, 'audit_logs is an append-only table: UPDATE and DELETE are prohibited');
+            END;
+            """
+        )
+        op.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS trg_audit_logs_no_delete
+            BEFORE DELETE ON audit_logs
+            FOR EACH ROW
+            BEGIN
+                SELECT RAISE(FAIL, 'audit_logs is an append-only table: UPDATE and DELETE are prohibited');
+            END;
+            """
+        )
+
+
+def downgrade() -> None:
+    bind = op.get_bind()
+    dialect = bind.dialect.name
+
+    if dialect == "postgresql":
+        op.execute("DROP TRIGGER IF EXISTS trg_audit_logs_no_update ON audit_logs;")
+        op.execute("DROP TRIGGER IF EXISTS trg_audit_logs_no_delete ON audit_logs;")
+        op.execute("DROP FUNCTION IF EXISTS prevent_audit_log_modification();")
+    elif dialect == "sqlite":
+        op.execute("DROP TRIGGER IF EXISTS trg_audit_logs_no_update;")
+        op.execute("DROP TRIGGER IF EXISTS trg_audit_logs_no_delete;")
