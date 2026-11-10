@@ -16,7 +16,8 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b"
+CANDIDATE_MODELS = ["qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "openai/gpt-oss-120b"]
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
@@ -24,7 +25,7 @@ class GroqAdapter:
     """Async adapter calling Groq Cloud's OpenAI-compatible completions API."""
 
     def __init__(self, api_key: str | None = None, model: str | None = None):
-        self._api_key = api_key or os.getenv("GROQ_API_KEY", "")
+        self._api_key = (api_key or os.getenv("GROQ_API_KEY", "")).strip()
         self._model = model or os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
 
     @property
@@ -38,36 +39,46 @@ class GroqAdapter:
             return None
 
         headers = {
-            "Authorization": f"Bearer {self._api_key.strip()}",
+            "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
-        }
-        payload = {
-            "model": self._model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are NexaFreight AI Copilot, an expert logistics and supply chain assistant.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-            "max_tokens": 512,
+            "User-Agent": "NexaFreight/1.0",
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    choices = data.get("choices", [])
-                    if choices:
-                        return choices[0].get("message", {}).get("content", "").strip()
-                else:
-                    logger.warning("Groq API returned status %d: %s", resp.status_code, resp.text[:200])
-                    return None
-        except Exception as exc:
-            logger.warning("Groq completion failed: %s", exc)
-            return None
+        # Try active model first, then candidate models if model_not_found (404)
+        models_to_try = [self._model] + [m for m in CANDIDATE_MODELS if m != self._model]
+
+        for current_model in models_to_try:
+            payload = {
+                "model": current_model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are NexaFreight AI Copilot, an expert logistics and supply chain assistant.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.2,
+                "max_tokens": 512,
+            }
+
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        choices = data.get("choices", [])
+                        if choices:
+                            ans = choices[0].get("message", {}).get("content", "").strip()
+                            if ans:
+                                return ans
+                    elif resp.status_code == 404:
+                        logger.info("Groq model %s not found (404); attempting fallback model", current_model)
+                        continue
+                    else:
+                        logger.warning("Groq API returned status %d: %s", resp.status_code, resp.text[:200])
+                        return None
+            except Exception as exc:
+                logger.warning("Groq completion failed with model %s: %s", current_model, exc)
+                continue
 
         return None
-

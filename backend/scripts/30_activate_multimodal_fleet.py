@@ -1,28 +1,284 @@
-"""Activate multimodal fleet legs (SEA, AIR, ROAD, RAIL) dynamically relative to UTC now.
+from __future__ import annotations
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
+"""Seed and activate a globally distributed multimodal fleet across the world.
 
-Supports both SQLite (local development) and PostgreSQL (Neon in CI / Render).
+Covers:
+- North America (US coast-to-coast trucking: NY to LA)
+- Europe (Rotterdam to Hamburg highway freight)
+- Trans-Pacific shipping (Shanghai to Los Angeles)
+- Trans-Atlantic shipping (New York to Rotterdam)
+- Middle East to India shipping (Jebel Ali Dubai to Mundra)
+- Southeast Asia to India shipping (Singapore to Mumbai)
+- South America to South Africa shipping (Santos to Durban)
+- Intercontinental air cargo flights (Delhi-Hamburg, Singapore-Tokyo, LA-Delhi, Sydney-Singapore)
+- Plus domestic Indian express corridors (Road, Rail, Air)
 """
 
-from __future__ import annotations
 
-import os
-import sys
+import json
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
-# Ensure src is on python path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+import sys
 
 from sqlalchemy import create_engine, select, text
-from sqlalchemy.orm import Session
+
+logger = logging.getLogger("nexafreight.fleet")
+
+GLOBAL_SHIPMENT_SPECS = [
+    {
+        "id": "glob-road-us-001",
+        "order_num": "ORD-GLOB-US-001",
+        "origin_id": 37,  # USNYC
+        "dest_id": 38,    # USLAX
+        "mode": "ROAD",
+        "edge_id": 133,
+        "flight_num": None,
+        "vessel_id": None,
+        "duration_hours": 48.0,
+        "dist_km": 4738.0,
+        "co2_kg": 2840.0,
+    },
+    {
+        "id": "glob-road-eu-001",
+        "order_num": "ORD-GLOB-EU-001",
+        "origin_id": 40,  # NLRTM
+        "dest_id": 39,    # DEHAM
+        "mode": "ROAD",
+        "edge_id": 135,
+        "flight_num": None,
+        "vessel_id": None,
+        "duration_hours": 12.0,
+        "dist_km": 488.0,
+        "co2_kg": 290.0,
+    },
+    {
+        "id": "glob-sea-pac-001",
+        "order_num": "ORD-GLOB-PAC-001",
+        "origin_id": 42,  # CNSHA
+        "dest_id": 38,    # USLAX
+        "mode": "SEA",
+        "edge_id": 121,
+        "flight_num": None,
+        "vessel_id": 1,
+        "duration_hours": 168.0,
+        "dist_km": 10450.0,
+        "co2_kg": 1580.0,
+    },
+    {
+        "id": "glob-sea-atl-001",
+        "order_num": "ORD-GLOB-ATL-001",
+        "origin_id": 37,  # USNYC
+        "dest_id": 40,    # NLRTM
+        "mode": "SEA",
+        "edge_id": 125,
+        "flight_num": None,
+        "vessel_id": 2,
+        "duration_hours": 144.0,
+        "dist_km": 5860.0,
+        "co2_kg": 920.0,
+    },
+    {
+        "id": "glob-sea-me-001",
+        "order_num": "ORD-GLOB-ME-001",
+        "origin_id": 46,  # AEBUE
+        "dest_id": 2,     # INMUN
+        "mode": "SEA",
+        "edge_id": 114,
+        "flight_num": None,
+        "vessel_id": 3,
+        "duration_hours": 72.0,
+        "dist_km": 1510.0,
+        "co2_kg": 380.0,
+    },
+    {
+        "id": "glob-sea-sg-001",
+        "order_num": "ORD-GLOB-SG-001",
+        "origin_id": 47,  # SGSIN
+        "dest_id": 1,     # INBOM
+        "mode": "SEA",
+        "edge_id": 112,
+        "flight_num": None,
+        "vessel_id": 4,
+        "duration_hours": 96.0,
+        "dist_km": 3900.0,
+        "co2_kg": 640.0,
+    },
+    {
+        "id": "glob-sea-sa-001",
+        "order_num": "ORD-GLOB-SA-001",
+        "origin_id": 43,  # BRSSZ
+        "dest_id": 45,    # ZADUR
+        "mode": "SEA",
+        "edge_id": 131,
+        "flight_num": None,
+        "vessel_id": 5,
+        "duration_hours": 192.0,
+        "dist_km": 7550.0,
+        "co2_kg": 1210.0,
+    },
+    {
+        "id": "glob-air-eu-001",
+        "order_num": "ORD-GLOB-AIREU-001",
+        "origin_id": 4,   # INDEL
+        "dest_id": 39,    # DEHAM
+        "mode": "AIR",
+        "edge_id": None,
+        "flight_num": "NX-801",
+        "vessel_id": None,
+        "duration_hours": 9.0,
+        "dist_km": 5850.0,
+        "co2_kg": 4200.0,
+    },
+    {
+        "id": "glob-air-asia-001",
+        "order_num": "ORD-GLOB-AIRAS-001",
+        "origin_id": 47,  # SGSIN
+        "dest_id": 41,    # JPTYO
+        "mode": "AIR",
+        "edge_id": None,
+        "flight_num": "NX-502",
+        "vessel_id": None,
+        "duration_hours": 7.5,
+        "dist_km": 5320.0,
+        "co2_kg": 3850.0,
+    },
+    {
+        "id": "glob-air-us-001",
+        "order_num": "ORD-GLOB-AIRUS-001",
+        "origin_id": 38,  # USLAX
+        "dest_id": 4,     # INDEL
+        "mode": "AIR",
+        "edge_id": None,
+        "flight_num": "NX-104",
+        "vessel_id": None,
+        "duration_hours": 18.0,
+        "dist_km": 12870.0,
+        "co2_kg": 9100.0,
+    },
+    {
+        "id": "glob-air-oce-001",
+        "order_num": "ORD-GLOB-AIROC-001",
+        "origin_id": 44,  # AUSYD
+        "dest_id": 47,    # SGSIN
+        "mode": "AIR",
+        "edge_id": None,
+        "flight_num": "NX-308",
+        "vessel_id": None,
+        "duration_hours": 8.5,
+        "dist_km": 6300.0,
+        "co2_kg": 4500.0,
+    },
+]
+
+
+def ensure_global_shipments(conn, now: datetime):
+    """Insert global intercontinental shipments and legs if not already present."""
+    from nexafreight.adapters.routing.sea_route import compute_sea_route
+    from nexafreight.adapters.routing._geometry import great_circle_geojson_str
+
+    # Fetch nodes for lat/lons
+    nodes_res = conn.execute(text("SELECT id, latitude, longitude FROM network_nodes")).fetchall()
+    nodes_map = {r[0]: (float(r[1]), float(r[2])) for r in nodes_res}
+
+    # Fetch edge geometries
+    edges_res = conn.execute(text("SELECT id, geometry_json FROM network_edges WHERE geometry_json IS NOT NULL")).fetchall()
+    edges_geom = {r[0]: r[1] for r in edges_res}
+
+    created_at = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    for spec in GLOBAL_SHIPMENT_SPECS:
+        s_id = spec["id"]
+        o_id = spec["origin_id"]
+        d_id = spec["dest_id"]
+        mode = spec["mode"]
+
+        # 1. Ensure shipment exists
+        existing_s = conn.execute(text(f"SELECT id FROM shipments WHERE id = '{s_id}'")).fetchone()
+        if not existing_s:
+            conn.execute(
+                text(f"""
+                INSERT INTO shipments (
+                    id, origin_id, destination_id, primary_transport_mode,
+                    cargo_class, container_count, status, route_version,
+                    planned_departure, strictest_sla_deadline, provenance, created_at, updated_at
+                ) VALUES (
+                    '{s_id}', {o_id}, {d_id}, '{mode}',
+                    'GENERAL', 2, 'IN_TRANSIT', 1,
+                    '{created_at}', '{created_at}', 'REAL', '{created_at}', '{created_at}'
+                )
+                """)
+            )
+
+        # 2. Compute or retrieve geometry
+        geom_json = None
+        if spec["edge_id"] and spec["edge_id"] in edges_geom:
+            geom_json = edges_geom[spec["edge_id"]]
+        elif mode == "SEA" and o_id in nodes_map and d_id in nodes_map:
+            o_lat, o_lon = nodes_map[o_id]
+            d_lat, d_lon = nodes_map[d_id]
+            try:
+                res = compute_sea_route(o_lat, o_lon, d_lat, d_lon)
+                geom_json = res.geometry_geojson
+            except Exception:
+                geom_json = great_circle_geojson_str(o_lat, o_lon, d_lat, d_lon)
+        elif mode == "AIR" and o_id in nodes_map and d_id in nodes_map:
+            o_lat, o_lon = nodes_map[o_id]
+            d_lat, d_lon = nodes_map[d_id]
+            geom_json = great_circle_geojson_str(o_lat, o_lon, d_lat, d_lon, n=24)
+
+        if not geom_json:
+            continue
+
+        # Timings relative to current time so vehicle is actively in motion
+        dep_time = (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+        arr_time = (now + timedelta(hours=spec["duration_hours"] - 2)).strftime("%Y-%m-%d %H:%M:%S")
+
+        # Escaped geometry string for SQL
+        escaped_geom = geom_json.replace("'", "''")
+
+        # 3. Ensure leg exists and is active
+        existing_l = conn.execute(text(f"SELECT id FROM legs WHERE shipment_id = '{s_id}'")).fetchone()
+        if not existing_l:
+            flight_val = f"'{spec['flight_num']}'" if spec["flight_num"] else "NULL"
+            vessel_val = str(spec["vessel_id"]) if spec["vessel_id"] else "NULL"
+
+            conn.execute(
+                text(f"""
+                INSERT INTO legs (
+                    shipment_id, sequence_number, route_version, transport_mode,
+                    status, origin_id, destination_id, flight_number, vessel_id,
+                    planned_departure, actual_departure, planned_arrival,
+                    route_geometry_json, distance_km, co2_kg, provenance, created_at, updated_at
+                ) VALUES (
+                    '{s_id}', 1, 1, '{mode}',
+                    'IN_PROGRESS', {o_id}, {d_id}, {flight_val}, {vessel_val},
+                    '{dep_time}', '{dep_time}', '{arr_time}',
+                    '{escaped_geom}', {spec['dist_km']}, {spec['co2_kg']}, 'REAL', '{created_at}', '{created_at}'
+                )
+                """)
+            )
+        else:
+            # Refresh schedule to stay in progress
+            conn.execute(
+                text(f"""
+                UPDATE legs
+                SET status = 'IN_PROGRESS',
+                    planned_departure = '{dep_time}',
+                    actual_departure = '{dep_time}',
+                    planned_arrival = '{arr_time}'
+                WHERE shipment_id = '{s_id}'
+                """)
+            )
 
 
 def activate():
+    import os
     db_url = os.getenv("DATABASE_URL")
     if db_url:
-        # Normalize async postgres url to sync if needed for this script
         sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://").replace("sqlite+aiosqlite:///", "sqlite:///")
-        # Ensure sslmode for Neon if not present
         if "neon.tech" in sync_url and "sslmode" not in sync_url:
             sync_url += "?sslmode=require"
         engine = create_engine(sync_url)
@@ -39,7 +295,10 @@ def activate():
     t_end_sea = (now + timedelta(hours=72)).strftime("%Y-%m-%d %H:%M:%S")
 
     with engine.begin() as conn:
-        # 1. Activate AIR legs (planes in the air right now)
+        # Seed global cross-continent shipments
+        ensure_global_shipments(conn, now)
+
+        # Activate domestic and regional AIR legs
         conn.execute(
             text(f"""
             UPDATE legs
@@ -51,12 +310,12 @@ def activate():
                 SELECT id FROM legs
                 WHERE transport_mode = 'AIR'
                   AND route_geometry_json IS NOT NULL
-                LIMIT 8
+                LIMIT 15
             )
             """)
         )
 
-        # 2. Activate ROAD legs (trucks driving on highways right now)
+        # Activate ROAD legs (trucks)
         conn.execute(
             text(f"""
             UPDATE legs
@@ -68,12 +327,12 @@ def activate():
                 SELECT id FROM legs
                 WHERE transport_mode = 'ROAD'
                   AND route_geometry_json IS NOT NULL
-                LIMIT 15
+                LIMIT 25
             )
             """)
         )
 
-        # 3. Activate RAIL legs (trains hauling cargo right now)
+        # Activate RAIL legs (trains)
         conn.execute(
             text(f"""
             UPDATE legs
@@ -85,12 +344,12 @@ def activate():
                 SELECT id FROM legs
                 WHERE transport_mode = 'RAIL'
                   AND route_geometry_json IS NOT NULL
-                LIMIT 6
+                LIMIT 10
             )
             """)
         )
 
-        # 4. Activate SEA legs (container ships sailing ocean lanes right now)
+        # Activate SEA legs (container ships)
         conn.execute(
             text(f"""
             UPDATE legs
@@ -102,12 +361,12 @@ def activate():
                 SELECT id FROM legs
                 WHERE transport_mode = 'SEA'
                   AND route_geometry_json IS NOT NULL
-                LIMIT 12
+                LIMIT 20
             )
             """)
         )
 
-        # 5. Ensure all parent shipments for IN_PROGRESS legs are IN_TRANSIT
+        # Set parent shipments to IN_TRANSIT
         conn.execute(
             text("""
             UPDATE shipments
@@ -121,9 +380,8 @@ def activate():
             """)
         )
 
-    print("Successfully activated live multimodal fleet relative to current time!")
+    print("Successfully activated live global multimodal fleet relative to current time!")
 
-    # Verify breakdown
     with engine.connect() as conn:
         res = conn.execute(
             text("""

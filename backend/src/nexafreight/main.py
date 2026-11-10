@@ -219,7 +219,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 exc_info=True,
             )
 
-    # Ensure network road highway geometry and active multimodal fleet in background
+    # Ensure network road highway geometry and active global multimodal fleet in background
     async def _bootstrap_production_fleet_and_geometry() -> None:
         try:
             from nexafreight.database import get_session_factory
@@ -228,45 +228,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             async with session_factory() as session:
                 await fill_road_edge_geometries(session)
 
-            # Activate live multimodal fleet relative to current time
-            from datetime import datetime, timezone, timedelta
-            from sqlalchemy import text
-            now = datetime.now(timezone.utc)
-            t_start = (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
-            t_act = (now - timedelta(hours=1, minutes=55)).strftime("%Y-%m-%d %H:%M:%S")
-            t_air = (now + timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
-            t_road = (now + timedelta(hours=10)).strftime("%Y-%m-%d %H:%M:%S")
-            t_rail = (now + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
-            t_sea = (now + timedelta(hours=72)).strftime("%Y-%m-%d %H:%M:%S")
-
-            async with session_factory() as session:
-                await session.execute(text(f"""
-                    UPDATE legs
-                    SET status = 'IN_PROGRESS', planned_departure = '{t_start}', actual_departure = '{t_act}', planned_arrival = '{t_air}'
-                    WHERE id IN (SELECT id FROM legs WHERE transport_mode = 'AIR' AND route_geometry_json IS NOT NULL LIMIT 8)
-                """))
-                await session.execute(text(f"""
-                    UPDATE legs
-                    SET status = 'IN_PROGRESS', planned_departure = '{t_start}', actual_departure = '{t_act}', planned_arrival = '{t_road}'
-                    WHERE id IN (SELECT id FROM legs WHERE transport_mode = 'ROAD' AND route_geometry_json IS NOT NULL LIMIT 15)
-                """))
-                await session.execute(text(f"""
-                    UPDATE legs
-                    SET status = 'IN_PROGRESS', planned_departure = '{t_start}', actual_departure = '{t_act}', planned_arrival = '{t_rail}'
-                    WHERE id IN (SELECT id FROM legs WHERE transport_mode = 'RAIL' AND route_geometry_json IS NOT NULL LIMIT 6)
-                """))
-                await session.execute(text(f"""
-                    UPDATE legs
-                    SET status = 'IN_PROGRESS', planned_departure = '{t_start}', actual_departure = '{t_act}', planned_arrival = '{t_sea}'
-                    WHERE id IN (SELECT id FROM legs WHERE transport_mode = 'SEA' AND route_geometry_json IS NOT NULL LIMIT 12)
-                """))
-                await session.execute(text("""
-                    UPDATE shipments
-                    SET status = 'IN_TRANSIT'
-                    WHERE id IN (SELECT DISTINCT shipment_id FROM legs WHERE status = 'IN_PROGRESS' AND shipment_id IS NOT NULL)
-                """))
-                await session.commit()
-                logger.info("Bootstrap of highway geometries and active multimodal fleet complete.")
+            # Activate global cross-continental and domestic multimodal fleet
+            import importlib.util
+            script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "30_activate_multimodal_fleet.py"
+            if script_path.exists():
+                spec = importlib.util.spec_from_file_location("activate_fleet", script_path)
+                if spec and spec.loader:
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+                    mod.activate()
+                    logger.info("Bootstrap of highway geometries and active global multimodal fleet complete.")
         except Exception as b_err:
             logger.warning("Background fleet bootstrap notice: %s", b_err)
 
