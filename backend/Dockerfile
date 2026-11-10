@@ -33,4 +33,4 @@ EXPOSE 10000
 
 # Run migrations then start the server.
 # Render sets PORT=10000 by default.
-CMD ["sh", "-c", "cd /app && python -m alembic upgrade head && uvicorn nexafreight.main:app --host 0.0.0.0 --port ${PORT:-10000} --app-dir src"]
+CMD ["sh", "-c", "cd /app && python -m alembic upgrade head && (python scripts/30_activate_multimodal_fleet.py || true) && uvicorn nexafreight.main:app --host 0.0.0.0 --port ${PORT:-10000} --app-dir src"]

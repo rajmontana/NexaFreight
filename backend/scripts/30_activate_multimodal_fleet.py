@@ -654,17 +654,25 @@ def seed_active_disruptions_and_alerts(conn, now: datetime):
             print(f"Seeded active Alert {a_id} for {s_id}: severity={severity}, exposure=${exposure:,.2f}")
 
 
-def activate():
-    import os
-    db_url = os.getenv("DATABASE_URL")
-    if db_url:
-        sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://").replace("sqlite+aiosqlite:///", "sqlite:///")
-        if "neon.tech" in sync_url and "sslmode" not in sync_url:
-            sync_url += "?sslmode=require"
-        engine = create_engine(sync_url)
-    else:
-        db_path = Path(__file__).resolve().parent.parent / "data" / "nexafreight.db"
-        engine = create_engine(f"sqlite:///{db_path}")
+def activate(engine=None):
+    if engine is None:
+        import os
+        db_url = os.getenv("DATABASE_URL")
+        if db_url:
+            scheme, _, remainder = db_url.partition("://")
+            if scheme.lower() in ("postgres", "postgresql", "postgresql+asyncpg", "postgresql+psycopg2"):
+                host_part = remainder.split("?", 1)[0]
+                sync_url = f"postgresql://{host_part}"
+                if "sslmode" not in sync_url:
+                    sync_url += "?sslmode=require"
+            elif scheme.lower() in ("sqlite", "sqlite+aiosqlite"):
+                sync_url = f"sqlite:///{remainder}"
+            else:
+                sync_url = db_url
+            engine = create_engine(sync_url)
+        else:
+            db_path = Path(__file__).resolve().parent.parent / "data" / "nexafreight.db"
+            engine = create_engine(f"sqlite:///{db_path}")
 
     now = datetime.now(timezone.utc)
     t_start_2h = (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")

@@ -51,3 +51,41 @@ async def trigger_nightly(
     await refresh_parameters(session)
 
     return JSONResponse(status_code=200, content={"ran_at": server_now.isoformat(), "report": report})
+
+
+@router.post("/internal/activate-fleet")
+async def trigger_activate_fleet() -> JSONResponse:
+    """Activate live multimodal fleet, highway geometries, disruptions and alerts."""
+    try:
+        import asyncio
+        import importlib.util
+        from pathlib import Path
+
+        script_path = (
+            Path(__file__).resolve().parent.parent.parent.parent.parent
+            / "scripts"
+            / "30_activate_multimodal_fleet.py"
+        )
+        if not script_path.exists():
+            script_path = (
+                Path(__file__).resolve().parents[3]
+                / "scripts"
+                / "30_activate_multimodal_fleet.py"
+            )
+        if script_path.exists():
+            spec = importlib.util.spec_from_file_location("activate_fleet", script_path)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, mod.activate)
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "success",
+                        "message": "Activated live multimodal fleet, highway geometries, disruptions and alerts.",
+                    },
+                )
+        return JSONResponse(status_code=404, content={"detail": "Script not found"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})

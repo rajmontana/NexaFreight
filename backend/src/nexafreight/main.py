@@ -222,6 +222,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure network road highway geometry and active global multimodal fleet in background
     async def _bootstrap_production_fleet_and_geometry() -> None:
         try:
+            from pathlib import Path
             from nexafreight.database import get_session_factory
             from nexafreight.services.land_geometry import fill_road_edge_geometries
             session_factory = get_session_factory()
@@ -231,15 +232,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # Activate global cross-continental and domestic multimodal fleet
             import importlib.util
             script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "30_activate_multimodal_fleet.py"
+            if not script_path.exists():
+                script_path = Path(__file__).resolve().parents[3] / "scripts" / "30_activate_multimodal_fleet.py"
             if script_path.exists():
                 spec = importlib.util.spec_from_file_location("activate_fleet", script_path)
                 if spec and spec.loader:
                     mod = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(mod)
-                    mod.activate()
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, mod.activate)
                     logger.info("Bootstrap of highway geometries and active global multimodal fleet complete.")
         except Exception as b_err:
-            logger.warning("Background fleet bootstrap notice: %s", b_err)
+            logger.warning("Background fleet bootstrap notice: %s", b_err, exc_info=True)
 
     if not settings.is_test:
         asyncio.create_task(_bootstrap_production_fleet_and_geometry())

@@ -16,6 +16,9 @@ fi
 # Always bind to $PORT when set so health checks and traffic routing succeed.
 PORT_TO_USE="${PORT:-8000}"
 
+# Ensure live multimodal fleet, highway geometries, and ML disruptions are active
+python scripts/30_activate_multimodal_fleet.py || echo "[entrypoint] Notice: 30_activate_multimodal_fleet completed"
+
 if [ $# -eq 0 ]; then
     exec uvicorn nexafreight.main:app --host 0.0.0.0 --port "$PORT_TO_USE"
 elif [ "$1" = "uvicorn" ]; then

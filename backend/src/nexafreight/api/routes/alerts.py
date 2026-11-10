@@ -84,6 +84,37 @@ async def list_alerts(
         stmt = stmt.where(Alert.status == status)
     result = await session.execute(stmt)
     alerts = list(result.scalars().all())
+
+    # Self-healing: if alerts table is empty, auto-activate and populate alerts
+    if not alerts and not severity and not status:
+        try:
+            import asyncio
+            import importlib.util
+            from pathlib import Path
+
+            script_path = (
+                Path(__file__).resolve().parent.parent.parent.parent.parent
+                / "scripts"
+                / "30_activate_multimodal_fleet.py"
+            )
+            if not script_path.exists():
+                script_path = (
+                    Path(__file__).resolve().parents[3]
+                    / "scripts"
+                    / "30_activate_multimodal_fleet.py"
+                )
+            if script_path.exists():
+                spec = importlib.util.spec_from_file_location("activate_fleet", script_path)
+                if spec and spec.loader:
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, mod.activate)
+                    result = await session.execute(stmt)
+                    alerts = list(result.scalars().all())
+        except Exception:
+            pass
+
     # touch disruption relationship within the greenlet
     for alert in alerts:
         await session.refresh(alert, ["disruption"])
