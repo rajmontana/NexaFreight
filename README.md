@@ -105,13 +105,17 @@ During blackout periods, the engine projects updated position coordinates $(\phi
 
 $$\delta = rac{v \cdot \Delta t}{R_{	ext{earth}}}$$
 
-$$\phi_t = rcsin\left( \sin(\phi_0) \cos(\delta) + \cos(\phi_0) \sin(\delta) \cos(	heta) ight)$$
+$$\phi_t = rcsin\left( \sin(\phi_0) \cos(\delta) + \cos(\phi_0) \sin(\delta) \cos(	heta) 
+ight)$$
 
-$$\lambda_t = \lambda_0 + 	ext{atan2}\left( \sin(	heta) \sin(\delta) \cos(\phi_0), \; \cos(\delta) - \sin(\phi_0) \sin(\phi_t) ight)$$
+$$\lambda_t = \lambda_0 + 	ext{atan2}\left( \sin(	heta) \sin(\delta) \cos(\phi_0), \; \cos(\delta) - \sin(\phi_0) \sin(\phi_t) 
+ight)$$
 
 Cross-track error is monitored via the Haversine equation:
 
-$$a = \sin^2\left(rac{\Delta\phi}{2}ight) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(rac{\Delta\lambda}{2}ight), \quad d = 2 R_{	ext{earth}} rcsin(\sqrt{a})$$
+$$a = \sin^2\left(rac{\Delta\phi}{2}
+ight) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(rac{\Delta\lambda}{2}
+ight), \quad d = 2 R_{	ext{earth}} rcsin(\sqrt{a})$$
 
 If cross-track lateral deviation exceeds **15.0 nautical miles (27.78 km)**, the vessel state transitions to `OFF_ROUTE`.
 
@@ -125,7 +129,8 @@ NexaFreight models international logistics as a directed multigraph $G = (V, E, 
 $$\min_{P \subset E} J(P) = w_1 \sum_{e \in P} C_e + w_2 \sum_{e \in P} T_e + w_3 \sum_{e \in P} E_e + w_4 \sum_{e \in P} R_e \quad 	ext{s.t.} \quad \sum T_e \le T_{\max}, \quad \sum w_i = 1.0$$
 
 ### Intermodal Transfer Penalties
-$$T_{	ext{total}}(P) = \sum_{e \in P} T_e + \sum_{v \in P} \left( 	ext{Dwell}_v + T_{	ext{LoLo}} + T_{	ext{customs}} ight)$$
+$$T_{	ext{total}}(P) = \sum_{e \in P} T_e + \sum_{v \in P} \left( 	ext{Dwell}_v + T_{	ext{LoLo}} + T_{	ext{customs}} 
+ight)$$
 
 Where $T_{	ext{LoLo}}$ is crane lift-on/lift-off handling delay (2.5 hrs/100 TEU), and $T_{	ext{customs}}$ is regulatory inspection latency. If total duration breaches port gate cut-off $t_{	ext{cutoff}}$, a discrete liner headway penalty is applied: $	au_{	ext{missed}} = 	au_{	ext{actual}} + H_k$ (168 hours).
 
