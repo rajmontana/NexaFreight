@@ -363,6 +363,7 @@ def _build_subscription_payload(
         try:
             bbox_list = json.loads(bbox_json)
             payload["BoundingBox"] = bbox_list
+            payload["BoundingBoxes"] = bbox_list
         except Exception as e:
             logger.error(f"Failed to parse bbox JSON: {e}")
             payload["FiltersShipMMSI"] = sorted(mmsis)

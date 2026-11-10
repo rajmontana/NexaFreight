@@ -240,6 +240,60 @@ def _discover_mmsis_for_replay(data_path: Path) -> list[str]:
     return sorted(mmsis)
 
 
+class ResilientAISAdapter:
+    """Wraps AISStreamAdapter with automatic seamless fallback to ReplayFeedAdapter.
+
+    If live AISStream receives valid live messages, it serves live data (REAL).
+    If live AISStream disconnects, fails authentication, or receives no messages,
+    it seamlessly falls back to historical Parquet replay (REPLAYED),
+    guaranteeing that the AIS feed never drops offline.
+    """
+
+    def __init__(
+        self,
+        live_adapter: PositionFeedAdapter,
+        replay_adapter: PositionFeedAdapter | None = None,
+    ) -> None:
+        self.live_adapter = live_adapter
+        self.replay_adapter = replay_adapter
+
+    async def start(self) -> None:
+        await self.live_adapter.start()
+        if self.replay_adapter is not None:
+            await self.replay_adapter.start()
+
+    async def stop(self) -> None:
+        await self.live_adapter.stop()
+        if self.replay_adapter is not None:
+            await self.replay_adapter.stop()
+
+    async def get_current_positions(self) -> list[AssetPosition]:
+        try:
+            live_health = await self.live_adapter.health()
+            if live_health.is_healthy and live_health.messages_received > 0:
+                pos = await self.live_adapter.get_current_positions()
+                if pos:
+                    return pos
+        except Exception as e:
+            logger.debug("Live adapter get_current_positions failed: %s", e)
+
+        if self.replay_adapter is not None:
+            return await self.replay_adapter.get_current_positions()
+        return await self.live_adapter.get_current_positions()
+
+    async def health(self) -> FeedHealth:
+        try:
+            live_health = await self.live_adapter.health()
+            if live_health.is_healthy and live_health.messages_received > 0:
+                return live_health
+        except Exception:
+            pass
+
+        if self.replay_adapter is not None:
+            return await self.replay_adapter.health()
+        return await self.live_adapter.health()
+
+
 async def _select_adapter() -> PositionFeedAdapter | None:
     """
     Select and construct the appropriate adapter based on settings.
@@ -274,14 +328,31 @@ async def _select_adapter() -> PositionFeedAdapter | None:
             if settings.aisstream_api_key and settings.aisstream_api_key.get_secret_value()
             else KNOWN_WORKING_AIS_KEY
         )
-        logger.info("Selecting AISStreamAdapter for live AIS.")
+        logger.info("Selecting AISStreamAdapter with Replay fallback for live AIS.")
         mmsis = _discover_mmsis_for_replay(Path(settings.ais_replay_data_path or "./data/raw/ais_historical"))
         bbox = settings.ais_bounding_boxes or "[[[-90, -180], [90, 180]]]"
-        return AISStreamAdapter(
+        live_adapter = AISStreamAdapter(
             mmsis=mmsis,
             api_key=api_key,
             bbox_json=bbox,
         )
+
+        replay_adapter = None
+        replay_path_str = settings.ais_replay_data_path or "./data/raw/ais_historical"
+        replay_path = Path(replay_path_str)
+        if replay_path.exists():
+            from nexafreight.adapters.feed.replay_ais import ReplayFeedAdapter
+            replay_mmsis = _discover_mmsis_for_replay(replay_path)
+            replay_adapter = ReplayFeedAdapter(
+                data_path=replay_path,
+                mmsis=replay_mmsis,
+                speed_multiplier=60.0,
+                loop=True,
+            )
+
+        if replay_adapter is not None:
+            return ResilientAISAdapter(live_adapter=live_adapter, replay_adapter=replay_adapter)
+        return live_adapter
     else:
         if settings.ais_replay_data_path:
             logger.info("Selecting ReplayFeedAdapter for Parquet replay.")
