@@ -1,7 +1,3 @@
-from __future__ import annotations
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
 """Seed and activate a globally distributed multimodal fleet across the world.
 
 Covers:
@@ -16,12 +12,15 @@ Covers:
 - Plus domestic Indian express corridors (Road, Rail, Air)
 """
 
+from __future__ import annotations
 
 import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from sqlalchemy import create_engine, select, text
 
@@ -379,6 +378,26 @@ def activate():
             )
             """)
         )
+
+        # Upgrade existing ROAD legs with matching real highway geometries
+        road_edges = conn.execute(
+            text("SELECT from_node_id, to_node_id, geometry_json FROM network_edges WHERE mode = 'ROAD' AND geometry_json IS NOT NULL")
+        ).fetchall()
+        synced_road_legs = 0
+        for r_edge in road_edges:
+            up_res = conn.execute(
+                text("""
+                UPDATE legs
+                SET route_geometry_json = :geom
+                WHERE transport_mode = 'ROAD'
+                  AND origin_id = :from_id
+                  AND destination_id = :to_id
+                """),
+                {"geom": r_edge[2], "from_id": r_edge[0], "to_id": r_edge[1]}
+            )
+            synced_road_legs += up_res.rowcount or 0
+        if synced_road_legs > 0:
+            print(f"Synced real curved highway geometry to {synced_road_legs} road legs.")
 
     print("Successfully activated live global multimodal fleet relative to current time!")
 

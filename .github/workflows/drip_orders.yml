@@ -1,6 +1,9 @@
 name: Realtime Order Drip Simulation
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     # Run twice daily on weekdays (00:00 UTC and 12:00 UTC)
     - cron: '0 0,12 * * 1-5'
