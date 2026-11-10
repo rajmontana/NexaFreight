@@ -3,7 +3,7 @@
 # Command: npx vitest run; npx tsc --noEmit; npm run build
 
 === 1. VITEST TEST RESULTS ===
-RUN  v2.1.9 C:/Users/RAJ KUMAR MERUGU/Downloads/nexagithub/NexaFreight-fresh/frontend
+RUN  v2.1.9 <repo>/frontend
 
  ✓ src/lib/style-tokens.test.ts (26 tests)
  ✓ src/app/api/directions/route.test.ts (20 tests)

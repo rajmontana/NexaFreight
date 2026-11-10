@@ -1,0 +1,44 @@
+# Date: 2026-11-10T10:39:29.636889+00:00
+# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Command: generate Figure 6.1 and Figure 7.1 data from compute_delay_leakage_and_ablation.py and 24_red_sea_drill.py
+
+=== FIGURE 6.1 DATA: DELAY RISK CLASSIFIER - UNIVARIATE FEATURE PREDICTIVE SIGNAL ===
+Source Script: <repo>/backend/scripts/compute_delay_leakage_and_ablation.py
+Dataset: DataCo Chronological Test Split (N = 8,109 rows; late 2017)
+
+Rank | Feature Name               | Univariate Test ROC-AUC | Predictive Signal Category
+-----+----------------------------+-------------------------+-----------------------------------------
+ 1   | scheduled_shipping_days    | 0.7289                  | Deterministic / Synthetic Policy Rule
+ 2   | shipping_mode              | 0.7095                  | Service Class Proxy (recovers schedule)
+ 3   | order_profit               | 0.5045                  | Random Noise / Uninformative (~0.50)
+ 4   | shipping_cost              | 0.5042                  | Random Noise / Uninformative (~0.50)
+ 5   | sla_month                  | 0.5038                  | Random Noise / Uninformative (~0.50)
+ 6   | revenue                    | 0.5034                  | Random Noise / Uninformative (~0.50)
+ 7   | order_country              | 0.5024                  | Random Noise / Uninformative (~0.50)
+ 8   | sla_quarter                | 0.5007                  | Random Noise / Uninformative (~0.50)
+ 9   | total_distance_km          | 0.5000                  | Constant (0.0 km across all rows)
+ 10  | leg_count                  | 0.5000                  | Constant (1 leg across all rows)
+ 11  | cargo_class                | 0.4990                  | Random Noise / Uninformative (~0.50)
+ 12  | sla_weekday                | 0.4988                  | Random Noise / Uninformative (~0.50)
+ 13  | product_price              | 0.4946                  | Random Noise / Uninformative (~0.50)
+ 14  | customer_country           | 0.4944                  | Random Noise / Uninformative (~0.50)
+
+Model Configurations Summary:
+- Full 14-Feature LightGBM Model: Test ROC-AUC = 0.7273
+- Best Single Feature (scheduled_shipping_days): Test ROC-AUC = 0.7289
+- Incremental Lift (14-Feature vs. 1-Feature): Delta = -0.0016 (Bootstrap 95% CI: [-0.0075, +0.0044])
+- Feature Ablation (removing mode & scheduled_shipping_days): Test ROC-AUC = 0.5007 (collapses to random guessing)
+
+=== FIGURE 7.1 DATA: AUTOMATED RED SEA DETOUR DRILL - OPERATIONAL & MARITIME BENCHMARK ===
+Source Script: <repo>/backend/scripts/24_red_sea_drill.py
+Methodology: Marine network routing comparing Suez Canal transit vs. Cape of Good Hope detour (neo-panamax vessel)
+
+Corridor (Origin -> Dest) | Primary (Suez) | Detour (Cape) | Distance Delta | Ratio | Published Ref | Added Time | Drill Status
+--------------------------+----------------+---------------+----------------+-------+---------------+------------+-------------
+INJNP -> NLRTM (Nhava Sheva)| 6,376 nm       | 10,901 nm     | +4,525 nm      | 1.710 | 1.72 +/- 0.15 | +201.5 h   | PASSED
+INMUN -> NLRTM (Mundra)     | 6,314 nm       | 11,015 nm     | +4,701 nm      | 1.744 | 1.72 +/- 0.15 | +209.9 h   | PASSED
+SGSIN -> NLRTM (Singapore)  | 8,388 nm       | 10,434 nm     | +2,046 nm      | 1.244 | 1.25 +/- 0.08 | +83.4 h    | PASSED
+
+Aggregate Performance:
+- All 3 corridor distance ratios land within UNCTAD-anchored empirical bounds.
+- Drill Exit Status: RED SEA DRILL: GREEN (0 assertion failures).

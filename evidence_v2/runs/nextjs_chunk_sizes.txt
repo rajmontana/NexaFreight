@@ -1,0 +1,74 @@
+# Next.js Production Build Chunk Sizes (Raw & Gzip)
+Total JavaScript Chunks: 68
+Aggregate Bundle Size: 2866.3 kB raw (832.6 kB gzipped)
+
+| Chunk File | Relative Path | Raw Size (kB) | Gzip Size (kB) |
+| :--- | :--- | :---: | :---: |
+| `ca4dcb09.1ee0c36becc993be.js` | `chunks/ca4dcb09.1ee0c36becc993be.js` | 1041.4 kB | 281.3 kB |
+| `2342-6890f68a615f2927.js` | `chunks/2342-6890f68a615f2927.js` | 399.7 kB | 116.4 kB |
+| `3794-fba3f76785a3c234.js` | `chunks/3794-fba3f76785a3c234.js` | 237.5 kB | 65.4 kB |
+| `4bd1b696-8cd12253b448cc13.js` | `chunks/4bd1b696-8cd12253b448cc13.js` | 199.0 kB | 62.4 kB |
+| `framework-b33a8f5d57cd8d87.js` | `chunks/framework-b33a8f5d57cd8d87.js` | 185.2 kB | 58.4 kB |
+| `main-2e20e3059a6dd54d.js` | `chunks/main-2e20e3059a6dd54d.js` | 138.2 kB | 41.3 kB |
+| `7579-c360d271a4fbad92.js` | `chunks/7579-c360d271a4fbad92.js` | 122.2 kB | 40.2 kB |
+| `polyfills-42372ed130431b0a.js` | `chunks/polyfills-42372ed130431b0a.js` | 110.0 kB | 38.5 kB |
+| `2913.6db1b515e04b4d58.js` | `chunks/2913.6db1b515e04b4d58.js` | 105.2 kB | 27.9 kB |
+| `page-5bf7b535c27a4a8e.js` | `chunks/app/page-5bf7b535c27a4a8e.js` | 57.6 kB | 14.8 kB |
+| `page-d884166d92b6111f.js` | `chunks/app/insights/page-d884166d92b6111f.js` | 34.8 kB | 9.6 kB |
+| `layout-dfbfbaf8e1b30d30.js` | `chunks/app/layout-dfbfbaf8e1b30d30.js` | 27.8 kB | 8.5 kB |
+| `page-f35abaea4b403691.js` | `chunks/app/shipments/[id]/page-f35abaea4b403691.js` | 32.9 kB | 8.4 kB |
+| `page-fb98bf36b0a86949.js` | `chunks/app/alerts/page-fb98bf36b0a86949.js` | 26.4 kB | 7.3 kB |
+| `3606-d997313ab7f1b9dc.js` | `chunks/3606-d997313ab7f1b9dc.js` | 25.5 kB | 5.6 kB |
+| `page-2db6b22df626f9a4.js` | `chunks/app/shipments/page-2db6b22df626f9a4.js` | 17.9 kB | 5.1 kB |
+| `page-48e29baa5d0bdbce.js` | `chunks/app/login/page-48e29baa5d0bdbce.js` | 15.8 kB | 5.0 kB |
+| `5840-3fc03e7b75d27f6f.js` | `chunks/5840-3fc03e7b75d27f6f.js` | 15.6 kB | 5.0 kB |
+| `9843-47e3620a3c4405af.js` | `chunks/9843-47e3620a3c4405af.js` | 9.8 kB | 4.2 kB |
+| `466-c38bc6608c884fc8.js` | `chunks/466-c38bc6608c884fc8.js` | 13.0 kB | 4.0 kB |
+| `8952-efe59b05444a5a16.js` | `chunks/8952-efe59b05444a5a16.js` | 9.2 kB | 3.1 kB |
+| `5015-a2286ce0ae13de81.js` | `chunks/5015-a2286ce0ae13de81.js` | 8.1 kB | 2.9 kB |
+| `4071.693f7931aa9fd2bf.js` | `chunks/4071.693f7931aa9fd2bf.js` | 6.9 kB | 2.7 kB |
+| `webpack-b5c76b18fe858873.js` | `chunks/webpack-b5c76b18fe858873.js` | 4.6 kB | 2.2 kB |
+| `3899.d4d0ae202f418161.js` | `chunks/3899.d4d0ae202f418161.js` | 4.7 kB | 2.0 kB |
+| `page-69d6bcba50a8b098.js` | `chunks/app/_not-found/page-69d6bcba50a8b098.js` | 2.6 kB | 1.0 kB |
+| `_buildManifest.js` | `_KdS4sNTxcOqru_bfsDm7/_buildManifest.js` | 1.9 kB | 0.5 kB |
+| `1966.b8f83f7ba376c962.js` | `chunks/1966.b8f83f7ba376c962.js` | 0.7 kB | 0.4 kB |
+| `main-app-8223e27c5b36914e.js` | `chunks/main-app-8223e27c5b36914e.js` | 0.5 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/ai/analyze/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/ai/briefing/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/ai/overview/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/air-quality/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/aircraft/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/arcgis/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/astra/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/cloudflare-radar/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/cyber-attacks/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/cyber-threats/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/directions/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/entity/expand/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/flight-route/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/flights/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/gdelt/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/geo/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/geosearch/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/github-webhook/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/health/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/infrastructure/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/live-news/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/maritime/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/news/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/proxy-tiles/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/radar/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/scm-suppliers/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/sdk/ingest/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/sdk/stream/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/sentinel/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/space-weather/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/stats/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `route-b5bc69b5d7ded89f.js` | `chunks/app/api/weather/route-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `page-b5bc69b5d7ded89f.js` | `chunks/app/_global-error/page-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `app-error-b5bc69b5d7ded89f.js` | `chunks/next/dist/client/components/builtin/app-error-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `forbidden-b5bc69b5d7ded89f.js` | `chunks/next/dist/client/components/builtin/forbidden-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `not-found-b5bc69b5d7ded89f.js` | `chunks/next/dist/client/components/builtin/not-found-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `unauthorized-b5bc69b5d7ded89f.js` | `chunks/next/dist/client/components/builtin/unauthorized-b5bc69b5d7ded89f.js` | 0.3 kB | 0.2 kB |
+| `global-error-8e7fafd7d85cfd8b.js` | `chunks/next/dist/client/components/builtin/global-error-8e7fafd7d85cfd8b.js` | 0.2 kB | 0.2 kB |
+| `_ssgManifest.js` | `_KdS4sNTxcOqru_bfsDm7/_ssgManifest.js` | 0.1 kB | 0.1 kB |

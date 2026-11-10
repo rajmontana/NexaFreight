@@ -1,0 +1,9 @@
+# Date: 2026-11-10T10:35:21.240819+00:00
+# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Command: python <repo>/backend/scripts/24_red_sea_drill.py
+
+== Red Sea replay: Suez vs Cape (neo-panamax, live marine graph) ==
+  [PASS] INJNP->NLRTM   suez   6376 nm -> cape  10901 nm  ratio 1.710 (ref 1.72 +-0.15, +201.5 h)
+  [PASS] INMUN->NLRTM   suez   6314 nm -> cape  11015 nm  ratio 1.744 (ref 1.72 +-0.15, +209.9 h)
+  [PASS] SGSIN->NLRTM   suez   8388 nm -> cape  10434 nm  ratio 1.244 (ref 1.25 +-0.08, +83.4 h)
+RED SEA DRILL: GREEN

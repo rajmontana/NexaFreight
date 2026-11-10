@@ -1,6 +1,6 @@
 # Built-In Errors Audit — Every Finding Behind "Unreal Outputs"
 
-**Date:** 23 Sep 2026 · **Method:** full read of every output-producing file in rajmontana/NexaFreight `main @ 03c68f6` (services, ML serving, API routes, pipeline scripts, seed, analytics, frontend client) + sandbox *execution* of suspect paths (not just reading — the two worst bugs were proven by running code). Supersedes the speculative parts of `NexaFreight_Audit.md`; items proven fixed are explicitly cleared. **Sources at bottom.**
+**Date:** 23 Sep 2026 · **Method:** full read of every output-producing file in <author-handle>/NexaFreight `main @ 03c68f6` (services, ML serving, API routes, pipeline scripts, seed, analytics, frontend client) + sandbox *execution* of suspect paths (not just reading — the two worst bugs were proven by running code). Supersedes the speculative parts of `NexaFreight_Audit.md`; items proven fixed are explicitly cleared. **Sources at bottom.**
 
 ---
 
@@ -94,7 +94,7 @@
 
 ## Sources
 
-**Code (rajmontana/NexaFreight `main @ 03c68f6`, raw pulls read in full or targeted):** `sla_checker.py`, `alert_engine.py`, `reroute_engine.py`, `disruption_detector.py`, `decision_executor.py`, `consolidation.py`, `eta_model.py`, `predictions.py`, `analytics.py`, `copilot.py`, `planner.py`, `route_planner.py`, `seed_demo_data.py`, `12_train_demand_forecast.py`, `03_ingest_port_data.py`, `04/05/06/07` scripts, `financial_engine.py`, `core/params.py`, `docs/parameters.md`, `ml/{constants,features,data_source}.py`, `01/09/10/11` scripts, `frontend/src/lib/nexafreight/client.ts`, `app/page.tsx`.
+**Code (<author-handle>/NexaFreight `main @ 03c68f6`, raw pulls read in full or targeted):** `sla_checker.py`, `alert_engine.py`, `reroute_engine.py`, `disruption_detector.py`, `decision_executor.py`, `consolidation.py`, `eta_model.py`, `predictions.py`, `analytics.py`, `copilot.py`, `planner.py`, `route_planner.py`, `seed_demo_data.py`, `12_train_demand_forecast.py`, `03_ingest_port_data.py`, `04/05/06/07` scripts, `financial_engine.py`, `core/params.py`, `docs/parameters.md`, `ml/{constants,features,data_source}.py`, `01/09/10/11` scripts, `frontend/src/lib/nexafreight/client.ts`, `app/page.tsx`.
 **Executed verifications (this sandbox):** artifact loads (delay + ETA `category_levels`), serving-style vs aligned categorical prediction equivalence (0.5072 = 0.5072), country-code→MISSING effect (0.5079 vs 0.5072), ETA-train SEA share 59.7% from real DataCo (Mendeley DOI 10.17632/8gx2fvg2k6.5).
 **External anchors for E7/E8/E9:** Livemint govt study (37–38/47–48 km/h) livemint.com/industry/india-expressway-boom-freight-bottleneck…; TERI baseline teriin.org/sites/default/files/2024-06/TERI%20Baseline%20Report_LD.pdf; TCI–IIM cdn.tcil.in; DPIIT–NCAER [CTR §J #28]; GLEC v3.2 factors ecofreight.co/blog/glec-v3-2-explained + ECTA GLEC Module 5.
 **Internal:** `Project_Verified_Reality.md` (trace basis), `Sandbox_Validation_Run.md` (execution basis), `External_Benchmark_Validation.md` (rows cross-referenced), `NexaFreight_Audit.md` (superseded where contradicted).

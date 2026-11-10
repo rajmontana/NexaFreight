@@ -15,7 +15,7 @@ Cited Hash | Status in Git | Object Type | Resolved Summary / Note
 -----------+---------------+-------------+-----------------------------------------------------------
 09786eb    | FOUND         | commit      | 09786eb feat(release): NexaFreight SmartTrack AI multi-modal predictive logistics platform
 ee69012    | FOUND         | commit      | ee69012 feat: NexaFreight AI Control Tower â€” production codebase & documentation
-4441c13    | FOUND         | commit      | 4441c13 Merge pull request #13 from rajmontana/rebuild/day13-paper
+4441c13    | FOUND         | commit      | 4441c13 Merge pull request #13 from <author-handle>/rebuild/day13-paper
 a2f3f16    | FOUND         | commit      | a2f3f16 chore: prune agent charters, scrub root artifacts, and add real-world fleet sync
 7e6921c    | FOUND         | commit      | 7e6921c fix(release): resolve Phase 5 release blockers and harden security
 2f6ece9    | FOUND         | commit      | 2f6ece9 docs(evidence): add raw alembic heads, CO2 backfill, and pytest summary

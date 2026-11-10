@@ -11,7 +11,7 @@ a1b2c3d4e5f6, f7a8b9c0d1e2, e4f5a6b7c8d9, ca009891c5e2, 334acd8cb53d, b2c3d4e5f6
 === FULL ALEMBIC HISTORY ===
 Rev: a1b2c3d4e5f6 (head)
 Parent: f7a8b9c0d1e2
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20261029_1400_a1b2c3d4e5f6_immutable_audit_logs_trigger.py
+Path: <repo>\backend\migrations\versions\20261029_1400_a1b2c3d4e5f6_immutable_audit_logs_trigger.py
 
     Enforce append-only immutability on audit_logs via database triggers.
     
@@ -21,7 +21,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: f7a8b9c0d1e2
 Parent: e4f5a6b7c8d9
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20261029_1300_f7a8b9c0d1e2_backfill_glec_v3_co2_factors.py
+Path: <repo>\backend\migrations\versions\20261029_1300_f7a8b9c0d1e2_backfill_glec_v3_co2_factors.py
 
     backfill GLEC v3.2 multimodal CO2 emission factors across legs and parameters (ML-03)
     
@@ -40,7 +40,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: e4f5a6b7c8d9
 Parent: ca009891c5e2
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20261029_1200_e4f5a6b7c8d9_relabel_reconstructed_legs_provenance.py
+Path: <repo>\backend\migrations\versions\20261029_1200_e4f5a6b7c8d9_relabel_reconstructed_legs_provenance.py
 
     relabel reconstructed legs and shipments provenance from REAL to DERIVED (ML-01)
     
@@ -53,7 +53,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: ca009891c5e2
 Parent: 334acd8cb53d
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260927_1100_ca009891c5e2_add_international_network.py
+Path: <repo>\backend\migrations\versions\20260927_1100_ca009891c5e2_add_international_network.py
 
     add international network
     
@@ -63,7 +63,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: 334acd8cb53d
 Parent: b2c3d4e5f6a7
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260927_0714_334acd8cb53d_add_source_to_port_daily_stats.py
+Path: <repo>\backend\migrations\versions\20260927_0714_334acd8cb53d_add_source_to_port_daily_stats.py
 
     add source to port_daily_stats
     
@@ -73,7 +73,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: b2c3d4e5f6a7
 Parent: c5e6f7a8b9d0
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260926_2200_b2c3d4e5f6a7_add_external_events.py
+Path: <repo>\backend\migrations\versions\20260926_2200_b2c3d4e5f6a7_add_external_events.py
 
     add external_events
     
@@ -83,7 +83,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: c5e6f7a8b9d0
 Parent: b7d4e2f8a6c1
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260925_0640_c5e6f7a8b9d0_add_edge_geometry.py
+Path: <repo>\backend\migrations\versions\20260925_0640_c5e6f7a8b9d0_add_edge_geometry.py
 
     add network edge geometry cache (day-14: real road paths via ORS)
     
@@ -93,7 +93,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: b7d4e2f8a6c1
 Parent: f9c3d7e2a8b1
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_1310_b7d4e2f8a6c1_add_order_weight_volume.py
+Path: <repo>\backend\migrations\versions\20260924_1310_b7d4e2f8a6c1_add_order_weight_volume.py
 
     add order weight/volume for capacity-aware consolidation (task 21: E13)
     
@@ -103,7 +103,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: f9c3d7e2a8b1
 Parent: e7a9f2b4c1d3
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_1230_f9c3d7e2a8b1_add_parties.py
+Path: <repo>\backend\migrations\versions\20260924_1230_f9c3d7e2a8b1_add_parties.py
 
     add parties + order party FKs (task 18: India demo world)
     
@@ -113,7 +113,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: e7a9f2b4c1d3
 Parent: c7d9e1f3a5b6
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_1030_e7a9f2b4c1d3_add_decision_outcomes.py
+Path: <repo>\backend\migrations\versions\20260924_1030_e7a9f2b4c1d3_add_decision_outcomes.py
 
     add decision_outcomes table (task 12: predicted-vs-realized logging)
     
@@ -123,7 +123,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: c7d9e1f3a5b6
 Parent: a1e5f7c9d2b4
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_0615_c7d9e1f3a5b6_add_position_reports_unique.py
+Path: <repo>\backend\migrations\versions\20260924_0615_c7d9e1f3a5b6_add_position_reports_unique.py
 
     add missing unique index on position_reports (E24)
     
@@ -143,7 +143,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: a1e5f7c9d2b4
 Parent: 3f8a2b1c9d4e
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_0000_a1e5f7c9d2b4_add_shipment_provenance.py
+Path: <repo>\backend\migrations\versions\20260924_0000_a1e5f7c9d2b4_add_shipment_provenance.py
 
     add shipment.provenance (audit E3)
     
@@ -159,7 +159,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: 3f8a2b1c9d4e
 Parent: 8420d96dacf5
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260921_2000_3f8a2b1c9d4e_add_multimodal_network.py
+Path: <repo>\backend\migrations\versions\20260921_2000_3f8a2b1c9d4e_add_multimodal_network.py
 
     Add multimodal network tables and seed India network
     
@@ -184,7 +184,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: 8420d96dacf5
 Parent: 002_composite_index
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260921_1359_8420d96dacf5_add_parameter_tables.py
+Path: <repo>\backend\migrations\versions\20260921_1359_8420d96dacf5_add_parameter_tables.py
 
     Add parameter tables
     
@@ -194,7 +194,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: 002_composite_index
 Parent: 001_initial_schema
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\002_composite_index.py
+Path: <repo>\backend\migrations\versions\002_composite_index.py
 
     add composite index on shipments status and mode
     
@@ -204,7 +204,7 @@ Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\m
 
 Rev: 001_initial_schema
 Parent: <base>
-Path: C:\Users\RAJ KUMAR MERUGU\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\001_initial_schema.py
+Path: <repo>\backend\migrations\versions\001_initial_schema.py
 
     Initial schema with all domain models
     

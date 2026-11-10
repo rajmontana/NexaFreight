@@ -1,0 +1,37 @@
+# Frontend API Route Inventory & Usage Audit
+Total Routes: 32 | Used in UI: 11 | Unused / Orphaned: 21
+
+| Route Path | Purpose / Description | Auth | Used in UI? | Referenced In |
+| :--- | :--- | :--- | :---: | :--- |
+| `/api/ai/analyze` | * ═══════════════════════════════════════════════════════════════ * NexaFreight  | None (Public) | **UNUSED** | `None` |
+| `/api/ai/briefing` | * ═══════════════════════════════════════════════════════════════ * NexaFreight  | None (Public) | **UNUSED** | `None` |
+| `/api/ai/overview` | * ═══════════════════════════════════════════════════════════════ * NexaFreight  | None (Public) | **UNUSED** | `None` |
+| `/api/air-quality` | * NexaFreight — Air Quality Monitoring API * Fetches real-time global air qualit | None (Public) | **UNUSED** | `None` |
+| `/api/aircraft` | adsb.lol/data/traces'; | None (Public) | **YES** | `components/GlobeMap.tsx` |
+| `/api/arcgis` | * NexaFreight — ArcGIS Public Data Integration * * Two query modes: * 1. Search: | None (Public) | **UNUSED** | `None` |
+| `/api/astra` | Allow Vercel/Next.js to run this route for up to 5 minutes if needed | None (Public) | **UNUSED** | `None` |
+| `/api/cloudflare-radar` | * NexaFreight — Cloudflare Radar (internet disruption + attack origin) * Source: | Bearer / JWT check | **UNUSED** | `None` |
+| `/api/cyber-attacks` | * NexaFreight — Live Cyber Attack Feed * Generates animated attack arcs from rea | None (Public) | **UNUSED** | `None` |
+| `/api/cyber-threats` | Cyber threat intelligence from public feeds | None (Public) | **UNUSED** | `None` |
+| `/api/directions` | valhalla1.openstreetmap.de'; | None (Public) | **UNUSED** | `None` |
+| `/api/entity/expand` | * Thin proxy to the NexaFreight Intelligence Layer (NexaFreight-intel). * * In D | None (Public) | **UNUSED** | `None` |
+| `/api/flight-route` | * NexaFreight — Flight Route API (v2) * * Resolves callsign/ICAO24 → origin + de | None (Public) | **YES** | `components/GlobeMap.tsx` |
+| `/api/flights` | 30 regions covering every major aviation corridor at 250 nm radius. | Bearer / JWT check | **YES** | `app/api/health/route.ts, app/api/stats/route.ts` |
+| `/api/gdelt` | * NexaFreight — Real-Time Geopolitical Events (GDELT 2.0 GeoJSON API) * Source:  | None (Public) | **YES** | `app/api/health/route.ts, app/api/scm-suppliers/route.ts, app/api/stats/route.ts` |
+| `/api/geo` | Server-side proxy for IP geolocation — avoids mixed-content block on HTTPS pages | None (Public) | **UNUSED** | `None` |
+| `/api/geosearch` | photon.komoot.io/api'; | None (Public) | **UNUSED** | `None` |
+| `/api/github-webhook` | Fail-closed: require both secret and forward URL | None (Public) | **UNUSED** | `None` |
+| `/api/health` | Mock/Proxy data handler | None (Public) | **YES** | `components/GlobalStatusBar.tsx, lib/nexafreight/client.ts` |
+| `/api/infrastructure` | * NexaFreight — Global Infrastructure API * Tracks critical global infrastructur | None (Public) | **YES** | `app/api/stats/route.ts` |
+| `/api/live-news` | * NexaFreight — Live News Feeds v3 * embed_allowed: true → can be iframed direct | None (Public) | **YES** | `components/LiveAlerts.tsx` |
+| `/api/maritime` | * NexaFreight — Maritime Intelligence * Real-time AIS vessel tracking via aisstr | None (Public) | **UNUSED** | `None` |
+| `/api/news` | * NexaFreight — Military-Grade Intelligence API * Fetches Telegram OSINT feeds d | None (Public) | **YES** | `app/api/health/route.ts, components/LiveAlerts.tsx` |
+| `/api/proxy-tiles` | Only allow cartocdn.com domains to prevent open proxy abuse | None (Public) | **UNUSED** | `None` |
+| `/api/radar` | * NexaFreight — Internet Outage Detection (IODA) * Source: Georgia Tech IODA — c | None (Public) | **YES** | `lib/countryCentroids.ts` |
+| `/api/scm-suppliers` | * NexaFreight — SCM Supplier Risk Overlay * Calculates intersection between live | None (Public) | **UNUSED** | `None` |
+| `/api/sdk/ingest` | * ╔══════════════════════════════════════════════════════════════════╗ * ║ POLYB | None (Public) | **UNUSED** | `None` |
+| `/api/sdk/stream` | * ╔══════════════════════════════════════════════════════════════════╗ * ║ POLYB | None (Public) | **YES** | `lib/sdk/PolybolosClient.ts` |
+| `/api/sentinel` | Sentinel-1 SAR Satellite — STAC Catalog via Element84 Earth Search + Copernicus  | None (Public) | **UNUSED** | `None` |
+| `/api/space-weather` | * NexaFreight — Space Weather API * Fetches real-time solar activity from NOAA S | None (Public) | **UNUSED** | `None` |
+| `/api/stats` | * NexaFreight — Global Stats API * Lightweight aggregation endpoint. * Fetches m | None (Public) | **UNUSED** | `None` |
+| `/api/weather` | * NexaFreight — Severe Weather & Anomalies API * Fetches active natural events f | None (Public) | **YES** | `app/api/stats/route.ts` |
