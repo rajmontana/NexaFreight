@@ -1,101 +1,142 @@
-import sqlite3
+"""Activate multimodal fleet legs (SEA, AIR, ROAD, RAIL) dynamically relative to UTC now.
+
+Supports both SQLite (local development) and PostgreSQL (Neon in CI / Render).
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+# Ensure src is on python path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
+from sqlalchemy import create_engine, select, text
+from sqlalchemy.orm import Session
+
 
 def activate():
-    conn = sqlite3.connect('backend/data/nexafreight.db')
-    c = conn.cursor()
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        # Normalize async postgres url to sync if needed for this script
+        sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://").replace("sqlite+aiosqlite:///", "sqlite:///")
+        # Ensure sslmode for Neon if not present
+        if "neon.tech" in sync_url and "sslmode" not in sync_url:
+            sync_url += "?sslmode=require"
+        engine = create_engine(sync_url)
+    else:
+        db_path = Path(__file__).resolve().parent.parent / "data" / "nexafreight.db"
+        engine = create_engine(f"sqlite:///{db_path}")
 
-    # 1. Activate AIR shipments & legs
-    # Leg 60: Hyderabad Airport (HYD) -> Delhi Airport (DEL)
-    c.execute("UPDATE shipments SET status = 'IN_TRANSIT' WHERE id = 'dbc51597-a524-4da4-933f-313c72a06270'")
-    c.execute("""
-        UPDATE legs 
-        SET status = 'IN_PROGRESS',
-            planned_departure = '2026-10-01 10:00:00.000000',
-            actual_departure = '2026-10-01 10:05:00.000000',
-            planned_arrival = '2026-10-02 02:00:00.000000'
-        WHERE id = 60
-    """)
+    now = datetime.now(timezone.utc)
+    t_start_2h = (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+    t_act_2h = (now - timedelta(hours=1, minutes=55)).strftime("%Y-%m-%d %H:%M:%S")
+    t_end_air = (now + timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
+    t_end_road = (now + timedelta(hours=10)).strftime("%Y-%m-%d %H:%M:%S")
+    t_end_rail = (now + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    t_end_sea = (now + timedelta(hours=72)).strftime("%Y-%m-%d %H:%M:%S")
 
-    # Leg 64: Delhi Airport (DEL) -> Mumbai Airport (BOM)
-    c.execute("UPDATE shipments SET status = 'IN_TRANSIT' WHERE id = '53fbeb3d-0965-47a1-b221-74e3e6047435'")
-    c.execute("""
-        UPDATE legs 
-        SET status = 'IN_PROGRESS',
-            planned_departure = '2026-10-01 11:00:00.000000',
-            actual_departure = '2026-10-01 11:05:00.000000',
-            planned_arrival = '2026-10-02 01:00:00.000000'
-        WHERE id = 64
-    """)
+    with engine.begin() as conn:
+        # 1. Activate AIR legs (planes in the air right now)
+        conn.execute(
+            text(f"""
+            UPDATE legs
+            SET status = 'IN_PROGRESS',
+                planned_departure = '{t_start_2h}',
+                actual_departure = '{t_act_2h}',
+                planned_arrival = '{t_end_air}'
+            WHERE id IN (
+                SELECT id FROM legs
+                WHERE transport_mode = 'AIR'
+                  AND route_geometry_json IS NOT NULL
+                LIMIT 8
+            )
+            """)
+        )
 
-    # Leg 126: Delhi Airport (DEL) -> Kolkata Airport (CCU)
-    c.execute("UPDATE shipments SET status = 'IN_TRANSIT' WHERE id = '0c695406-5088-4a69-bd37-ca78f8a53788'")
-    c.execute("""
-        UPDATE legs 
-        SET status = 'IN_PROGRESS',
-            planned_departure = '2026-10-01 09:30:00.000000',
-            actual_departure = '2026-10-01 09:35:00.000000',
-            planned_arrival = '2026-10-02 00:30:00.000000'
-        WHERE id = 126
-    """)
+        # 2. Activate ROAD legs (trucks driving on highways right now)
+        conn.execute(
+            text(f"""
+            UPDATE legs
+            SET status = 'IN_PROGRESS',
+                planned_departure = '{t_start_2h}',
+                actual_departure = '{t_act_2h}',
+                planned_arrival = '{t_end_road}'
+            WHERE id IN (
+                SELECT id FROM legs
+                WHERE transport_mode = 'ROAD'
+                  AND route_geometry_json IS NOT NULL
+                LIMIT 15
+            )
+            """)
+        )
 
-    # 2. Activate ROAD (truck) shipments & legs
-    # Leg 59: Mumbai -> Pune Express Highway
-    c.execute("UPDATE shipments SET status = 'IN_TRANSIT' WHERE id = '09ca02dc-54a3-4f07-bd85-078ff5848854'")
-    c.execute("""
-        UPDATE legs 
-        SET status = 'IN_PROGRESS',
-            planned_departure = '2026-10-01 08:00:00.000000',
-            actual_departure = '2026-10-01 08:15:00.000000',
-            planned_arrival = '2026-10-02 04:00:00.000000'
-        WHERE id = 59
-    """)
+        # 3. Activate RAIL legs (trains hauling cargo right now)
+        conn.execute(
+            text(f"""
+            UPDATE legs
+            SET status = 'IN_PROGRESS',
+                planned_departure = '{t_start_2h}',
+                actual_departure = '{t_act_2h}',
+                planned_arrival = '{t_end_rail}'
+            WHERE id IN (
+                SELECT id FROM legs
+                WHERE transport_mode = 'RAIL'
+                  AND route_geometry_json IS NOT NULL
+                LIMIT 6
+            )
+            """)
+        )
 
-    # Leg 66: Mumbai -> Ahmednagar Drayage
-    c.execute("UPDATE shipments SET status = 'IN_TRANSIT' WHERE id = '4653eb5d-88b5-4476-9e6a-aa6990515235'")
-    c.execute("""
-        UPDATE legs 
-        SET status = 'IN_PROGRESS',
-            planned_departure = '2026-10-01 07:30:00.000000',
-            actual_departure = '2026-10-01 07:40:00.000000',
-            planned_arrival = '2026-10-02 03:00:00.000000'
-        WHERE id = 66
-    """)
+        # 4. Activate SEA legs (container ships sailing ocean lanes right now)
+        conn.execute(
+            text(f"""
+            UPDATE legs
+            SET status = 'IN_PROGRESS',
+                planned_departure = '{t_start_2h}',
+                actual_departure = '{t_act_2h}',
+                planned_arrival = '{t_end_sea}'
+            WHERE id IN (
+                SELECT id FROM legs
+                WHERE transport_mode = 'SEA'
+                  AND route_geometry_json IS NOT NULL
+                LIMIT 12
+            )
+            """)
+        )
 
-    # Leg 57: Delhi Tughlakabad ICD -> Delhi NCR Road Hub
-    c.execute("""
-        UPDATE legs 
-        SET status = 'IN_PROGRESS',
-            planned_departure = '2026-10-01 09:00:00.000000',
-            actual_departure = '2026-10-01 09:10:00.000000',
-            planned_arrival = '2026-10-02 05:00:00.000000'
-        WHERE id = 57
-    """)
+        # 5. Ensure all parent shipments for IN_PROGRESS legs are IN_TRANSIT
+        conn.execute(
+            text("""
+            UPDATE shipments
+            SET status = 'IN_TRANSIT'
+            WHERE id IN (
+                SELECT DISTINCT shipment_id
+                FROM legs
+                WHERE status = 'IN_PROGRESS'
+                  AND shipment_id IS NOT NULL
+            )
+            """)
+        )
 
-    # Leg 70: Chennai Hub -> Chennai Cargo Gateway
-    c.execute("UPDATE shipments SET status = 'IN_TRANSIT' WHERE id = '139808ae-c059-4691-8a4c-3619d8d4c2ce'")
-    c.execute("""
-        UPDATE legs 
-        SET status = 'IN_PROGRESS',
-            planned_departure = '2026-10-01 08:30:00.000000',
-            actual_departure = '2026-10-01 08:35:00.000000',
-            planned_arrival = '2026-10-02 06:00:00.000000'
-        WHERE id = 70
-    """)
+    print("Successfully activated live multimodal fleet relative to current time!")
 
-    conn.commit()
-    print("Successfully activated AIR and ROAD legs in SQLite!")
+    # Verify breakdown
+    with engine.connect() as conn:
+        res = conn.execute(
+            text("""
+            SELECT transport_mode, count(*)
+            FROM legs
+            WHERE status = 'IN_PROGRESS'
+            GROUP BY transport_mode
+            """)
+        ).fetchall()
+        print("IN_PROGRESS legs by mode:")
+        for r in res:
+            print(f"  {r[0]}: {r[1]}")
 
-    # Verify
-    c.execute("""
-        SELECT l.id, l.transport_mode, l.status, l.planned_departure, l.planned_arrival
-        FROM legs l
-        WHERE l.status = 'IN_PROGRESS'
-    """)
-    rows = c.fetchall()
-    print(f"Total IN_PROGRESS legs: {len(rows)}")
-    for r in rows:
-        print(" ", r)
-    conn.close()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     activate()

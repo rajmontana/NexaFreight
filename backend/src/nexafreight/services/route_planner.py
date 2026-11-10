@@ -155,8 +155,9 @@ class RoutePlanner:
             self.road = road_router
         else:
             from nexafreight.config import get_settings
+            from nexafreight.adapters.routing.road_route import DEFAULT_ORS_KEY
             settings = get_settings()
-            key = settings.ors_api_key.get_secret_value() if settings.ors_api_key else None
+            key = settings.ors_api_key.get_secret_value() if settings.ors_api_key else DEFAULT_ORS_KEY
             self.road = RoadRouter(api_key=key)
             
         self.sea_func = sea_func

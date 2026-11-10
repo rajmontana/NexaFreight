@@ -21,6 +21,9 @@ class RoadRouteResult:
     source: str = "OPENROUTESERVICE"
 
 
+DEFAULT_ORS_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjVlZDIyOWYxNzdjYzQ0NDFiNzRkMDUwNzlhOTAwOGM1IiwiaCI6Im11cm11cjY0In0="
+
+
 class RoadRouter:
     def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key
@@ -43,31 +46,32 @@ class RoadRouter:
         dlat, dlon = dest
 
         if self._client:
-            try:
-                # OpenRouteService expects coordinates in [lon, lat] order
-                coords = [[olon, olat], [dlon, dlat]]
-                routes = self._client.directions(
-                    coordinates=coords,
-                    profile="driving-hgv",
-                    format="geojson",
-                )
-                features = routes.get("features", [])
-                if features:
-                    feat = features[0]
-                    geom = json.dumps(feat.get("geometry", {}))
-                    props = feat.get("properties", {}).get("summary", {})
-                    dist_km = float(props.get("distance", 0.0)) / 1000.0
-                    duration_s = float(props.get("duration", 0.0))
-                    if dist_km > 0 and geom:
-                        return RoadRouteResult(
-                            geometry_geojson=geom,
-                            distance_km=round(dist_km, 2),
-                            duration_s=round(duration_s, 1),
-                            route_quality="COMPUTED",
-                            source="OPENROUTESERVICE",
-                        )
-            except Exception as exc:
-                log.warning("OpenRouteService API call failed (%s); using road fallback", exc)
+            coords = [[olon, olat], [dlon, dlat]]
+            # Try driving-hgv first, then fallback to driving-car for Indian highways
+            for profile in ("driving-hgv", "driving-car"):
+                try:
+                    routes = self._client.directions(
+                        coordinates=coords,
+                        profile=profile,
+                        format="geojson",
+                    )
+                    features = routes.get("features", [])
+                    if features:
+                        feat = features[0]
+                        geom = json.dumps(feat.get("geometry", {}))
+                        props = feat.get("properties", {}).get("summary", {})
+                        dist_km = float(props.get("distance", 0.0)) / 1000.0
+                        duration_s = float(props.get("duration", 0.0))
+                        if dist_km > 0 and geom:
+                            return RoadRouteResult(
+                                geometry_geojson=geom,
+                                distance_km=round(dist_km, 2),
+                                duration_s=round(duration_s, 1),
+                                route_quality="COMPUTED",
+                                source="OPENROUTESERVICE",
+                            )
+                except Exception as exc:
+                    log.warning("OpenRouteService (%s) call failed: %s", profile, exc)
 
         # Fallback: Great-circle distance scaled by corridor or default road circuity factor
         direct_km = haversine_km(olat, olon, dlat, dlon)

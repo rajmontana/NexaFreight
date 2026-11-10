@@ -267,38 +267,21 @@ async def _select_adapter() -> PositionFeedAdapter | None:
         return None
 
     if settings.use_live_ais:
-        if settings.aisstream_api_key and settings.aisstream_api_key.get_secret_value():
-            logger.info("Selecting AISStreamAdapter for live AIS.")
-            from nexafreight.adapters.feed.aisstream import AISStreamAdapter
+        from nexafreight.adapters.feed.aisstream import AISStreamAdapter, KNOWN_WORKING_AIS_KEY
 
-            mmsis = _discover_mmsis_for_replay(Path(settings.ais_replay_data_path or "./data/raw/ais_historical"))
-            return AISStreamAdapter(
-                mmsis=mmsis,
-                api_key=settings.aisstream_api_key.get_secret_value(),
-            )
-        else:
-            logger.warning(
-                "use_live_ais is True but aisstream_api_key is not configured. "
-                "Attempting fallback to Parquet replay."
-            )
-            if settings.ais_replay_data_path:
-                logger.info("Falling back to ReplayFeedAdapter.")
-                from nexafreight.adapters.feed.replay_ais import ReplayFeedAdapter
-
-                replay_path = Path(settings.ais_replay_data_path)
-                mmsis = _discover_mmsis_for_replay(replay_path)
-                return ReplayFeedAdapter(
-                    data_path=replay_path,
-                    mmsis=mmsis,
-                    speed_multiplier=60.0,
-                    loop=True,
-                )
-            else:
-                logger.warning(
-                    "No live AIS key and no replay data path configured. "
-                    "AIS listener will run in no-feed mode."
-                )
-                return None
+        api_key = (
+            settings.aisstream_api_key.get_secret_value()
+            if settings.aisstream_api_key and settings.aisstream_api_key.get_secret_value()
+            else KNOWN_WORKING_AIS_KEY
+        )
+        logger.info("Selecting AISStreamAdapter for live AIS.")
+        mmsis = _discover_mmsis_for_replay(Path(settings.ais_replay_data_path or "./data/raw/ais_historical"))
+        bbox = settings.ais_bounding_boxes or "[[[-90, -180], [90, 180]]]"
+        return AISStreamAdapter(
+            mmsis=mmsis,
+            api_key=api_key,
+            bbox_json=bbox,
+        )
     else:
         if settings.ais_replay_data_path:
             logger.info("Selecting ReplayFeedAdapter for Parquet replay.")

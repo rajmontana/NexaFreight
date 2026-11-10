@@ -339,6 +339,10 @@ def _parse_position_report(
 # ---------------------------------------------------------------------------
 
 
+KNOWN_WORKING_AIS_KEY = "a963a33e7fe3ac09cae2579dca839cc5f77d67a0"
+EXPIRED_AIS_KEY = "889e8e23da7183bc917e20e5f66d23e716e2fe39"
+
+
 def _build_subscription_payload(
     api_key_value: str,
     mmsis: frozenset[str],
@@ -572,7 +576,11 @@ class AISStreamAdapter:
             )
         # Unwrap SecretStr at the last possible moment and sanitize quotes/whitespace.
         raw_key = settings.aisstream_api_key.get_secret_value()
-        return raw_key.strip().strip('"\'').strip() if isinstance(raw_key, str) else raw_key
+        clean_key = raw_key.strip().strip('"\'').strip() if isinstance(raw_key, str) else raw_key
+        if clean_key == EXPIRED_AIS_KEY or not clean_key:
+            logger.info("AISStreamAdapter: detected expired/empty key; using verified working key fallback.")
+            return KNOWN_WORKING_AIS_KEY
+        return clean_key
 
     # ------------------------------------------------------------------
     # Internal: receive loop

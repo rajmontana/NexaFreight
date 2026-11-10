@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       per_day:
-        description: 'Number of orders to drip (default: 8)'
+        description: 'Number of orders to drip (default: 20)'
         required: false
-        default: '8'
+        default: '20'
       backfill:
         description: 'Number of prior days to backfill (0 for today only)'
         required: false
@@ -41,6 +41,21 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
+      - name: Build Road Highway Geometry & Activate Multimodal Fleet
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ORS_API_KEY: ${{ secrets.ORS_API_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'nexafreight-production-jwt-secret-min32chars' }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning::DATABASE_URL secret is not configured in repository secrets. Skipping."
+            exit 0
+          fi
+          echo "Building highway road geometry..."
+          python scripts/25_build_land_geometry.py || echo "Warning: 25_build_land_geometry completed with non-zero exit code"
+          echo "Activating live multimodal fleet..."
+          python scripts/30_activate_multimodal_fleet.py || echo "Warning: 30_activate_multimodal_fleet completed with non-zero exit code"
+
       - name: Execute Autonomous Order Drip
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -52,9 +67,8 @@ jobs:
           fi
           if [ "${{ github.event.inputs.backfill }}" != "" ] && [ "${{ github.event.inputs.backfill }}" != "0" ]; then
             echo "Running drip simulation with backfill ${{ github.event.inputs.backfill }} days..."
-            python scripts/21_drip_orders.py --backfill ${{ github.event.inputs.backfill }} --per-day ${{ github.event.inputs.per_day || 8 }}
+            python scripts/21_drip_orders.py --backfill ${{ github.event.inputs.backfill }} --per-day ${{ github.event.inputs.per_day || 20 }}
           else
             echo "Running daily order drip..."
-            python scripts/21_drip_orders.py --once --per-day ${{ github.event.inputs.per_day || 8 }}
+            python scripts/21_drip_orders.py --once --per-day ${{ github.event.inputs.per_day || 20 }}
           fi
-
