@@ -236,3 +236,21 @@ describe('parseTrace leg trimming', () => {
     expect(parseTrace({ trace: rows as never }, 700, false).points).toBe(13);
   });
 });
+
+import { GET } from './route';
+
+describe('GET /api/aircraft handler auth and validation', () => {
+  it('returns 401 when unauthenticated', async () => {
+    const req = new Request('http://localhost:3000/api/aircraft?icao24=ae291a');
+    const res = await GET(req);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when authenticated but icao24 is invalid', async () => {
+    const req = new Request('http://localhost:3000/api/aircraft?icao24=invalid', {
+      headers: { 'Authorization': 'Bearer test-token' },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(400);
+  });
+});

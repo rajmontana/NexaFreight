@@ -64,3 +64,11 @@ async def test_audit_log_triggers_prevent_update_and_delete(db_session: AsyncSes
         )
         await db_session.commit()
     await db_session.rollback()
+
+    # 4. Truncate must fail via statement-level trigger on PostgreSQL
+    if db_session.bind.dialect.name == "postgresql":
+        with pytest.raises(DBAPIError) as exc_info:
+            await db_session.execute(text("TRUNCATE TABLE audit_logs"))
+            await db_session.commit()
+        await db_session.rollback()
+        assert "TRUNCATE is prohibited" in str(exc_info.value)

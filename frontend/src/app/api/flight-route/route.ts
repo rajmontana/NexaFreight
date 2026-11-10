@@ -220,6 +220,10 @@ async function fromAirplanesLive(icao24: string, callsign: string): Promise<{ or
 
 // ── Handler ────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('authorization') || req.headers.get('x-nexa-token');
+  if (!authHeader || (!authHeader.startsWith('Bearer ') && !authHeader.startsWith('Token '))) {
+    return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
+  }
   const sp = new URL(req.url).searchParams;
   const callsign  = (sp.get('callsign') || '').trim().toUpperCase();
   const icao24    = (sp.get('icao24')   || '').trim().toLowerCase();

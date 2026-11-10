@@ -9,7 +9,7 @@ import {
   normalizeOsrm,
   type ValhallaResponse,
   type OsrmResponse,
-} from './helpers';
+} from './directions';
 
 describe('decodePolyline', () => {
   it('round-trips a known precision-6 shape to real coordinates', () => {

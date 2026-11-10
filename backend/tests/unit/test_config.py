@@ -51,7 +51,7 @@ def test_environment_validation() -> None:
     # Valid
     Settings(jwt_secret=SecretStr("x"), environment="development")
     Settings(jwt_secret=SecretStr("x"), environment="test")
-    Settings(jwt_secret=SecretStr("x"), environment="production")
+    Settings(jwt_secret=SecretStr("x" * 32), environment="production")
 
     # Invalid
     with pytest.raises(ValidationError):
@@ -76,7 +76,7 @@ def test_test_database_url_in_memory() -> None:
 def test_is_production_flag() -> None:
     """is_production property works correctly."""
     dev = Settings(jwt_secret=SecretStr("x"), environment="development")
-    prod = Settings(jwt_secret=SecretStr("x"), environment="production")
+    prod = Settings(jwt_secret=SecretStr("x" * 32), environment="production")
 
     assert not dev.is_production
     assert prod.is_production
@@ -124,7 +124,7 @@ def test_settings_load_from_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyP
     """Settings can load from .env file."""
     env_file = tmp_path / ".env"
     env_file.write_text(
-        "JWT_SECRET=from-env-file\nENVIRONMENT=production\nLOG_LEVEL=WARNING\n",
+        "JWT_SECRET=from-env-file-at-least-32-chars-long!\nENVIRONMENT=production\nLOG_LEVEL=WARNING\n",
         encoding="utf-8",
     )
 
@@ -136,7 +136,7 @@ def test_settings_load_from_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
     settings = Settings()  # type: ignore[call-arg]
 
-    assert settings.jwt_secret.get_secret_value() == "from-env-file"
+    assert settings.jwt_secret.get_secret_value() == "from-env-file-at-least-32-chars-long!"
     assert settings.environment == "production"
     assert settings.log_level == "WARNING"
 
@@ -167,3 +167,22 @@ def test_render_yaml_scheduler_and_worker_flags_enabled() -> None:
     assert env_vars.get("ENABLE_POSITION_INTERPOLATOR") == "true"
     assert env_vars.get("ENABLE_DISRUPTION_DETECTOR") == "true"
     assert env_vars.get("ENABLE_SLA_CHECKER") == "true"
+
+
+def test_jwt_secret_production_enforcement() -> None:
+    """In production, JWT_SECRET must be at least 32 bytes and not an insecure default."""
+    # Under 32 bytes in production fails
+    with pytest.raises(ValidationError, match="at least 32 bytes in production"):
+        Settings(jwt_secret=SecretStr("too-short-secret"), environment="production")
+
+    # Insecure default in production fails
+    with pytest.raises(ValidationError, match="Insecure default JWT_SECRET"):
+        Settings(jwt_secret=SecretStr("test-secret-key-that-is-sufficiently-long"), environment="production")
+
+    # 32+ bytes in production succeeds
+    valid_prod = Settings(jwt_secret=SecretStr("a" * 32), environment="production")
+    assert valid_prod.jwt_secret.get_secret_value() == "a" * 32
+
+    # Dev/test allows shorter secrets for fast testing
+    dev = Settings(jwt_secret=SecretStr("dev-key"), environment="development")
+    assert dev.jwt_secret.get_secret_value() == "dev-key"

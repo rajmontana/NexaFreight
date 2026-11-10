@@ -1,13 +1,14 @@
-# Date: 2026-11-10T09:58:17.611898+00:00
-# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Date: 2026-11-10T11:35:04.506349+00:00
+# Git Branch: hardening-final
 # Command: introspect app.routes from nexafreight.main
 
-Total FastAPI Routes Count: 58
+Total FastAPI Routes Count: 59
 
 Method(s) | Path | Handler | Auth Dependency
 ----------+------+---------+----------------
 GET        | /api/alerts                         | nexafreight.api.routes.alerts.list_alerts     | get_current_user
 GET        | /api/alerts/                        | nexafreight.api.routes.alerts.list_alerts     | get_current_user
+POST       | /api/alerts/self-heal               | nexafreight.api.routes.alerts.self_heal_alerts | verify_hmac_or_admin
 GET        | /api/alerts/{alert_id}              | nexafreight.api.routes.alerts.get_alert       | get_current_user
 PATCH      | /api/alerts/{alert_id}/acknowledge  | nexafreight.api.routes.alerts.acknowledge_alert | get_current_user
 POST       | /api/alerts/{alert_id}/approve      | nexafreight.api.routes.alerts.approve_option  | get_current_user
@@ -33,7 +34,7 @@ GET        | /api/disruptions/{disruption_id}    | nexafreight.api.routes.disrup
 GET        | /api/health                         | nexafreight.api.routes.health.health_check    | None
 GET        | /api/health                         | nexafreight.main.root_health_check            | None
 GET        | /api/health/                        | nexafreight.api.routes.health.health_check    | None
-GET        | /api/health/validation              | nexafreight.api.routes.health.validation_matrix | No deps
+GET        | /api/health/validation              | nexafreight.api.routes.health.validation_matrix | get_current_user
 GET        | /api/healthz                        | nexafreight.main.healthz_check                | No deps
 GET        | /api/map/feed-health                | nexafreight.api.routes.map.get_feed_health    | get_current_user
 GET        | /api/map/ports                      | nexafreight.api.routes.map.get_ports          | get_current_user
@@ -59,7 +60,7 @@ GET, HEAD  | /docs/oauth2-redirect               | fastapi.applications.swagger_
 GET        | /health                             | nexafreight.main.root_health_check            | None
 GET        | /health/                            | nexafreight.main.root_health_check            | None
 GET        | /healthz                            | nexafreight.main.healthz_check                | No deps
-POST       | /internal/activate-fleet            | nexafreight.api.routes.internal.trigger_activate_fleet | No deps
+POST       | /internal/activate-fleet            | nexafreight.api.routes.internal.trigger_activate_fleet | verify_hmac_or_admin
 POST       | /internal/nightly                   | nexafreight.api.routes.internal.trigger_nightly | None
 GET, HEAD  | /openapi.json                       | fastapi.applications.openapi                  | No deps
 GET        | /readyz                             | nexafreight.main.readyz_check                 | No deps

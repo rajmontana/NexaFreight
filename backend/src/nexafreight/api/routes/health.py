@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -10,9 +11,33 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nexafreight.database import get_db_session
+from nexafreight.dependencies import get_current_user
+from nexafreight.models.user import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _get_version() -> str:
+    """Read version dynamically from package metadata, falling back to pyproject.toml."""
+    try:
+        import importlib.metadata
+
+        return importlib.metadata.version("nexafreight")
+    except Exception:
+        try:
+            from pathlib import Path
+            import tomllib
+
+            p = Path(__file__).resolve().parents[4] / "pyproject.toml"
+            if not p.exists():
+                p = Path(__file__).resolve().parents[3] / "pyproject.toml"
+            if p.exists():
+                data = tomllib.loads(p.read_text(encoding="utf-8"))
+                return data.get("project", {}).get("version", "0.1.0")
+        except Exception:
+            pass
+        return "0.1.0"
 
 
 class HealthResponse(BaseModel):
@@ -51,8 +76,10 @@ class ValidationMatrixResponse(BaseModel):
 
 
 @router.get("/validation", response_model=ValidationMatrixResponse, tags=["health"])
-async def validation_matrix() -> ValidationMatrixResponse:
-    """Live validation matrix: every on-screen number vs published references."""
+async def validation_matrix(
+    _current_user: User = Depends(get_current_user),
+) -> ValidationMatrixResponse:
+    """Live validation matrix: every on-screen number vs published references (authenticated)."""
     from nexafreight.services.validation_matrix import build_matrix
 
     return ValidationMatrixResponse(**build_matrix())
@@ -86,16 +113,17 @@ async def health_check(
     reg = getattr(request.app.state, "ml_registry", None)
     if reg is not None:
         models_dict = {
-            "delay": getattr(reg, "delay_loaded", False),
-            "eta": getattr(reg, "eta_loaded", False),
-            "demand": getattr(reg, "demand_loaded", False),
+            "delay": bool(getattr(reg, "delay_loaded", False)),
+            "eta": bool(getattr(reg, "eta_loaded", False)),
+            "demand": bool(getattr(reg, "demand_loaded", False)),
         }
-        ml_loaded = getattr(reg, "is_loaded", False)
+        # Truthfully report whether all models in the suite are loaded
+        ml_loaded = all(models_dict.values())
 
     return HealthResponse(
         status="healthy",
         database=database_status,
-        version="0.1.0",
+        version=_get_version(),
         ml_models_loaded=ml_loaded,
         models=models_dict,
     )

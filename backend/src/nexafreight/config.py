@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import AliasChoices, Field, SecretStr, field_validator
+from pydantic import AliasChoices, Field, SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "test", "production"]
@@ -199,6 +199,25 @@ class Settings(BaseSettings):
             v = v.strip().strip('"\'').strip()
         if v == "" or (isinstance(v, SecretStr) and not v.get_secret_value()):
             return None
+        return v
+
+    @field_validator("jwt_secret", mode="after")
+    @classmethod
+    def validate_jwt_secret(cls, v: SecretStr, info: ValidationInfo) -> SecretStr:
+        val = v.get_secret_value()
+        if not val or not val.strip():
+            raise ValueError("JWT_SECRET cannot be empty")
+        env = info.data.get("environment", "development")
+        if env == "production":
+            if len(val.encode("utf-8")) < 32:
+                raise ValueError("JWT_SECRET must be at least 32 bytes in production")
+            insecure_defaults = {
+                "change-me", "default", "secret", "password",
+                "jwt_secret", "test-secret-key-that-is-sufficiently-long",
+                "testsecret",
+            }
+            if val.lower() in insecure_defaults:
+                raise ValueError("Insecure default JWT_SECRET is not permitted in production")
         return v
 
     @field_validator("database_path", "test_database_path", mode="before")

@@ -40,6 +40,11 @@ async function fetchMetadata(icao24: string): Promise<{ model?: string; operator
 
 export async function GET(request: Request) {
   try {
+    const authHeader = request.headers.get('authorization') || request.headers.get('x-nexa-token');
+    if (!authHeader || (!authHeader.startsWith('Bearer ') && !authHeader.startsWith('Token '))) {
+      return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const icao24 = (searchParams.get('icao24') || '').trim();
 

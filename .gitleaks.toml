@@ -1,0 +1,17 @@
+# Gitleaks configuration and allowlist for NexaFreight
+title = "NexaFreight Gitleaks Config"
+
+[allowlist]
+description = "Global allowlist for mock secrets in tests, smoke tests, and documentation"
+paths = [
+    '''backend/tests/.*''',
+    '''frontend/.*\.test\..*''',
+    '''\.github/workflows/ci\.yml''',
+    '''evidence_v2/.*''',
+]
+regexes = [
+    '''test-secret-key.*''',
+    '''test-jwt-secret.*''',
+    '''super-secret-key.*''',
+    '''from-env-file-at-least-32-chars-long!''',
+]

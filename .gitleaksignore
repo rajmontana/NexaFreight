@@ -1,0 +1,6 @@
+# Gitleaks ignore file
+# Ignores specific false-positive findings or test secret fingerprints
+backend/tests/unit/test_config.py
+backend/tests/integration/test_auth_api.py
+backend/tests/integration/test_app.py
+.github/workflows/ci.yml

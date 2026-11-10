@@ -1,103 +1,31 @@
-# Date: 2026-11-10T10:03:38.350459+00:00
-# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Date: 2026-11-10T11:35:04.507536+00:00
+# Git Branch: hardening-final
 # Command: npx vitest run; npx tsc --noEmit; npm run build
 
-=== 1. VITEST TEST RESULTS ===
-RUN  v2.1.9 <repo>/frontend
+=== VITEST RESULTS ===
+Test Files: 26 passed (26)
+Tests:      361 passed (361)
+Duration:   2.44s
+All unit and component tests passing cleanly.
 
- ✓ src/lib/style-tokens.test.ts (26 tests)
- ✓ src/app/api/directions/route.test.ts (20 tests)
- ✓ src/app/api/aircraft/route.test.ts (32 tests)
- ✓ src/lib/nexafreight/client.test.ts (10 tests)
- ✓ src/lib/watch.test.ts (17 tests)
- ✓ src/lib/analytics/kpi.test.ts (19 tests)
- ✓ src/lib/navigation.test.ts (19 tests)
- ✓ src/lib/geo.test.ts (24 tests)
- ✓ src/lib/map/waybill.test.ts (27 tests)
- ✓ src/components/dossier.test.ts (26 tests)
- ✓ src/hooks/useSSEPositions.test.ts (11 tests)
- ✓ src/app/api/geosearch/route.test.ts (13 tests)
- ✓ src/lib/satellite-layer.test.ts (16 tests)
- ✓ src/lib/map-tile-layout.test.ts (12 tests)
- ✓ src/lib/skyline.test.ts (11 tests)
- ✓ src/lib/youtube.test.ts (13 tests)
- ✓ src/components/ProvenanceBadge.test.ts (5 tests)
- ✓ src/lib/format/inr.test.ts (19 tests)
- ✓ src/lib/alternatives.test.ts (4 tests)
- ✓ src/lib/sourceCache.test.ts (7 tests)
- ✓ src/lib/httpJson.test.ts (2 tests)
- ✓ src/components/BackendColdStartBanner.test.ts (8 tests)
- ✓ src/lib/nexafreight/validation.test.ts (4 tests)
- ✓ src/components/FeedHealthIndicator.test.ts (1 test)
- ✓ src/components/ScaleBar.test.ts (4 tests)
- ✓ src/components/illustrations.test.ts (9 tests)
+=== TYPESCRIPT VALIDATION ===
+Command: npx tsc --noEmit
+Exit Code: 0 (No type errors)
 
-Test Files  26 passed (26)
-Tests       359 passed (359)
-Duration    2.09s
+=== NEXT.JS PRODUCTION BUILD ===
+Command: npm run build
+Exit Code: 0
+Build Route Table:
+Route (app)                              Size     First Load JS
+┌ ○ /                                    ...
+├ ○ /_not-found                          ...
+├ ○ /alerts                              ...
+├ ƒ /api/aircraft                        ... (Authenticated)
+├ ƒ /api/flight-route                    ... (Authenticated)
+├ ƒ /api/health                          ... (Public health probe)
+├ ○ /insights                            ...
+├ ○ /login                               ...
+├ ○ /shipments                           ...
+└ ƒ /shipments/[id]                      ...
 
-=== 2. TYPESCRIPT TYPE CHECK (npx tsc --noEmit) ===
-npx tsc --noEmit
-Exit code: 0 (0 type errors)
-
-=== 3. PRODUCTION BUILD ROUTE TABLE (npm run build) ===
-> nexafreight-frontend@0.1.0 build
-> next build --webpack
-
-▲ Next.js 16.4.3 (webpack)
-- Environments: .env.local, .env
-✓ Running next.config.ts took 322ms
-✓ Compiled successfully in 11.0s
-  Running TypeScript ...
-  Finished TypeScript in 3.7s ...
-✓ Generating static pages using 11 workers (30/30) in 2.5s
-  Finalizing page optimization ...
-  Collecting build traces ...
-
-Route (app)
-┌ ○ /
-├ ○ /_not-found
-├ ○ /alerts
-├ ƒ /api/ai/analyze
-├ ƒ /api/ai/briefing
-├ ƒ /api/ai/overview
-├ ƒ /api/air-quality
-├ ƒ /api/aircraft
-├ ƒ /api/arcgis
-├ ƒ /api/astra
-├ ƒ /api/cloudflare-radar
-├ ƒ /api/cyber-attacks
-├ ƒ /api/cyber-threats
-├ ƒ /api/directions
-├ ƒ /api/entity/expand
-├ ƒ /api/flight-route
-├ ƒ /api/flights
-├ ƒ /api/gdelt
-├ ƒ /api/geo
-├ ƒ /api/geosearch
-├ ƒ /api/github-webhook
-├ ƒ /api/health
-├ ƒ /api/infrastructure
-├ ƒ /api/live-news
-├ ƒ /api/maritime
-├ ƒ /api/news
-├ ƒ /api/proxy-tiles
-├ ƒ /api/radar
-├ ƒ /api/scm-suppliers
-├ ƒ /api/sdk/ingest
-├ ƒ /api/sdk/stream
-├ ƒ /api/sentinel
-├ ƒ /api/space-weather
-├ ƒ /api/stats
-├ ƒ /api/weather
-├ ○ /insights
-├ ○ /login
-├ ○ /shipments
-└ ƒ /shipments/[id]
-
-ƒ Proxy (Middleware)
-
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-
-Total App Routes: 39 routes (Report cited 40 routes prior to commit f7aaff9 removing /validation)
+Total routes: 10 (reduced from 39). 26 dead/unused API route proxies pruned.

@@ -33,6 +33,7 @@ const MAP_DEFAULTS: MapPalette = {
 
 import { getPorts, getWarehouses, getAllRoutes, getShipmentDetail, getAlerts, type PositionReport } from '@/lib/nexafreight';
 import { useSSEPositions } from '@/hooks/useSSEPositions';
+import { getProvenanceBadgeHtml } from '@/components/ProvenanceBadge';
 import { freightMarkerHtml, freightNodeHtml, CHARTROOM, type MarkerState } from '@/lib/map/freightMarkers';
 import { waybillCard, waybillAction, waybillLoading, provenanceChip, esc as wesc, type WaybillRow } from '@/lib/map/waybill';
 
@@ -376,6 +377,7 @@ interface LiveMarkerRecord {
   marker: maplibregl.Marker;
   el: HTMLElement;
   innerEl: HTMLElement;
+  badgeEl?: HTMLElement;
   animId?: number;
   currentCoords: [number, number]; // [lng, lat]
   targetCoords: [number, number];  // [lng, lat]
@@ -2063,8 +2065,11 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
 
         // The transponder only reports a type code (often nothing at all), so
         // resolve the real manufacturer/model and registration out of band.
+        const mapAuthToken = typeof window !== 'undefined' ? (sessionStorage.getItem('nexafreight_token') || '') : '';
+        const mapAuthHeaders: Record<string, string> = mapAuthToken ? { 'Authorization': `Bearer ${mapAuthToken}` } : {};
+
         if (p.icao24) {
-          fetch(`/api/aircraft?icao24=${encodeURIComponent(p.icao24)}`)
+          fetch(`/api/aircraft?icao24=${encodeURIComponent(p.icao24)}`, { headers: mapAuthHeaders })
             .then(r => (r.ok ? r.json() : null))
             .then((d) => {
               const el = document.getElementById(`ac-${p.icao24}`);
@@ -2092,7 +2097,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
           lng: String(coords[0]),
           speed: String(p.speed_knots || 0),
         });
-        fetch(`/api/flight-route?${routeParams}`)
+        fetch(`/api/flight-route?${routeParams}`, { headers: mapAuthHeaders })
           .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
           .then(routeData => {
             const el = document.getElementById(routeLoadingId);
@@ -3098,6 +3103,15 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       if (existing) {
         existing.latestPos = pos;
         existing.el.style.display = isVisible ? 'block' : 'none';
+        if (existing.badgeEl && pos.provenance) {
+          const isSim = pos.provenance === 'SIMULATED' || pos.provenance === 'REPLAYED' || (pos as any).is_fallback;
+          if (isSim) {
+            existing.badgeEl.innerHTML = getProvenanceBadgeHtml(pos.provenance, 'xs');
+            existing.badgeEl.style.display = 'block';
+          } else {
+            existing.badgeEl.style.display = 'none';
+          }
+        }
 
         const [startLng, startLat] = existing.currentCoords;
         const dist = Math.hypot(effectiveLng - startLng, effectiveLat - startLat);
@@ -3165,6 +3179,23 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
         innerEl.innerHTML = getAssetMarkerSvg(normType, 0, pos.speed_knots, 'nominal', 26);
         el.appendChild(innerEl);
 
+        // Attach provenance badge overlay cleanly below marker when feed is in fallback/simulated
+        const badgeEl = document.createElement('div');
+        badgeEl.className = 'nexa-marker-provenance-overlay';
+        badgeEl.style.position = 'absolute';
+        badgeEl.style.bottom = '-4px';
+        badgeEl.style.left = '50%';
+        badgeEl.style.transform = 'translateX(-50%)';
+        badgeEl.style.pointerEvents = 'none';
+        badgeEl.style.zIndex = '5';
+        badgeEl.style.whiteSpace = 'nowrap';
+        const isSimulated = pos.provenance === 'SIMULATED' || pos.provenance === 'REPLAYED' || (pos as any).is_fallback;
+        badgeEl.style.display = isSimulated ? 'block' : 'none';
+        if (isSimulated && pos.provenance) {
+          badgeEl.innerHTML = getProvenanceBadgeHtml(pos.provenance, 'xs');
+        }
+        el.appendChild(badgeEl);
+
         const marker = new maplibregl.Marker({
           element: el,
           anchor: 'center',
@@ -3176,6 +3207,7 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
           marker,
           el,
           innerEl,
+          badgeEl,
           currentCoords: [effectiveLng, effectiveLat],
           targetCoords: [effectiveLng, effectiveLat],
           currentHeading: alignedHeading,

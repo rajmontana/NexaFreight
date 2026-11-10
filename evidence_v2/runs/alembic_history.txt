@@ -1,17 +1,27 @@
-# Date: 2026-11-10T09:54:58.607893+00:00
-# Git Commit: b84c53e7f5fe3ac231adcfb72b635d5307354c84
+# Date: 2026-11-10T11:35:02.362986+00:00
+# Git Branch: hardening-final
 # Command: alembic history --verbose; alembic heads
 
-Total Migration Count: 16
-Current Head: a1b2c3d4e5f6 (head)
+Total Migration Count: 17
+Current Head: c3d4e5f6a7b8 (head)
 
 Ordered Migration Revision IDs (head to base):
-a1b2c3d4e5f6, f7a8b9c0d1e2, e4f5a6b7c8d9, ca009891c5e2, 334acd8cb53d, b2c3d4e5f6a7, c5e6f7a8b9d0, b7d4e2f8a6c1, f9c3d7e2a8b1, e7a9f2b4c1d3, c7d9e1f3a5b6, a1e5f7c9d2b4, 3f8a2b1c9d4e, 8420d96dacf5, 002_composite_index, 001_initial_schema
+c3d4e5f6a7b8, a1b2c3d4e5f6, f7a8b9c0d1e2, e4f5a6b7c8d9, ca009891c5e2, 334acd8cb53d, b2c3d4e5f6a7, c5e6f7a8b9d0, b7d4e2f8a6c1, f9c3d7e2a8b1, e7a9f2b4c1d3, c7d9e1f3a5b6, a1e5f7c9d2b4, 3f8a2b1c9d4e, 8420d96dacf5, 002_composite_index, 001_initial_schema
 
 === FULL ALEMBIC HISTORY ===
-Rev: a1b2c3d4e5f6 (head)
+Rev: c3d4e5f6a7b8 (head)
+Parent: a1b2c3d4e5f6
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20261110_1600_c3d4e5f6a7b8_audit_logs_truncate_guard.py
+
+    Enforce statement-level TRUNCATE prohibition on audit_logs via PostgreSQL trigger.
+    
+    Revision ID: c3d4e5f6a7b8
+    Revises: a1b2c3d4e5f6
+    Create Date: 2026-11-10 16:00:00.000000
+
+Rev: a1b2c3d4e5f6
 Parent: f7a8b9c0d1e2
-Path: <repo>\backend\migrations\versions\20261029_1400_a1b2c3d4e5f6_immutable_audit_logs_trigger.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20261029_1400_a1b2c3d4e5f6_immutable_audit_logs_trigger.py
 
     Enforce append-only immutability on audit_logs via database triggers.
     
@@ -21,7 +31,7 @@ Path: <repo>\backend\migrations\versions\20261029_1400_a1b2c3d4e5f6_immutable_au
 
 Rev: f7a8b9c0d1e2
 Parent: e4f5a6b7c8d9
-Path: <repo>\backend\migrations\versions\20261029_1300_f7a8b9c0d1e2_backfill_glec_v3_co2_factors.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20261029_1300_f7a8b9c0d1e2_backfill_glec_v3_co2_factors.py
 
     backfill GLEC v3.2 multimodal CO2 emission factors across legs and parameters (ML-03)
     
@@ -40,7 +50,7 @@ Path: <repo>\backend\migrations\versions\20261029_1300_f7a8b9c0d1e2_backfill_gle
 
 Rev: e4f5a6b7c8d9
 Parent: ca009891c5e2
-Path: <repo>\backend\migrations\versions\20261029_1200_e4f5a6b7c8d9_relabel_reconstructed_legs_provenance.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20261029_1200_e4f5a6b7c8d9_relabel_reconstructed_legs_provenance.py
 
     relabel reconstructed legs and shipments provenance from REAL to DERIVED (ML-01)
     
@@ -53,7 +63,7 @@ Path: <repo>\backend\migrations\versions\20261029_1200_e4f5a6b7c8d9_relabel_reco
 
 Rev: ca009891c5e2
 Parent: 334acd8cb53d
-Path: <repo>\backend\migrations\versions\20260927_1100_ca009891c5e2_add_international_network.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260927_1100_ca009891c5e2_add_international_network.py
 
     add international network
     
@@ -63,7 +73,7 @@ Path: <repo>\backend\migrations\versions\20260927_1100_ca009891c5e2_add_internat
 
 Rev: 334acd8cb53d
 Parent: b2c3d4e5f6a7
-Path: <repo>\backend\migrations\versions\20260927_0714_334acd8cb53d_add_source_to_port_daily_stats.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260927_0714_334acd8cb53d_add_source_to_port_daily_stats.py
 
     add source to port_daily_stats
     
@@ -73,7 +83,7 @@ Path: <repo>\backend\migrations\versions\20260927_0714_334acd8cb53d_add_source_t
 
 Rev: b2c3d4e5f6a7
 Parent: c5e6f7a8b9d0
-Path: <repo>\backend\migrations\versions\20260926_2200_b2c3d4e5f6a7_add_external_events.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260926_2200_b2c3d4e5f6a7_add_external_events.py
 
     add external_events
     
@@ -83,7 +93,7 @@ Path: <repo>\backend\migrations\versions\20260926_2200_b2c3d4e5f6a7_add_external
 
 Rev: c5e6f7a8b9d0
 Parent: b7d4e2f8a6c1
-Path: <repo>\backend\migrations\versions\20260925_0640_c5e6f7a8b9d0_add_edge_geometry.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260925_0640_c5e6f7a8b9d0_add_edge_geometry.py
 
     add network edge geometry cache (day-14: real road paths via ORS)
     
@@ -93,7 +103,7 @@ Path: <repo>\backend\migrations\versions\20260925_0640_c5e6f7a8b9d0_add_edge_geo
 
 Rev: b7d4e2f8a6c1
 Parent: f9c3d7e2a8b1
-Path: <repo>\backend\migrations\versions\20260924_1310_b7d4e2f8a6c1_add_order_weight_volume.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_1310_b7d4e2f8a6c1_add_order_weight_volume.py
 
     add order weight/volume for capacity-aware consolidation (task 21: E13)
     
@@ -103,7 +113,7 @@ Path: <repo>\backend\migrations\versions\20260924_1310_b7d4e2f8a6c1_add_order_we
 
 Rev: f9c3d7e2a8b1
 Parent: e7a9f2b4c1d3
-Path: <repo>\backend\migrations\versions\20260924_1230_f9c3d7e2a8b1_add_parties.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_1230_f9c3d7e2a8b1_add_parties.py
 
     add parties + order party FKs (task 18: India demo world)
     
@@ -113,7 +123,7 @@ Path: <repo>\backend\migrations\versions\20260924_1230_f9c3d7e2a8b1_add_parties.
 
 Rev: e7a9f2b4c1d3
 Parent: c7d9e1f3a5b6
-Path: <repo>\backend\migrations\versions\20260924_1030_e7a9f2b4c1d3_add_decision_outcomes.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_1030_e7a9f2b4c1d3_add_decision_outcomes.py
 
     add decision_outcomes table (task 12: predicted-vs-realized logging)
     
@@ -123,7 +133,7 @@ Path: <repo>\backend\migrations\versions\20260924_1030_e7a9f2b4c1d3_add_decision
 
 Rev: c7d9e1f3a5b6
 Parent: a1e5f7c9d2b4
-Path: <repo>\backend\migrations\versions\20260924_0615_c7d9e1f3a5b6_add_position_reports_unique.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_0615_c7d9e1f3a5b6_add_position_reports_unique.py
 
     add missing unique index on position_reports (E24)
     
@@ -143,7 +153,7 @@ Path: <repo>\backend\migrations\versions\20260924_0615_c7d9e1f3a5b6_add_position
 
 Rev: a1e5f7c9d2b4
 Parent: 3f8a2b1c9d4e
-Path: <repo>\backend\migrations\versions\20260924_0000_a1e5f7c9d2b4_add_shipment_provenance.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260924_0000_a1e5f7c9d2b4_add_shipment_provenance.py
 
     add shipment.provenance (audit E3)
     
@@ -159,7 +169,7 @@ Path: <repo>\backend\migrations\versions\20260924_0000_a1e5f7c9d2b4_add_shipment
 
 Rev: 3f8a2b1c9d4e
 Parent: 8420d96dacf5
-Path: <repo>\backend\migrations\versions\20260921_2000_3f8a2b1c9d4e_add_multimodal_network.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260921_2000_3f8a2b1c9d4e_add_multimodal_network.py
 
     Add multimodal network tables and seed India network
     
@@ -184,7 +194,7 @@ Path: <repo>\backend\migrations\versions\20260921_2000_3f8a2b1c9d4e_add_multimod
 
 Rev: 8420d96dacf5
 Parent: 002_composite_index
-Path: <repo>\backend\migrations\versions\20260921_1359_8420d96dacf5_add_parameter_tables.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\20260921_1359_8420d96dacf5_add_parameter_tables.py
 
     Add parameter tables
     
@@ -194,7 +204,7 @@ Path: <repo>\backend\migrations\versions\20260921_1359_8420d96dacf5_add_paramete
 
 Rev: 002_composite_index
 Parent: 001_initial_schema
-Path: <repo>\backend\migrations\versions\002_composite_index.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\002_composite_index.py
 
     add composite index on shipments status and mode
     
@@ -204,11 +214,12 @@ Path: <repo>\backend\migrations\versions\002_composite_index.py
 
 Rev: 001_initial_schema
 Parent: <base>
-Path: <repo>\backend\migrations\versions\001_initial_schema.py
+Path: <home>\Downloads\nexagithub\NexaFreight-fresh\backend\migrations\versions\001_initial_schema.py
 
     Initial schema with all domain models
     
     Revision ID: 001_initial_schema
     Revises:
     Create Date: 2024-01-15 10:00:00.000000
+
 

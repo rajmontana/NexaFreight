@@ -2,6 +2,7 @@
 
 List, detail, and report (POST /disruptions). POST immediately assesses the
 disruption's impact and raises its alert — the automation loop.
+Requires OPERATOR or ADMIN role for reporting (VIEWER receives 403 Forbidden).
 """
 
 from __future__ import annotations
@@ -14,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from nexafreight.database import get_db_session
 from nexafreight.dependencies import get_current_user
-from nexafreight.enums import DisruptionStatus, DisruptionType
-from nexafreight.exceptions import ResourceNotFoundError, ValidationError
+from nexafreight.enums import DisruptionStatus, DisruptionType, UserRole
+from nexafreight.exceptions import ForbiddenError, ResourceNotFoundError, ValidationError
 from nexafreight.models import Disruption, Shipment, User
 from nexafreight.schemas.ops import (
     DisruptionCreate,
@@ -79,7 +80,13 @@ async def report_disruption(
     session: AsyncSession = Depends(get_db_session),
     _current_user: User = Depends(get_current_user),
 ) -> dict:
-    """Report a disruption → auto-detect → impact analysis → alert (Plan Phase 6)."""
+    """Report a disruption → auto-detect → impact analysis → alert (Plan Phase 6).
+
+    Requires OPERATOR or ADMIN role (VIEWER receives 403 Forbidden).
+    """
+    if str(_current_user.role) not in (UserRole.ADMIN, UserRole.OPERATOR):
+        raise ForbiddenError("Only ADMIN or OPERATOR roles can report disruptions")
+
     # Validate type up-front (422, not 500)
     try:
         dtype = DisruptionType(body.disruption_type)

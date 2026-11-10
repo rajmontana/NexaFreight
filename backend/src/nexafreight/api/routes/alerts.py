@@ -4,7 +4,7 @@ List (severity/status filters), detail (embedded disruption), acknowledge,
 reroute options, and approve (delegates to the decision executor).
 
 Error map: ValidationError → 400/422, ConflictError → 409,
-ResourceNotFoundError → 404.
+ResourceNotFoundError → 404, ForbiddenError → 403.
 """
 
 from __future__ import annotations
@@ -12,12 +12,16 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, Body, Depends, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from nexafreight.api.routes.internal import verify_hmac_or_admin
 from nexafreight.database import get_db_session
 from nexafreight.dependencies import get_current_user
+from nexafreight.enums import UserRole
 from nexafreight.exceptions import (
+    ForbiddenError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -85,40 +89,50 @@ async def list_alerts(
     result = await session.execute(stmt)
     alerts = list(result.scalars().all())
 
-    # Self-healing: if alerts table is empty, auto-activate and populate alerts
-    if not alerts and not severity and not status:
-        try:
-            import asyncio
-            import importlib.util
-            from pathlib import Path
-
-            script_path = (
-                Path(__file__).resolve().parent.parent.parent.parent.parent
-                / "scripts"
-                / "30_activate_multimodal_fleet.py"
-            )
-            if not script_path.exists():
-                script_path = (
-                    Path(__file__).resolve().parents[3]
-                    / "scripts"
-                    / "30_activate_multimodal_fleet.py"
-                )
-            if script_path.exists():
-                spec = importlib.util.spec_from_file_location("activate_fleet", script_path)
-                if spec and spec.loader:
-                    mod = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(mod)
-                    loop = asyncio.get_running_loop()
-                    await loop.run_in_executor(None, mod.activate)
-                    result = await session.execute(stmt)
-                    alerts = list(result.scalars().all())
-        except Exception:
-            pass
-
     # touch disruption relationship within the greenlet
     for alert in alerts:
         await session.refresh(alert, ["disruption"])
     return AlertsResponse(alerts=[_alert_out(a) for a in alerts])
+
+
+@router.post("/self-heal")
+async def self_heal_alerts(
+    _auth: None = Depends(verify_hmac_or_admin),
+) -> JSONResponse:
+    """Protected self-heal endpoint: populates alerts/fleet (requires HMAC or ADMIN)."""
+    try:
+        import asyncio
+        import importlib.util
+        from pathlib import Path
+
+        script_path = (
+            Path(__file__).resolve().parent.parent.parent.parent.parent
+            / "scripts"
+            / "30_activate_multimodal_fleet.py"
+        )
+        if not script_path.exists():
+            script_path = (
+                Path(__file__).resolve().parents[3]
+                / "scripts"
+                / "30_activate_multimodal_fleet.py"
+            )
+        if script_path.exists():
+            spec = importlib.util.spec_from_file_location("activate_fleet", script_path)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, mod.activate)
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "success",
+                        "message": "Self-heal completed: fleet, disruptions and alerts active.",
+                    },
+                )
+        return JSONResponse(status_code=404, content={"detail": "Activation script not found"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @router.get("/{alert_id}", response_model=AlertDetail)
@@ -218,25 +232,17 @@ async def approve_option(
 
     Delegates to the decision executor; the decision row records everything
     presented to the operator (one decision per alert — duplicates → 409).
+    Requires OPERATOR or ADMIN role (VIEWER receives 403 Forbidden).
     """
+    if str(current_user.role) not in (UserRole.ADMIN, UserRole.OPERATOR):
+        raise ForbiddenError("Only ADMIN or OPERATOR roles can approve reroute options")
+
     option_key = payload.get("option_key")
     if not option_key:
         raise ValidationError("option_key is required")
 
-    if current_user is None and not payload.get("user_id"):
-        raise ValidationError(
-            "Provide user_id in the body to attest as an operator"
-        )
-    from nexafreight.models import User as UserModel
-
-    approver: User | None = current_user
-    if approver is None:
-        approver = await session.get(UserModel, int(payload["user_id"]))
-    if approver is None:
-        raise ValidationError(f"Unknown user id: {payload.get('user_id')}")
-
     decision = await execute_decision(
-        session, alert_id=alert_id, option_key=option_key, user=approver
+        session, alert_id=alert_id, option_key=option_key, user=current_user
     )
     await session.commit()
 

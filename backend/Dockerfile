@@ -16,10 +16,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Runtime dependency for psycopg2
+# Runtime dependency for psycopg2 and LightGBM
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 && \
+    libpq5 libgomp1 && \
     rm -rf /var/lib/apt/lists/*
+
+# Security: Create non-root system group and user (fixed UID 10001)
+RUN groupadd --system --gid 10001 nexafreight && \
+    useradd --system --uid 10001 --gid nexafreight --create-home --home-dir /home/nexafreight nexafreight
 
 # Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
@@ -27,6 +31,12 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY . .
+
+# Ensure nexafreight ownership of application and runtime directories
+RUN mkdir -p /app/data /app/models /app/logs && \
+    chown -R nexafreight:nexafreight /app /home/nexafreight
+
+USER nexafreight
 
 # Expose the port Render expects
 EXPOSE 10000

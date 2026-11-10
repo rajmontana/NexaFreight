@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyKind, normalizePhoton, normalizeNominatim, mergeResults, type GeoResult } from './helpers';
+import { classifyKind, normalizePhoton, normalizeNominatim, mergeResults, type GeoResult } from './geosearch';
 
 describe('classifyKind', () => {
   it('separates the kinds the UI gives distinct icons', () => {
