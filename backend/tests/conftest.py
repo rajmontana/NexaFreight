@@ -92,11 +92,18 @@ async def test_engine(
     url = os.environ.get("DATABASE_URL", "")
     if url.startswith("postgresql"):
         engine = create_test_engine(url)
-        truncate_sql = "TRUNCATE " + ", ".join(
-            f'"{t.name}"' for t in reversed(Base.metadata.sorted_tables)
-        ) + " RESTART IDENTITY CASCADE"
+        tables_to_truncate = [
+            f'"{t.name}"' for t in reversed(Base.metadata.sorted_tables) if t.name != "audit_logs"
+        ]
+        truncate_sql = "TRUNCATE " + ", ".join(tables_to_truncate) + " RESTART IDENTITY CASCADE"
         try:
             async with engine.begin() as conn:
+                try:
+                    await conn.execute(text("ALTER TABLE audit_logs DISABLE TRIGGER ALL"))
+                    await conn.execute(text("TRUNCATE audit_logs RESTART IDENTITY CASCADE"))
+                    await conn.execute(text("ALTER TABLE audit_logs ENABLE TRIGGER ALL"))
+                except Exception:
+                    pass
                 await conn.execute(text(truncate_sql))
         except Exception:
             await create_all_tables(engine)
@@ -204,6 +211,10 @@ async def client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 @pytest_asyncio.fixture
 async def seed_admin_user(db_session: AsyncSession, test_settings: Settings) -> User:
     """Create and return an admin user for tests."""
+    result = await db_session.execute(select(User).where(User.email == "admin@example.com"))
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing
     hashed_pw = hash_password("admin_test_password", test_settings)
     user = User(
         email="admin@example.com",
@@ -221,6 +232,10 @@ async def seed_admin_user(db_session: AsyncSession, test_settings: Settings) -> 
 @pytest_asyncio.fixture
 async def seed_operator_user(db_session: AsyncSession, test_settings: Settings) -> User:
     """Create and return an operator user for tests."""
+    result = await db_session.execute(select(User).where(User.email == "operator@example.com"))
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing
     hashed_pw = hash_password("operator_test_password", test_settings)
     user = User(
         email="operator@example.com",
@@ -238,6 +253,10 @@ async def seed_operator_user(db_session: AsyncSession, test_settings: Settings) 
 @pytest_asyncio.fixture
 async def seed_viewer_user(db_session: AsyncSession, test_settings: Settings) -> User:
     """Create and return a viewer user for tests."""
+    result = await db_session.execute(select(User).where(User.email == "viewer@example.com"))
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing
     hashed_pw = hash_password("viewer_test_password", test_settings)
     user = User(
         email="viewer@example.com",
