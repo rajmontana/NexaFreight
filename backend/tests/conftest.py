@@ -92,21 +92,31 @@ async def test_engine(
     url = os.environ.get("DATABASE_URL", "")
     if url.startswith("postgresql"):
         engine = create_test_engine(url)
-        tables_to_truncate = [
-            f'"{t.name}"' for t in reversed(Base.metadata.sorted_tables) if t.name != "audit_logs"
-        ]
-        truncate_sql = "TRUNCATE " + ", ".join(tables_to_truncate) + " RESTART IDENTITY CASCADE"
+        tables = [f'"{t.name}"' for t in reversed(Base.metadata.sorted_tables)]
+        truncate_sql = "TRUNCATE " + ", ".join(tables) + " RESTART IDENTITY CASCADE"
         try:
             async with engine.begin() as conn:
-                try:
-                    await conn.execute(text("ALTER TABLE audit_logs DISABLE TRIGGER ALL"))
-                    await conn.execute(text("TRUNCATE audit_logs RESTART IDENTITY CASCADE"))
-                    await conn.execute(text("ALTER TABLE audit_logs ENABLE TRIGGER ALL"))
-                except Exception:
-                    pass
+                await conn.execute(text("SET session_replication_role = 'replica'"))
                 await conn.execute(text(truncate_sql))
+                await conn.execute(text("SET session_replication_role = 'origin'"))
         except Exception:
-            await create_all_tables(engine)
+            # Fallback if session_replication_role is not permitted
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text("DROP TRIGGER IF EXISTS trg_audit_logs_no_truncate ON audit_logs"))
+                    await conn.execute(text(truncate_sql))
+                    await conn.execute(
+                        text(
+                            """
+                            CREATE TRIGGER trg_audit_logs_no_truncate
+                            BEFORE TRUNCATE ON audit_logs
+                            FOR EACH STATEMENT
+                            EXECUTE FUNCTION prevent_audit_log_truncate();
+                            """
+                        )
+                    )
+            except Exception:
+                await create_all_tables(engine)
         yield engine
         await dispose_engine(engine)
         return
