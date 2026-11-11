@@ -74,6 +74,9 @@ async def list_shipments(
 
     from sqlalchemy.orm import selectinload
     from nexafreight.services.financial_engine import calculate_freight_cost
+    from nexafreight.services.lifecycle import sync_shipment_lifecycles
+
+    await sync_shipment_lifecycles(db)
 
     # Build base query with eager loading for locations and legs (avoid N+1)
     query = select(Shipment).options(

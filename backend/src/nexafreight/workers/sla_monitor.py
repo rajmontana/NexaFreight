@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 
+from nexafreight.services.lifecycle import sync_shipment_lifecycles
 from nexafreight.services.sla_checker import check_all_in_transit
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ SCHEDULER_INTERVAL_MINUTES = 15
 
 async def run_sla_sweep(session) -> dict:
     """Job: rescore SLA statuses across the live shipment book."""
+    await sync_shipment_lifecycles(session)
     summary = await check_all_in_transit(session)
     await session.commit()
     return summary

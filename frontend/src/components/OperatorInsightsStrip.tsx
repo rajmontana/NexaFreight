@@ -2,7 +2,7 @@
 
 /**
  * OPERATOR PULSE — control-tower micro-insights strip (bottom-right of the map).
- * Sits to the left of the AI Copilot trigger pill (right-[180px]).
+ * Sits to the left of the AI Copilot trigger pill (left-1/2 -translate-x-1/2).
  * Three distinct reads NOT duplicated in the top KpiBand:
  *   EXCEPTIONS       open alerts, worst severity, ₹ stake    (/api/alerts?status=OPEN)
  *   DEMURRAGE · 30D  incurred this month + charged count     (/api/analytics/scorecard rows)
@@ -189,7 +189,7 @@ export default function OperatorInsightsStrip() {
 
   return (
     <div
-      className="absolute bottom-4 right-[180px] z-[1035] hidden md:flex items-stretch gap-2 select-none"
+      className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1035] hidden md:flex items-stretch gap-2 select-none"
       style={{ pointerEvents: 'none' }}
       aria-label="Operator pulse — live operational insights"
     >

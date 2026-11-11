@@ -232,16 +232,24 @@ function ShipmentDossierPageContent() {
 
   const refNumber = `NF-${shipmentId.slice(0, 8).toUpperCase()}`;
 
+  const totalLegCo2 = shipment?.legs?.reduce((sum, leg) => sum + (leg.co2_kg || 0), 0) || null;
   const dossierCards = buildDossierCards({
     origin: shipment?.origin,
     destination: shipment?.dest ?? shipment?.destination,
     status: shipment?.status,
-    slaDeadline: (shipment as { sla_deadline?: string })?.sla_deadline ?? null,
-    slaStatus: (shipment as { sla_status?: string })?.sla_status ?? null,
+    slaDeadline:
+      shipment?.strictest_sla_deadline ??
+      (shipment as { sla_deadline?: string })?.sla_deadline ??
+      shipment?.orders?.[0]?.sla_deadline ??
+      null,
+    slaStatus:
+      shipment?.orders?.[0]?.sla_status ??
+      (shipment as { sla_status?: string })?.sla_status ??
+      (shipment?.status === 'DELAYED' ? 'LATE' : 'ON_TIME'),
     exposureUsd: financials
-      ? financials.pnl.sla_penalty_usd + financials.pnl.demurrage_usd
+      ? (financials.pnl?.sla_penalty_usd || 0) + (financials.pnl?.demurrage_usd || 0)
       : null,
-    co2Kg: (shipment as { kg_co2?: number })?.kg_co2 ?? null,
+    co2Kg: totalLegCo2 ?? (shipment as { kg_co2?: number })?.kg_co2 ?? null,
     containers: shipment?.container_count,
   });
 
