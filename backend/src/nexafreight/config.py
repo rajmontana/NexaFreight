@@ -123,11 +123,11 @@ class Settings(BaseSettings):
     # Google Gemini (free tier)
 
     gemini_api_key: SecretStr | None = Field(default=None)
-    gemini_model: str = Field(default="gemini-3.5-flash")
+    gemini_model: str = Field(default="gemini-1.5-flash")
 
     # Groq AI (ultra-fast cloud inference)
     groq_api_key: SecretStr | None = Field(default=None)
-    groq_model: str = Field(default="qwen/qwen3.8-27b")
+    groq_model: str = Field(default="llama-3.3-70b-versatile")
 
     # Ollama (local, no key)
     ollama_base_url: str = Field(default="http://localhost:11434")
