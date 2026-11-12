@@ -312,7 +312,7 @@ Execute the complete multi-tier automated test suite:
 # In backend/ terminal:
 pytest -v --tb=short
 ```
-*Pass Criteria:* 891 passed, 5 xfailed (known limitation ALG-01 documented in `KNOWN_ISSUES.md`), 0 failed. Runtime: ~14 seconds.
+*Pass Criteria:* 891 passed, 5 xfailed (known limitation ALG-01: branch-and-bound heuristic pruning), 0 failed. Runtime: ~14 seconds.
 
 #### 2. Frontend Vitest Suite (361 Passed):
 ```bash
