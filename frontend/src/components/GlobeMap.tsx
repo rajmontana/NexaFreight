@@ -2994,30 +2994,40 @@ function GlobeMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCli
       : (seaRoutesRef.current || []);
 
     if (effectivePositions.length === 0 && candidateRoutes.length > 0) {
+      const seenCorridors = new Set<string>();
       for (const r of candidateRoutes) {
         const coords = r?.geometry?.coordinates;
-        if (Array.isArray(coords) && coords.length >= 2) {
-          const midIdx = Math.floor(coords.length * 0.48);
-          const pt = coords[midIdx];
-          const nextPt = coords[Math.min(coords.length - 1, midIdx + 1)];
-          const hdg = calculateBearing(pt[0], pt[1], nextPt[0], nextPt[1]);
-          const mode = String(r.properties?.mode || 'SEA').toUpperCase();
-          const assetType = mode === 'ROAD' ? 'TRUCK' : mode === 'AIR' ? 'FLIGHT' : mode === 'RAIL' ? 'TRAIN' : 'VESSEL';
-          const assetId = String(r.properties?.vessel_mmsi || r.properties?.leg_id || `ROUTE-${mode}-${r.properties?.leg_id || Math.random().toString(36).substring(7)}`);
-          effectivePositions.push({
-            asset_id: assetId,
-            asset_type: assetType,
-            lat: pt[1],
-            lon: pt[0],
-            latitude: pt[1],
-            longitude: pt[0],
-            heading_deg: hdg,
-            speed_knots: mode === 'ROAD' ? 52.0 : mode === 'AIR' ? 480.0 : mode === 'RAIL' ? 42.0 : 16.5,
-            provenance: 'SIMULATED',
-            source: 'ROUTE_LANE',
-            timestamp: new Date().toISOString(),
-          });
-        }
+        if (!Array.isArray(coords) || coords.length < 2) continue;
+        const mode = String(r.properties?.mode || 'SEA').toUpperCase();
+
+        // Build corridor signature from endpoints to prevent dozens of overlapping
+        // simulated markers from stacking on identical corridors
+        const startPt = coords[0];
+        const endPt = coords[coords.length - 1];
+        const corridorKey = `${mode}:${Math.round(startPt[0] * 10) / 10},${Math.round(startPt[1] * 10) / 10}->${Math.round(endPt[0] * 10) / 10},${Math.round(endPt[1] * 10) / 10}`;
+        if (seenCorridors.has(corridorKey)) continue;
+        seenCorridors.add(corridorKey);
+
+        const midIdx = Math.floor(coords.length * 0.48);
+        const pt = coords[midIdx];
+        const nextPt = coords[Math.min(coords.length - 1, midIdx + 1)];
+        const hdg = calculateBearing(pt[0], pt[1], nextPt[0], nextPt[1]);
+        const assetType = mode === 'ROAD' ? 'TRUCK' : mode === 'AIR' ? 'FLIGHT' : mode === 'RAIL' ? 'TRAIN' : 'VESSEL';
+        const assetId = String(r.properties?.vessel_mmsi || r.properties?.leg_id || `ROUTE-${mode}-${r.properties?.leg_id || Math.random().toString(36).substring(7)}`);
+        effectivePositions.push({
+          asset_id: assetId,
+          asset_type: assetType,
+          lat: pt[1],
+          lon: pt[0],
+          latitude: pt[1],
+          longitude: pt[0],
+          heading_deg: hdg,
+          speed_knots: mode === 'ROAD' ? 52.0 : mode === 'AIR' ? 480.0 : mode === 'RAIL' ? 42.0 : 16.5,
+          provenance: 'SIMULATED',
+          source: 'ROUTE_LANE',
+          timestamp: new Date().toISOString(),
+        });
+        if (effectivePositions.length >= 24) break;
       }
     }
 

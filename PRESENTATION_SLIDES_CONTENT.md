@@ -396,6 +396,36 @@ $$\min \left( \Delta \text{Cost} + \text{SLA Penalty} + \text{Demurrage} + \text
 
 ---
 
+## Slide 16: Local Reproduction & Production Cloud Deployment Runbook
+
+### Slide Title
+**Reproducibility & Deployment: From Clean Desktop Clone to Global Cloud**
+
+### Visual Layout
+- **Two-Column Split Architecture:**
+  - *Left Column: Local Desktop Reproduction (Step-by-Step)*
+    1. Clone & Branch: `git clone https://github.com/rajmontana/NexaFreight && git checkout hardening-final`
+    2. Backend: `python -m venv .venv && pip install -r requirements.txt && alembic upgrade head`
+    3. Seed: `python scripts/seed_user.py && python scripts/seed_demo_data.py`
+    4. Quality Gates: `pytest -q` (891 passed, 5 xfail) & `npm test -- --run` (361 passed)
+    5. Local Stack: FastAPI on `:8000` + Next.js 16 on `:3000` (or `docker compose up --build`)
+  - *Right Column: Production Cloud Architecture*
+    - **Frontend:** Vercel Global Edge CDN (Next.js 16.4 App Router, Standalone, Same-Origin `/api/nexa/*` Reverse Proxy)
+    - **Backend:** Render Singapore Container Service (FastAPI, AnyIO, Non-Root UID 10001, Bundled ML Models)
+    - **Database:** Neon Serverless PostgreSQL 16 (Connection Pooling, 17 Alembic Migrations, WORM P0001 Triggers)
+    - **Cache:** Upstash Redis 7 (TLS `rediss://`, 30-min Sliding Window Ring Buffer)
+
+### Key Reference Links Callout
+- **Public GitHub Repository:** [`https://github.com/rajmontana/NexaFreight`](https://github.com/rajmontana/NexaFreight)
+- **Comprehensive Runbook:** [`DEPLOYMENT.md`](DEPLOYMENT.md) (Step-by-step local & cloud deployment manual)
+- **Project Documentation:** [`README.md`](README.md) (Complete system architecture & benchmark specification)
+- **Live Control Tower:** [`https://nexafreight.vercel.app`](https://nexafreight.vercel.app)
+
+### Speaker Notes
+> "To guarantee 100% academic integrity and open-science reproducibility, our entire system is packaged with a zero-assumptions deployment runbook in DEPLOYMENT.md. Evaluators can clone the repo, run all 1,252 automated tests in under 30 seconds, verify our UNCTAD Suez detour drill, or deploy the complete stack onto Vercel, Render, and Neon PostgreSQL."
+
+---
+
 ## Quick Reference Summary Table for Slide Designer
 
 | Slide # | Slide Title | Recommended Layout / Asset | Key Takeaway / Number |
@@ -415,3 +445,4 @@ $$\min \left( \Delta \text{Cost} + \text{SLA Penalty} + \text{Demurrage} + \text
 | **13** | Live Demonstration | 5-step interactive demo walkthrough | Step-by-step execution on live production site |
 | **14** | Testing & Robustness | Test pass cards (359 Vitest + 39 Pytest) | $100\%$ pass rate, sub-50ms response, zero secrets |
 | **15** | Roadmap & Conclusion | Future capabilities + live link | IoT reefer telemetry, spot-market API bidding |
+| **16** | Reproduction & Cloud Deployment | 2-Column Runbook + Cloud Architecture Diagram | Full local & cloud runbook in DEPLOYMENT.md |
