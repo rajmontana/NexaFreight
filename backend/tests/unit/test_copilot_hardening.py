@@ -153,6 +153,10 @@ async def test_copilot_offline_advisory_state(
 ):
     """When LLM is unavailable and needs_llm is triggered, show AI advisory offline message."""
     monkeypatch.setattr(
+        "nexafreight.adapters.llm.groq.GroqAdapter.complete",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
         "nexafreight.adapters.llm.gemini.GeminiAdapter.complete",
         AsyncMock(return_value=None),
     )
