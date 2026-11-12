@@ -70,7 +70,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import select
@@ -207,10 +207,30 @@ class _WriteDedupState:
     def prune_stale(self, max_age_seconds: float = 7200.0) -> None:
         """Prune records older than max_age_seconds to prevent memory growth."""
         if len(self.last_written) > 500:
-            now = datetime.now(UTC) if hasattr(datetime, "now") else None
-            # Keep newest 200 items if memory grows
-            sorted_items = sorted(self.last_written.items(), key=lambda kv: kv[1], reverse=True)
-            self.last_written = dict(sorted_items[:200])
+            now_ts = datetime.now(UTC).timestamp()
+            cutoff = now_ts - max_age_seconds
+
+            def _get_ts(dt: datetime) -> float:
+                if dt.tzinfo is not None:
+                    return dt.timestamp()
+                return dt.replace(tzinfo=UTC).timestamp()
+
+            filtered = [
+                (mmsi, dt)
+                for mmsi, dt in self.last_written.items()
+                if _get_ts(dt) >= cutoff
+            ]
+            if len(filtered) > 200:
+                filtered.sort(key=lambda kv: _get_ts(kv[1]), reverse=True)
+                filtered = filtered[:200]
+            elif len(filtered) == 0 and len(self.last_written) > 0:
+                # Retain newest 100 entries if all exceed max_age_seconds
+                sorted_all = sorted(
+                    self.last_written.items(), key=lambda kv: _get_ts(kv[1]), reverse=True
+                )
+                filtered = sorted_all[:100]
+
+            self.last_written = dict(filtered)
 
 
 # ---------------------------------------------------------------------------

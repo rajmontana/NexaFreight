@@ -37,6 +37,7 @@ from nexafreight.models.vessel import Vessel
 from nexafreight.workers.ais_listener import (
     AISListenerWorker,
     PositionTracker,
+    _WriteDedupState,
     _find_leg_for_mmsi,
     _poll_loop,
     _select_adapter,
@@ -500,3 +501,30 @@ class TestLifespanIntegration:
     async def test_app_starts_with_listener_disabled(self, test_app) -> None:
         """The app should start cleanly even when the AIS listener is disabled."""
         assert test_app is not None
+
+
+class TestWriteDedupState:
+    def test_prune_stale_under_threshold(self) -> None:
+        dedup = _WriteDedupState()
+        now = datetime.now(UTC)
+        for i in range(100):
+            dedup.mark_written(f"mmsi_{i}", now - timedelta(seconds=i * 10))
+        dedup.prune_stale()
+        assert len(dedup.last_written) == 100
+
+    def test_prune_stale_over_threshold(self) -> None:
+        dedup = _WriteDedupState()
+        now = datetime.now(UTC)
+        # Add 600 records: 300 recent, 300 stale (> 7200s)
+        for i in range(300):
+            dedup.mark_written(f"recent_{i}", now - timedelta(seconds=i * 5))
+        for i in range(300):
+            dedup.mark_written(f"stale_{i}", now - timedelta(seconds=10000 + i * 5))
+        assert len(dedup.last_written) == 600
+        dedup.prune_stale(max_age_seconds=7200.0)
+        assert len(dedup.last_written) <= 200
+        # Verify stale entries are pruned
+        for i in range(300):
+            assert f"stale_{i}" not in dedup.last_written
+        # Verify newest recent entries remain
+        assert "recent_0" in dedup.last_written
