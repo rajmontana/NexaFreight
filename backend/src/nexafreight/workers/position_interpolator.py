@@ -203,6 +203,8 @@ async def _query_active_legs(session: AsyncSession) -> list[_LegData]:
         stmt = (
             select(
                 Leg.id,
+                Leg.origin_id,
+                Leg.destination_id,
                 Leg.transport_mode,
                 Leg.route_geometry_json,
                 Leg.planned_departure,
@@ -224,24 +226,43 @@ async def _query_active_legs(session: AsyncSession) -> list[_LegData]:
                     ]
                 )
             )
+            .order_by(Leg.planned_departure.desc().nullslast(), Leg.id.desc())
         )
         result = await session.execute(stmt)
         rows = result.all()
 
-        legs = [
-            _LegData(
-                leg_id=row.id,
-                mode=row.transport_mode.value
+        # Deduplicate by corridor: at most 1 active vessel/truck/flight per distinct corridor,
+        # keeping the map simulation clean, responsive, and bounded to the assigned fleet size.
+        seen_corridors: set[tuple[Any, Any, str]] = set()
+        legs: list[_LegData] = []
+        for row in rows:
+            mode_str = (
+                row.transport_mode.value
                 if hasattr(row.transport_mode, "value")
-                else str(row.transport_mode),
-                route_geometry=row.route_geometry_json,
-                planned_departure=row.planned_departure,
-                planned_arrival=row.planned_arrival,
-                actual_departure=row.actual_departure,
+                else str(row.transport_mode)
             )
-            for row in rows
-        ]
-        logger.debug("Queried %d active IN_PROGRESS ROAD/AIR leg(s).", len(legs))
+            corridor_key = (
+                (row.origin_id, row.destination_id, mode_str)
+                if (row.origin_id is not None and row.destination_id is not None)
+                else (row.id, row.id, mode_str)
+            )
+            if corridor_key in seen_corridors:
+                continue
+            seen_corridors.add(corridor_key)
+            legs.append(
+                _LegData(
+                    leg_id=row.id,
+                    mode=mode_str,
+                    route_geometry=row.route_geometry_json,
+                    planned_departure=row.planned_departure,
+                    planned_arrival=row.planned_arrival,
+                    actual_departure=row.actual_departure,
+                )
+            )
+            if len(legs) >= 20:  # Bound to assigned fleet of ~20 active moving assets
+                break
+
+        logger.debug("Queried %d active deduplicated leg(s) for simulation.", len(legs))
         return legs
 
     except Exception as exc:  # noqa: BLE001

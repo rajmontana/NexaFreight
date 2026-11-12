@@ -320,6 +320,8 @@ async def _execute_routes_query(session: AsyncSession) -> GeoJSONFeatureCollecti
     stmt = (
         select(
             Leg.id,
+            Leg.origin_id,
+            Leg.destination_id,
             Leg.shipment_id,
             Leg.sequence_number,
             Leg.transport_mode,
@@ -333,9 +335,11 @@ async def _execute_routes_query(session: AsyncSession) -> GeoJSONFeatureCollecti
             Leg.route_geometry_json.isnot(None),
             Leg.status.in_(statuses),
         )
+        .order_by(Leg.id.desc())
     )
     rows = (await session.execute(stmt)).all()
 
+    seen_corridors: set[tuple[Any, Any, str]] = set()
     for row in rows:
         geometry = _parse_route_geometry(row.id, row.route_geometry_json)
         if geometry is None:
@@ -350,6 +354,15 @@ async def _execute_routes_query(session: AsyncSession) -> GeoJSONFeatureCollecti
             if hasattr(row.transport_mode, "value")
             else str(row.transport_mode)
         )
+
+        # Deduplicate identical corridor polylines when origin and destination are specified
+        # to prevent hundreds of duplicate lines stacking on top of each other
+        if row.origin_id is not None and row.destination_id is not None:
+            corridor_key = (row.origin_id, row.destination_id, mode_val)
+            if corridor_key in seen_corridors:
+                continue
+            seen_corridors.add(corridor_key)
+
         status_val = row.status.value if hasattr(row.status, "value") else str(row.status)
         vessel_mmsi_val = str(row.vessel_mmsi) if row.vessel_mmsi is not None else None
         features.append(

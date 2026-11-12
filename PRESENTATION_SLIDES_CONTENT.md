@@ -396,33 +396,54 @@ $$\min \left( \Delta \text{Cost} + \text{SLA Penalty} + \text{Demurrage} + \text
 
 ---
 
-## Slide 16: Local Reproduction & Production Cloud Deployment Runbook
+## Slide 16: Local Reproduction & Empirical Benchmarks Runbook (Part I)
 
 ### Slide Title
-**Reproducibility & Deployment: From Clean Desktop Clone to Global Cloud**
+**Reproducibility Guide (Part I): Local Desktop Setup, Automated Gates & Drills**
 
 ### Visual Layout
 - **Two-Column Split Architecture:**
-  - *Left Column: Local Desktop Reproduction (Step-by-Step)*
-    1. Clone & Branch: `git clone https://github.com/rajmontana/NexaFreight && git checkout hardening-final`
-    2. Backend: `python -m venv .venv && pip install -r requirements.txt && alembic upgrade head`
-    3. Seed: `python scripts/seed_user.py && python scripts/seed_demo_data.py`
-    4. Quality Gates: `pytest -q` (891 passed, 5 xfail) & `npm test -- --run` (361 passed)
-    5. Local Stack: FastAPI on `:8000` + Next.js 16 on `:3000` (or `docker compose up --build`)
-  - *Right Column: Production Cloud Architecture*
-    - **Frontend:** Vercel Global Edge CDN (Next.js 16.4 App Router, Standalone, Same-Origin `/api/nexa/*` Reverse Proxy)
-    - **Backend:** Render Singapore Container Service (FastAPI, AnyIO, Non-Root UID 10001, Bundled ML Models)
-    - **Database:** Neon Serverless PostgreSQL 16 (Connection Pooling, 17 Alembic Migrations, WORM P0001 Triggers)
-    - **Cache:** Upstash Redis 7 (TLS `rediss://`, 30-min Sliding Window Ring Buffer)
-
-### Key Reference Links Callout
-- **Public GitHub Repository:** [`https://github.com/rajmontana/NexaFreight`](https://github.com/rajmontana/NexaFreight)
-- **Comprehensive Runbook:** [`DEPLOYMENT.md`](DEPLOYMENT.md) (Step-by-step local & cloud deployment manual)
-- **Project Documentation:** [`README.md`](README.md) (Complete system architecture & benchmark specification)
-- **Live Control Tower:** [`https://nexafreight.vercel.app`](https://nexafreight.vercel.app)
+  - *Left Column: Step-by-Step Desktop Reproduction*
+    1. Clone & Branch: `git clone https://github.com/rajmontana/NexaFreight && git checkout hardening-final` (commit `2e05a2b`)
+    2. Virtualenv Setup: `cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
+    3. Secrets & .env: `cp .env.example .env` (generate JWT secret via `python -c "import secrets; print(secrets.token_urlsafe(32))"`)
+    4. Migrations & Immutability: `alembic upgrade head` (17 migrations up to `c3d4e5f6a7b8`; establishes WORM trigger `P0001`)
+    5. Operational Fleet Seeding: `python scripts/seed_user.py && seed_demo_data.py && 30_activate_multimodal_fleet.py`
+    6. Local Stack Execution: FastAPI on `:8000` + Next.js 16 on `:3000` (or `docker compose up --build`)
+  - *Right Column: Automated Test Verification & Empirical Drills*
+    - **1,252 Automated Tests Verified:** 891 Backend Pytest (isolated via respx/mock) + 361 Frontend Vitest (React 19, 0 typecheck errors)
+    - **UNCTAD Red Sea Disruption Drill:** `python scripts/24_red_sea_drill.py` (verifies 1.70x–1.74x distance ratios for Suez bypass)
+    - **1,000-Sample Bootstrap Leakage Audit:** `python scripts/20_bootstrap_roc_ci.py` (proves delta ROC-AUC 95% CI crosses zero)
+    - **Quantile ETA Monotonic Repair:** `python scripts/23_verify_quantile_monotonicity.py` (confirms PAVA repair: 100% non-crossing)
+    - **90 MOSP Benchmark Instances:** `python scripts/30_benchmark_planner_baselines.py` (1,890 timed trials comparing Martins, MDA, T-MDA)
 
 ### Speaker Notes
-> "To guarantee 100% academic integrity and open-science reproducibility, our entire system is packaged with a zero-assumptions deployment runbook in DEPLOYMENT.md. Evaluators can clone the repo, run all 1,252 automated tests in under 30 seconds, verify our UNCTAD Suez detour drill, or deploy the complete stack onto Vercel, Render, and Neon PostgreSQL."
+> "To guarantee 100% academic integrity and open-science reproducibility, our entire system is packaged with a zero-assumptions deployment runbook in REPRODUCIBILITY_AND_DEPLOYMENT_GUIDE.md. Evaluators can clone the repo, run all 1,252 automated tests in under 20 seconds, verify our UNCTAD Suez detour drill, or run the 90 MOSP benchmark instances locally."
+
+---
+
+## Slide 17: Production Cloud Deployment Blueprint & Verification (Part II)
+
+### Slide Title
+**Reproducibility Guide (Part II): Production Cloud Topology, Smoke Testing & Immutability**
+
+### Visual Layout
+- **Two-Column Split Architecture:**
+  - *Left Column: 4-Tier Cloud Production Infrastructure*
+    - **Frontend (Vercel Edge CDN):** Next.js 16.4 App Router, Global Edge CDN, same-origin `/api/nexa/*` reverse proxy (ADR-01)
+    - **Backend (Render Singapore):** Containerized FastAPI web service deploying `docker/Dockerfile.backend` under non-root UID 10001
+    - **Database (Neon Serverless):** PostgreSQL 16 with connection pooling; remote migration runner & `sync_operational_to_neon.py`
+    - **Distributed Cache (Upstash):** Managed Redis 7 with TLS (`rediss://`), 30-min sliding window ring buffer & Pub/Sub geofence bus
+    - **Live Production URL:** [`https://nexafreight.vercel.app`](https://nexafreight.vercel.app) (Backend: [`https://nexafreight-backend.onrender.com`](https://nexafreight-backend.onrender.com))
+  - *Right Column: Production Smoke Testing & Security Proofs*
+    - **Health Probes:** `curl https://nexafreight-backend.onrender.com/healthz` (200 OK) and `/readyz` (DB + ML models loaded)
+    - **Ephemeral Stream Tickets:** `POST /api/map/positions/stream-ticket` generates 60s ticket; ticket reuse returns HTTP 401 (ADR-02)
+    - **WORM Immutability Verification:** Attempting `TRUNCATE TABLE audit_logs` fails with PostgreSQL `ERRCODE P0001`
+    - **Rate-Limiting Perimeter:** SlowAPI limiter enforces 10 req/min on `/api/copilot/ask`
+    - **Authoritative Guide:** Full documentation in [`REPRODUCIBILITY_AND_DEPLOYMENT_GUIDE.md`](REPRODUCIBILITY_AND_DEPLOYMENT_GUIDE.md)
+
+### Speaker Notes
+> "In addition to local execution, our cloud infrastructure is fully documented and automated. The frontend runs serverless on Vercel Edge with same-origin proxying to prevent CORS latency, while the backend runs as a non-root container on Render connected to a pooled Neon PostgreSQL 16 instance. Every approved reroute commits to an append-only WORM ledger that cannot be truncated even by administrators."
 
 ---
 
@@ -445,4 +466,5 @@ $$\min \left( \Delta \text{Cost} + \text{SLA Penalty} + \text{Demurrage} + \text
 | **13** | Live Demonstration | 5-step interactive demo walkthrough | Step-by-step execution on live production site |
 | **14** | Testing & Robustness | Test pass cards (359 Vitest + 39 Pytest) | $100\%$ pass rate, sub-50ms response, zero secrets |
 | **15** | Roadmap & Conclusion | Future capabilities + live link | IoT reefer telemetry, spot-market API bidding |
-| **16** | Reproduction & Cloud Deployment | 2-Column Runbook + Cloud Architecture Diagram | Full local & cloud runbook in DEPLOYMENT.md |
+| **16** | Local Reproduction & Drills | 2-Column Runbook + 1,252 Tests & Drills | Full local runbook in REPRODUCIBILITY_AND_DEPLOYMENT_GUIDE.md |
+| **17** | Cloud Deployment Blueprint | 2-Column Cloud Topology + Smoke Testing | Vercel + Render + Neon PostgreSQL 16 + Upstash Redis |
