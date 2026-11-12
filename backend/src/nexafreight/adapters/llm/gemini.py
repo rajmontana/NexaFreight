@@ -12,6 +12,13 @@ import os
 
 logger = logging.getLogger(__name__)
 
+CANDIDATE_GEMINI_MODELS = [
+    "gemini-3.5-flash",
+    "gemini-3.6-flash",
+    "gemini-flash-lite-latest",
+    "gemini-3.8-flash",
+]
+
 
 class GeminiAdapter:
     """Thin async adapter over `google-generativeai`.
@@ -22,11 +29,7 @@ class GeminiAdapter:
     def __init__(self, model_name: str | None = None, api_key: str | None = None):
         """Create adapter from env config; model resolved lazily."""
         self._api_key = api_key or os.getenv("GEMINI_API_KEY", "")
-        # gemini-2.0-flash: 1.5 models are retired for newer API keys (404 on
-        # generate) — the default tracks a currently served model; override
-        # with GEMINI_MODEL.
-        self._model_name = model_name or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-        self._model = None
+        self._model_name = model_name or os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
 
     @property
     def available(self) -> bool:
@@ -41,37 +44,40 @@ class GeminiAdapter:
             logger.debug("google-generativeai not installed; Gemini adapter unavailable")
             return False
 
-    def _get_model(self):
-        """Lazy configured model; returns None on any failure (never raises)."""
-        if self._model is not None:
-            return self._model
+    async def complete(self, prompt: str) -> str | None:
+        """Get a completion with candidate model fallback. Returns None on any error (never raises)."""
+        if not self.available:
+            return None
+
+        import asyncio
+
         try:
             import google.generativeai as genai
 
             genai.configure(api_key=self._api_key)
-            self._model = genai.GenerativeModel(self._model_name)
-            return self._model
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Gemini model initialization failed: %s", exc)
+        except Exception as cfg_err:
+            logger.warning("Gemini configuration failed: %s", cfg_err)
             return None
 
-    async def complete(self, prompt: str) -> str | None:
-        """Get a completion. Returns None on any error (never raises)."""
-        import asyncio
+        models_to_try = [self._model_name] + [
+            m for m in CANDIDATE_GEMINI_MODELS if m != self._model_name
+        ]
 
-        model = self._get_model()
-        if model is None:
-            return None
-        try:
-            response = await asyncio.wait_for(
-                asyncio.to_thread(
-                    model.generate_content,
-                    prompt,
-                    generation_config={"temperature": 0.1, "max_output_tokens": 512},
-                ),
-                timeout=10.0,
-            )
-            return str(response.text).strip()
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Gemini complete failed: %s", exc)
-            return None
+        for m_name in models_to_try:
+            try:
+                model = genai.GenerativeModel(m_name)
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        model.generate_content,
+                        prompt,
+                        generation_config={"temperature": 0.1, "max_output_tokens": 512},
+                    ),
+                    timeout=10.0,
+                )
+                if response and response.text:
+                    return str(response.text).strip()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Gemini complete with model %s failed: %s", m_name, exc)
+                continue
+
+        return None

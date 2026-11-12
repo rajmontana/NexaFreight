@@ -38,7 +38,11 @@ logger = logging.getLogger(__name__)
 #: Word-boundary regex routing to LLM when the question asks for judgment/explanation (Item 9).
 _LLM_PATTERN = re.compile(
     r"\b(why|recommend|should we|should i|explain|compare|trade.?off|pros and cons|"
-    r"advantage|risk|suggestion|recommendation|tradeoff)\b",
+    r"advantage|risk|suggestion|recommendation|tradeoff|exposure|disruption|red sea|"
+    r"assess|analyze|analysis|impact|penalt(?:y|ies)|thresholds?|"
+    r"summarize|summary|bottlenecks?|how (?:can|do|should|to)|evaluate|evaluation|"
+    r"options?|strategy|strategies|optimize|optimization|carbon|emissions?|"
+    r"congestion|weather|canal|tell me|what if)\b",
     re.IGNORECASE,
 )
 
@@ -355,10 +359,26 @@ async def answer_network_question(
         f"{open_alerts} active open alert(s) across global corridors."
     )
 
+    q_lower = (question or "").lower()
     if not needs_llm(question):
+        if "deliver" in q_lower:
+            delivered_stmt = select(func.count(Shipment.id)).where(
+                (Shipment.status == ShipmentStatus.DELIVERED) | (Shipment.status == "DELIVERED")
+            )
+            delivered_shipments = (await session.execute(delivered_stmt)).scalar() or 0
+            return {
+                "answer": f"Fleet Delivery Status: {delivered_shipments} shipment(s) currently recorded as delivered out of {total_shipments} total shipments across global corridors.",
+                "source": "rules",
+                "provenance": "DERIVED",
+            }
+        if "demurrage" in q_lower or "fee" in q_lower:
+            return {
+                "answer": f"Network Demurrage Assessment: {delayed_shipments} delayed shipment(s) incurring dwell penalties across {open_alerts} active corridor alerts. Select a specific shipment to review container-level demurrage breakdowns.",
+                "source": "rules",
+                "provenance": "DERIVED",
+            }
         return {"answer": network_summary, "source": "rules", "provenance": "DERIVED"}
 
-    # LLM path for network questions
     adapters_to_try = []
     if adapter is not None:
         adapters_to_try.append(adapter)
@@ -385,9 +405,17 @@ async def answer_network_question(
         if ollama.available:
             adapters_to_try.append(ollama)
 
+    total_exposure = (
+        await session.execute(
+            select(func.sum(Alert.financial_exposure)).where(Alert.status != "RESOLVED")
+        )
+    ).scalar() or 0.0
+
     prompt = (
-        f"[SYSTEM INSTRUCTION]\nYou are NexaFreight AI Copilot answering a network-level inquiry.\n"
+        f"[SYSTEM INSTRUCTION]\nYou are NexaFreight AI Copilot answering a network-level logistics inquiry.\n"
+        f"Provide a concise, professional operational assessment.\n\n"
         f"[NETWORK DATA]\n{network_summary}\n"
+        f"Total Active Disruption Financial Exposure: ${total_exposure:,.2f}\n\n"
         f"[USER QUESTION]\n{question}\n"
     )
 

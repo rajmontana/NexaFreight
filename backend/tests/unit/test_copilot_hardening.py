@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import pytest
 from httpx import AsyncClient
 
@@ -147,8 +149,13 @@ async def test_copilot_offline_advisory_state(
     seed_operator_user: User,
     auth_headers: dict[str, str],
     make_shipment,
+    monkeypatch,
 ):
     """When LLM is unavailable and needs_llm is triggered, show AI advisory offline message."""
+    monkeypatch.setattr(
+        "nexafreight.adapters.llm.gemini.GeminiAdapter.complete",
+        AsyncMock(return_value=None),
+    )
     shp = await make_shipment(status=ShipmentStatus.IN_TRANSIT)
 
     resp = await client.post(
