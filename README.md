@@ -422,7 +422,7 @@ The theoretical algorithms, mathematical graph formulations, and empirical findi
    * Location: [`Final_Submission_IOT/Conference_Paper_NexaFreight.pdf`](Final_Submission_IOT/Conference_Paper_NexaFreight.pdf)
 3. **Executive Defense Presentation & Slide Deck:**
    * *NexaFreight: Autonomous Multimodal Logistics Control Tower — Transforming Reactive Global Supply Chains* (24 Slides, 16:9 Executive Deck).
-   * Location: [`Final_Submission_IOT/Final_Presentation_NexaFreight.pptx`](Final_Submission_IOT/Final_Presentation_NexaFreight.pptx) and [`NexaFreight-fresh/PRESENTATION_SLIDES_CONTENT.md`](NexaFreight-fresh/PRESENTATION_SLIDES_CONTENT.md)
+   * Location: [`Final_Submission_IOT/Final_Presentation_NexaFreight.pptx`](Final_Submission_IOT/Final_Presentation_NexaFreight.pptx)
 
 ---
 

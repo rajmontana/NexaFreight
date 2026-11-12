@@ -158,7 +158,7 @@ NexaFreight/
 │   └── package.json          # Node.js dependencies & scripts
 ├── docker/                   # Hardened non-root Dockerfiles (UID 10001) & entrypoint scripts
 ├── data/                     # Baseline operational datasets and SQLite database snapshots
-└── REPRODUCIBILITY_AND_DEPLOYMENT_GUIDE.md # This runbook
+└── DEPLOYMENT.md             # This runbook
 ```
 
 ---

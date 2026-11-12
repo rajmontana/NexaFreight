@@ -7,7 +7,7 @@
 **Public Repository:** [`https://github.com/rajmontana/NexaFreight`](https://github.com/rajmontana/NexaFreight)  
 **Production Control Tower:** [`https://nexafreight.vercel.app/`](https://nexafreight.vercel.app/)  
 **Audited Release Branch:** `main` / `hardening-final` (Commit: `2e05a2b` / `a9477f1`)  
-**Companion Documents:** [**REPRODUCIBILITY_AND_DEPLOYMENT_GUIDE.md**](REPRODUCIBILITY_AND_DEPLOYMENT_GUIDE.md) · [**README.md**](README.md) · [**DEPLOYMENT.md**](DEPLOYMENT.md)
+**Companion Documents:** [**DEPLOYMENT.md**](DEPLOYMENT.md) · [**README.md**](README.md)
 
 ---
 
