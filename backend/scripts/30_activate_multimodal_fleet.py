@@ -693,75 +693,30 @@ def activate(engine=None):
         # Seed rerouting corridor alternatives
         ensure_corridor_alternatives(conn, now)
 
-        # Activate domestic and regional AIR legs
+        # Clean up legacy/overflow legs to ensure only the assigned fleet is active
         conn.execute(
-            text(f"""
+            text("""
             UPDATE legs
-            SET status = 'IN_PROGRESS',
-                planned_departure = '{t_start_2h}',
-                actual_departure = '{t_act_2h}',
-                planned_arrival = '{t_end_air}'
-            WHERE id IN (
-                SELECT id FROM legs
-                WHERE transport_mode = 'AIR'
-                  AND route_geometry_json IS NOT NULL
-                LIMIT 15
-            )
+            SET status = 'COMPLETED'
+            WHERE status = 'IN_PROGRESS'
+              AND (shipment_id NOT LIKE 'glob-%' AND id NOT IN (1, 5, 53, 68))
             """)
         )
 
-        # Activate ROAD legs (trucks)
+        # Set parent shipments to IN_TRANSIT for active legs, and DELIVERED for completed ones
         conn.execute(
-            text(f"""
-            UPDATE legs
-            SET status = 'IN_PROGRESS',
-                planned_departure = '{t_start_2h}',
-                actual_departure = '{t_act_2h}',
-                planned_arrival = '{t_end_road}'
-            WHERE id IN (
-                SELECT id FROM legs
-                WHERE transport_mode = 'ROAD'
-                  AND route_geometry_json IS NOT NULL
-                LIMIT 25
-            )
+            text("""
+            UPDATE shipments
+            SET status = 'DELIVERED'
+            WHERE status = 'IN_TRANSIT'
+              AND id NOT IN (
+                  SELECT DISTINCT shipment_id
+                  FROM legs
+                  WHERE status = 'IN_PROGRESS'
+                    AND shipment_id IS NOT NULL
+              )
             """)
         )
-
-        # Activate RAIL legs (trains)
-        conn.execute(
-            text(f"""
-            UPDATE legs
-            SET status = 'IN_PROGRESS',
-                planned_departure = '{t_start_2h}',
-                actual_departure = '{t_act_2h}',
-                planned_arrival = '{t_end_rail}'
-            WHERE id IN (
-                SELECT id FROM legs
-                WHERE transport_mode = 'RAIL'
-                  AND route_geometry_json IS NOT NULL
-                LIMIT 10
-            )
-            """)
-        )
-
-        # Activate SEA legs (container ships)
-        conn.execute(
-            text(f"""
-            UPDATE legs
-            SET status = 'IN_PROGRESS',
-                planned_departure = '{t_start_2h}',
-                actual_departure = '{t_act_2h}',
-                planned_arrival = '{t_end_sea}'
-            WHERE id IN (
-                SELECT id FROM legs
-                WHERE transport_mode = 'SEA'
-                  AND route_geometry_json IS NOT NULL
-                LIMIT 20
-            )
-            """)
-        )
-
-        # Set parent shipments to IN_TRANSIT
         conn.execute(
             text("""
             UPDATE shipments
