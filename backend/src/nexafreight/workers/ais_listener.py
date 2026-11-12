@@ -288,17 +288,28 @@ class ResilientAISAdapter:
             await self.replay_adapter.stop()
 
     async def get_current_positions(self) -> list[AssetPosition]:
+        positions_by_id: dict[str, AssetPosition] = {}
+
+        # 1. Base layer from replay adapter (ensures all fleet vessels are present)
+        if self.replay_adapter is not None:
+            try:
+                for p in await self.replay_adapter.get_current_positions():
+                    positions_by_id[p.asset_id] = p
+            except Exception as e:
+                logger.debug("Replay adapter get_current_positions failed: %s", e)
+
+        # 2. Live layer: overwrites replay with authoritative REAL positions when available
         try:
             live_health = await self.live_adapter.health()
             if live_health.is_healthy and live_health.messages_received > 0:
-                pos = await self.live_adapter.get_current_positions()
-                if pos:
-                    return pos
+                for p in await self.live_adapter.get_current_positions():
+                    positions_by_id[p.asset_id] = p
         except Exception as e:
             logger.debug("Live adapter get_current_positions failed: %s", e)
 
-        if self.replay_adapter is not None:
-            return await self.replay_adapter.get_current_positions()
+        if positions_by_id:
+            return sorted(positions_by_id.values(), key=lambda p: p.asset_id)
+
         return await self.live_adapter.get_current_positions()
 
     async def health(self) -> FeedHealth:
@@ -350,7 +361,11 @@ async def _select_adapter() -> PositionFeedAdapter | None:
         )
         logger.info("Selecting AISStreamAdapter with Replay fallback for live AIS.")
         mmsis = _discover_mmsis_for_replay(Path(settings.ais_replay_data_path or "./data/raw/ais_historical"))
-        bbox = settings.ais_bounding_boxes or "[[[-90, -180], [90, 180]]]"
+        bbox = (
+            settings.ais_bounding_boxes.strip()
+            if settings.ais_bounding_boxes and settings.ais_bounding_boxes.strip()
+            else None
+        )
         live_adapter = AISStreamAdapter(
             mmsis=mmsis,
             api_key=api_key,
