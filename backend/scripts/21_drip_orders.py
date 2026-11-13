@@ -71,6 +71,7 @@ from nexafreight.models import NetworkEdge  # noqa: E402
 from nexafreight.adapters.routing.sea_route import compute_sea_route  # noqa: E402
 from nexafreight.models.parameter import ParameterEmpirical  # noqa: E402
 from nexafreight.models.shipment import Shipment  # noqa: E402
+from nexafreight.models.vessel import Vessel  # noqa: E402
 from nexafreight.services.planner import get_planner  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -87,6 +88,7 @@ class WorldDripper:
         self.locode_to_location: dict[str, int] = {}
         self.node_coords: dict[str, tuple[float, float]] = {}
         self.in_nodes: list[str] = []
+        self.vessels: list[Vessel] = []
 
     async def _load_caches(self, session) -> None:
         loc_rows = (await session.execute(select(Location))).scalars().all()
@@ -97,6 +99,8 @@ class WorldDripper:
         if len(self.in_nodes) < 2:
             raise SystemExit("Need >=2 network nodes (run alembic upgrade head)")
         self.party_pools = await load_party_pools(session)
+        vessel_rows = (await session.execute(select(Vessel))).scalars().all()
+        self.vessels = list(vessel_rows)
         # Day-14: cached edge geometry (network_edges.geometry_json)
         self.edge_geometry = {
             e.id: e.geometry_json
@@ -267,6 +271,25 @@ class WorldDripper:
             o_coord = self.node_coords.get(kpi.from_locode)
             d_coord = self.node_coords.get(kpi.to_locode)
             km = haversine_km(*o_coord, *d_coord) if o_coord and d_coord else None
+            vessel_id: int | None = None
+            flight_num: str | None = None
+            if kpi.mode == "SEA" and self.vessels:
+                try:
+                    from nexafreight.workers.ais_listener import get_position_tracker
+                    tracker = get_position_tracker()
+                    active_positions = await tracker.get_positions()
+                    tracked_mmsis = {int(p.asset_id) for p in active_positions if str(p.asset_id).isdigit()}
+                    tracked_vessels = [v for v in self.vessels if v.mmsi in tracked_mmsis]
+                    if tracked_vessels:
+                        vessel = self.rng.choice(tracked_vessels)
+                    else:
+                        vessel = self.rng.choice(self.vessels)
+                except Exception:
+                    vessel = self.rng.choice(self.vessels)
+                vessel_id = vessel.id
+            elif kpi.mode == "AIR":
+                flight_num = f"NX-{self.rng.randint(100, 999)}"
+
             leg = Leg(
                 shipment_id=shipment_id,
                 sequence_number=seq,
@@ -275,6 +298,8 @@ class WorldDripper:
                 status=self._leg_status_for(kpi.departure_at, kpi.arrival_at, world),
                 origin_id=o_id,
                 destination_id=d_id,
+                vessel_id=vessel_id,
+                flight_number=flight_num,
                 planned_departure=kpi.departure_at,
                 planned_arrival=kpi.arrival_at,
                 # Task-7 wire: the position interpolator walks this geometry

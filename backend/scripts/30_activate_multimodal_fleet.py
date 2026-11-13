@@ -693,13 +693,33 @@ def activate(engine=None):
         # Seed rerouting corridor alternatives
         ensure_corridor_alternatives(conn, now)
 
+        # Activate domestic and regional high-resolution RAIL freight corridors (Indian Railways / DFC)
+        # 56: Kolkata (INCCU) -> Tughlakabad/Delhi (INTKG) [EDFC trunk, 1291km, 240KB OSM geometry]
+        # 104: Kolkata (INCCU) -> Patna Rail Hub (INPTN) [Eastern DFC spur, 469km, 126KB OSM geometry]
+        # 138: Ludhiana (INLUD) -> JNPT Mumbai (INJNP) [WDFC trunk, 1360km, 293KB OSM geometry]
+        # 154: Mundra Port (INMUN) -> Dadra ICD (INDAD) [Mundra container rail corridor, 1017km, 106KB OSM geometry]
+        # 172: Bangalore ICD (INBLR) -> Chennai Port (INMAA) [Southern rail corridor, 280km, 77KB OSM geometry]
+        # 239: Kanpur (INCHK) -> Tughlakabad/Delhi (INTKG) [EDFC feeder, 377km, 77KB OSM geometry]
+        rail_corridor_ids = "(56, 104, 138, 154, 172, 239)"
+        conn.execute(
+            text(f"""
+            UPDATE legs
+            SET status = 'IN_PROGRESS',
+                planned_departure = '{t_start_2h}',
+                actual_departure = '{t_act_2h}',
+                planned_arrival = '{t_end_rail}'
+            WHERE id IN {rail_corridor_ids}
+            """)
+        )
+
         # Clean up legacy/overflow legs to ensure only the assigned fleet is active
         conn.execute(
             text("""
             UPDATE legs
             SET status = 'COMPLETED'
             WHERE status = 'IN_PROGRESS'
-              AND (shipment_id NOT LIKE 'glob-%' AND id NOT IN (1, 5, 53, 68))
+              AND (shipment_id NOT LIKE 'glob-%' AND id NOT IN (1, 5, 53, 68, 56, 104, 138, 154, 172, 239))
+              AND transport_mode != 'RAIL'
             """)
         )
 

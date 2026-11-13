@@ -99,7 +99,7 @@ _JOB_ID: str = "position_interpolator"
 _STALE_HOURS: int = 24
 
 #: Leg modes processed by this worker.
-_HANDLED_MODES: frozenset[str] = frozenset({"ROAD", "AIR"})
+_HANDLED_MODES: frozenset[str] = frozenset({"ROAD", "AIR", "SEA", "RAIL"})
 
 # ---------------------------------------------------------------------------
 # In-memory position cache
@@ -231,9 +231,10 @@ async def _query_active_legs(session: AsyncSession) -> list[_LegData]:
         result = await session.execute(stmt)
         rows = result.all()
 
-        # Deduplicate by corridor: at most 1 active vessel/truck/flight per distinct corridor,
-        # keeping the map simulation clean, responsive, and bounded to the assigned fleet size.
+        # Deduplicate by corridor and balance across all 4 modes (up to 8 legs per mode, max 28 total),
+        # keeping the map simulation clean, responsive, and balanced across Road, Air, Sea, and Rail.
         seen_corridors: set[tuple[Any, Any, str]] = set()
+        mode_counts: dict[str, int] = {}
         legs: list[_LegData] = []
         for row in rows:
             mode_str = (
@@ -241,6 +242,8 @@ async def _query_active_legs(session: AsyncSession) -> list[_LegData]:
                 if hasattr(row.transport_mode, "value")
                 else str(row.transport_mode)
             )
+            if mode_counts.get(mode_str, 0) >= 8:
+                continue
             corridor_key = (
                 (row.origin_id, row.destination_id, mode_str)
                 if (row.origin_id is not None and row.destination_id is not None)
@@ -249,6 +252,7 @@ async def _query_active_legs(session: AsyncSession) -> list[_LegData]:
             if corridor_key in seen_corridors:
                 continue
             seen_corridors.add(corridor_key)
+            mode_counts[mode_str] = mode_counts.get(mode_str, 0) + 1
             legs.append(
                 _LegData(
                     leg_id=row.id,
@@ -259,7 +263,7 @@ async def _query_active_legs(session: AsyncSession) -> list[_LegData]:
                     actual_departure=row.actual_departure,
                 )
             )
-            if len(legs) >= 20:  # Bound to assigned fleet of ~20 active moving assets
+            if len(legs) >= 28:  # Bound to assigned fleet of moving assets across all 4 modes
                 break
 
         logger.debug("Queried %d active deduplicated leg(s) for simulation.", len(legs))

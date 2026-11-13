@@ -1099,6 +1099,23 @@ class TestGetAllPositions:
 
         assert len(result) == 1
 
+    async def test_get_all_positions_filters_unassigned_vessels_in_production(self) -> None:
+        in_transit_pos = make_ais_position("477016900")
+        unassigned_pos = make_ais_position("999999999")
+        tracker = mock_tracker([in_transit_pos, unassigned_pos])
+
+        with (
+            patch("nexafreight.api.routes.map.get_position_tracker", return_value=tracker),
+            patch("nexafreight.api.routes.map.get_interpolated_positions", return_value={}),
+            patch("nexafreight.api.routes.map._get_active_vessel_mmsis", return_value={"477016900"}),
+        ):
+            result = await _get_all_positions()
+
+        ids = {p.asset_id for p in result}
+        assert "477016900" in ids
+        assert "999999999" not in ids
+        assert len(result) == 1
+
 
 # ===========================================================================
 # 9. Build routes / ports — direct function tests

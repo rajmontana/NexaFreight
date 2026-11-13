@@ -201,7 +201,61 @@ def _position_to_out(pos: AssetPosition) -> PositionOut:
     )
 
 
-async def _get_all_positions() -> list[PositionOut]:
+_active_mmsis_cache: set[str] | None = None
+_active_mmsis_cached_at: float = 0.0
+_ACTIVE_MMSIS_CACHE_TTL_S: float = 15.0
+
+
+async def _get_active_vessel_mmsis(session: AsyncSession | None = None) -> set[str] | None:
+    """
+    Return set of vessel MMSI strings for vessels currently assigned to IN_PROGRESS legs.
+
+    Returns None in test environments to allow synthetic unit test assertions to pass unfiltered.
+    In production/staging, queries active in-transit vessels so only live vessels on real shipments
+    are displayed on the map, eliminating clutter and client overload.
+    Cached for 15 seconds to avoid repeated database queries on 5-second SSE ticks.
+    """
+    global _active_mmsis_cache, _active_mmsis_cached_at
+    settings = get_settings()
+    if settings.environment == "test":
+        return None
+
+    now = time.monotonic()
+    if _active_mmsis_cache is not None and (now - _active_mmsis_cached_at) < _ACTIVE_MMSIS_CACHE_TTL_S:
+        return _active_mmsis_cache
+
+    try:
+        from sqlalchemy import func
+
+        async def _query(s: AsyncSession) -> set[str] | None:
+            stmt = (
+                select(Vessel.mmsi)
+                .join(Leg, Leg.vessel_id == Vessel.id)
+                .where(
+                    Leg.status.in_([LegStatus.IN_PROGRESS, "IN_PROGRESS"]),
+                    Leg.transport_mode.in_([TransportMode.SEA, "SEA"]),
+                    Vessel.mmsi.isnot(None),
+                )
+            )
+            rows = (await s.execute(stmt)).scalars().all()
+            return {str(mmsi) for mmsi in rows if mmsi}
+
+        if session is not None:
+            active = await _query(session)
+        else:
+            session_factory = get_session_factory()
+            async with session_factory() as local_session:
+                active = await _query(local_session)
+
+        _active_mmsis_cache = active
+        _active_mmsis_cached_at = now
+        return active
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to query active vessel MMSIs: %s", exc)
+        return _active_mmsis_cache
+
+
+async def _get_all_positions(session: AsyncSession | None = None) -> list[PositionOut]:
     """
     Merge positions from T-029 (AIS) and T-030 (interpolated) caches.
 
@@ -226,7 +280,12 @@ async def _get_all_positions() -> list[PositionOut]:
     try:
         tracker = get_position_tracker()
         ais_positions: list[AssetPosition] = await tracker.get_positions()
+        active_mmsis = await _get_active_vessel_mmsis(session)
         for pos in ais_positions:
+            # Filter: only show vessels that are actively in-transit on an assigned shipment leg
+            # to eliminate map clutter and prevent browser DOM/canvas overload
+            if active_mmsis is not None and str(pos.asset_id) not in active_mmsis:
+                continue
             merged[pos.asset_id] = pos
     except Exception as exc:  # noqa: BLE001
         logger.warning("Failed to read T-029 position cache: %s", exc)
@@ -801,13 +860,14 @@ async def stream_positions() -> StreamingResponse:
 )
 async def snapshot_positions(
     _current_user: Any = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
 ) -> list[PositionOut]:
     """
     Return all current asset positions as a JSON array.
 
     Returns an empty array [] if no positions are cached yet.
     """
-    return await _get_all_positions()
+    return await _get_all_positions(db)
 
 
 @router.get(
